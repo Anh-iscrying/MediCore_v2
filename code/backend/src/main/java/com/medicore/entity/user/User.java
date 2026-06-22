@@ -1,30 +1,32 @@
 package com.medicore.entity.user;
 
-import com.medicore.common.base.BaseEntity;
 import com.medicore.common.constants.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 @Entity
-@Table(name = "users") // Map với bảng users trong DB
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User extends BaseEntity {
+public class User {
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
-    private String email;
+    @Id
+    @Column(name = "id", columnDefinition = "uuid")
+    private UUID id;
 
-    @Column(name = "password", nullable = false)
-    private String password;
-
-    @Enumerated(EnumType.STRING) // Lưu vào DB dưới dạng String ("ADMIN", "DOCTOR"...)
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private UserRole role;
-    
-    @Builder.Default
-    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
-    private Boolean isActive = true; 
+
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 }
