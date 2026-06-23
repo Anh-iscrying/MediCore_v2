@@ -5,10 +5,8 @@ import org.springframework.stereotype.Repository;
 
 import com.medicore.entity.user.User;
 
-import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
-    boolean existsByEmail(String email);
+public interface UserRepository extends JpaRepository<User, UUID> {
 }

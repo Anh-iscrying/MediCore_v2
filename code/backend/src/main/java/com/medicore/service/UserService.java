@@ -1,8 +1,6 @@
 package com.medicore.service;
 
-import com.medicore.dto.request.UserRegisterRequest;
-import com.medicore.entity.user.User;
-
+// TODO: Sẽ thiết kế lại interface khi tích hợp Supabase Auth flow
+// Hiện tại tạm bỏ register method cũ vì public.users không lưu email/password
 public interface UserService {
-    User register(UserRegisterRequest request);
 }

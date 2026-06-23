@@ -15,15 +15,24 @@ public class Doctor extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user; // Mỗi bác sĩ có 1 tài khoản đăng nhập
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "specialty_id")
-    private Specialty specialty; // Bác sĩ thuộc về 1 chuyên khoa
+    private Specialty specialty;
 
     @Column(name = "doctor_code", nullable = false, unique = true, length = 20)
     private String doctorCode; // DOC-NNNN
 
     @Column(name = "doctor_name", nullable = false)
     private String doctorName;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "degree")
+    private String degree;
+
+    @Column(name = "experience_years")
+    private Integer experienceYears;
 }

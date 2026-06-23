@@ -16,7 +16,7 @@ public class Patient extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user; // Mỗi bệnh nhân có 1 tài khoản đăng nhập
+    private User user;
 
     @Column(name = "patient_code", nullable = false, unique = true, length = 20)
     private String patientCode; // PAT-YYYY-NNNN
@@ -24,11 +24,14 @@ public class Patient extends BaseEntity {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    private LocalDate dob; // Ngày sinh
+    private LocalDate dob;
 
     @Enumerated(EnumType.STRING)
     private GenderType gender;
 
-    @Column(name = "phone_number", nullable = false, unique = true)
-    private String phoneNumber;
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
 }
