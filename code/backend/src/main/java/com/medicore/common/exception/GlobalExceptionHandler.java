@@ -9,6 +9,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +42,20 @@ public class GlobalExceptionHandler {
                 .data(errors)
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException ex) {
+        log.error("Access Denied error: {}", ex.getMessage());
+        
+        // Bạn có thể kiểm tra xem trong ErrorCodes của bạn có cái nào là FORBIDDEN hoặc ACCESS_DENIED không
+        // Nếu không có, bạn có thể truyền trực tiếp mã 403 như dưới đây
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .message("Bạn không có quyền truy cập vào chức năng này!")
+                .build();
+                
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(Exception.class)

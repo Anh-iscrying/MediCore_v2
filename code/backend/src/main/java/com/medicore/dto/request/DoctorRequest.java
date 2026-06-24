@@ -26,5 +26,5 @@ public class DoctorRequest {
     private String email;
     private String password;
     private String status;
-    private String avatar;
+    private String avatarUrl; 
 }

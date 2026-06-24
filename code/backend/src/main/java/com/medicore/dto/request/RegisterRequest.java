@@ -19,15 +19,19 @@ public class RegisterRequest {
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
 
-    @NotBlank(message = "Tên bác sĩ không được để trống")
+    @NotBlank(message = "Tên không được để trống")
     private String name;
 
-    @NotNull(message = "Chuyên khoa không được để trống")
-    private Integer specialtyId;
-
     private String phone;
-    private String title; // degree
+    
+    // Thêm các trường cho Bệnh nhân
+    private String dob;     // Ngày sinh
+    private String gender;  // Giới tính
+    private String address; // Địa chỉ
+    private String role;    // PATIENT hoặc DOCTOR (mặc định nên là PATIENT)
 
-    @Min(value = 0, message = "Số năm kinh nghiệm không được nhỏ hơn 0")
+    // Các trường cũ của Bác sĩ (có thể để null nếu là bệnh nhân)
+    private Integer specialtyId;
+    private String title; 
     private Integer experience;
 }

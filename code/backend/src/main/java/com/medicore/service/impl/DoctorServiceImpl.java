@@ -84,6 +84,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .phone(request.getPhone())
                 .degree(request.getTitle())
                 .experienceYears(request.getExperience())
+                .avatarUrl(request.getAvatarUrl())
                 .build();
         
         doctor.setCreatedAt(LocalDateTime.now());
@@ -120,6 +121,7 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setPhone(request.getPhone());
         doctor.setDegree(request.getTitle());
         doctor.setExperienceYears(request.getExperience());
+        doctor.setAvatarUrl(request.getAvatarUrl());
         doctor.setUpdatedAt(LocalDateTime.now());
         doctor = doctorRepository.save(doctor);
 
@@ -180,6 +182,29 @@ public class DoctorServiceImpl implements DoctorService {
         doctorRepository.delete(doctor);
     }
 
+    @Override
+    @Transactional
+    public DoctorResponse updateDoctorByEmail(String email, DoctorRequest request) {
+        // 1. Tìm tài khoản dựa trên email
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        
+        Doctor doctor = credentials.getDoctor();
+        if (doctor == null) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+
+        // 2. Chỉ cập nhật những trường được phép tự sửa
+        doctor.setDoctorName(request.getName());
+        doctor.setPhone(request.getPhone());
+        doctor.setDegree(request.getTitle());
+        doctor.setExperienceYears(request.getExperience());
+        doctor.setAvatarUrl(request.getAvatarUrl()); // Lưu link ảnh từ Supabase Storage
+
+        doctor = doctorRepository.save(doctor);
+        return mapToResponse(doctor);
+}
+
     private DoctorResponse mapToResponse(Doctor doctor) {
         String email = authCredentialsRepository.findByDoctorId(doctor.getId())
                 .map(AuthCredentials::getEmail)
@@ -197,7 +222,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .phone(doctor.getPhone())
                 .experience(doctor.getExperienceYears())
                 .status("active")
-                .avatar("")
+                .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
                 .build();
     }
