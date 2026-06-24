@@ -24,4 +24,9 @@ public class AuthCredentials {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doctor_id")
     private Doctor doctor;
+
+    // --- BẠN CẦN THÊM DÒNG NÀY ---
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id") // Tên cột này phải trùng với cột trong bảng auth_credentials ở DB
+    private Patient patient;
 }

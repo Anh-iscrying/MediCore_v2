@@ -11,5 +11,6 @@ public interface DoctorService {
     DoctorResponse getDoctorById(Integer id);
     DoctorResponse createDoctor(DoctorRequest request);
     DoctorResponse updateDoctor(Integer id, DoctorRequest request);
+    DoctorResponse updateDoctorByEmail(String email, DoctorRequest request);
     void deleteDoctor(Integer id);
 }

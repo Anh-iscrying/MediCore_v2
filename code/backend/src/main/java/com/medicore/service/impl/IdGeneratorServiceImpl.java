@@ -4,7 +4,10 @@ import com.medicore.service.IdGeneratorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -13,27 +16,26 @@ public class IdGeneratorServiceImpl implements IdGeneratorService {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
+    @Transactional
     public String generatePatientCode() {
-        try {
-            jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS patient_code_seq START WITH 1");
-            jdbcTemplate.execute("SELECT setval('patient_code_seq', COALESCE((SELECT MAX(CAST(SUBSTRING(patient_code FROM 10) AS INTEGER)) FROM patients), 0) + 1, false)");
-        } catch (Exception e) {
-            // Bỏ qua lỗi nếu không đủ quyền hoặc lỗi cú pháp định dạng
-        }
-        Long nextVal = jdbcTemplate.queryForObject("SELECT nextval('patient_code_seq')", Long.class);
-        int year = LocalDate.now().getYear();
-        return String.format("PAT-%d-%04d", year, nextVal); // Kết quả: PAT-2024-0001
+        Long seq = jdbcTemplate.queryForObject("SELECT nextval('patient_code_seq')", Long.class);
+        int currentYear = LocalDate.now().getYear();
+        return String.format("PAT-%d-%04d", currentYear, seq);
     }
 
     @Override
+    @Transactional
+    public String generateEmrCode() {
+        Long seq = jdbcTemplate.queryForObject("SELECT nextval('emr_code_seq')", Long.class);
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        return String.format("EMR-%s-%03d", datePart, seq);
+    }
+
+    @Override
+    @Transactional
     public String generateDoctorCode() {
-        try {
-            jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS doctor_code_seq START WITH 1");
-            jdbcTemplate.execute("SELECT setval('doctor_code_seq', COALESCE((SELECT MAX(CAST(SUBSTRING(doctor_code FROM 5) AS INTEGER)) FROM doctors), 0) + 1, false)");
-        } catch (Exception e) {
-            // Bỏ qua lỗi
-        }
-        Long nextVal = jdbcTemplate.queryForObject("SELECT nextval('doctor_code_seq')", Long.class);
-        return String.format("DOC-%04d", nextVal); // Kết quả: DOC-0001
+        // Nên dùng doctor_code_seq riêng để tránh nhảy số của Patient
+        Long seq = jdbcTemplate.queryForObject("SELECT nextval('doctor_code_seq')", Long.class);
+        return String.format("DOC-%04d", seq);
     }
 }

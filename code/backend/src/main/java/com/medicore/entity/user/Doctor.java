@@ -35,4 +35,11 @@ public class Doctor extends BaseEntity {
 
     @Column(name = "experience_years")
     private Integer experienceYears;
+
+   @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 }

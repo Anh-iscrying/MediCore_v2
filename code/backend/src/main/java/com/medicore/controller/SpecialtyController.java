@@ -7,6 +7,7 @@ import com.medicore.service.SpecialtyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,11 +30,13 @@ public class SpecialtyController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpecialtyResponse>> createSpecialty(@Valid @RequestBody SpecialtyRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Thêm chuyên khoa thành công", specialtyService.createSpecialty(request)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SpecialtyResponse>> updateSpecialty(
             @PathVariable Integer id,
             @Valid @RequestBody SpecialtyRequest request) {
@@ -41,6 +44,7 @@ public class SpecialtyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteSpecialty(@PathVariable Integer id) {
         specialtyService.deleteSpecialty(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa chuyên khoa thành công", null));
