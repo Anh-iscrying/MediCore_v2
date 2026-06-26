@@ -11,4 +11,5 @@ public interface MedicineService {
     MedicineResponse createMedicine(MedicineRequest request);
     MedicineResponse updateMedicine(Integer id, MedicineRequest request);
     void deleteMedicine(Integer id);
+    List<MedicineResponse> searchMedicines(String keyword);
 }
