@@ -1,0 +1,521 @@
+{
+  "doctors": [
+    {
+      "id": 1,
+      "name": "Dr. Sarah Jenkins",
+      "specialty": "Tim mạch",
+      "experience": "15 năm kinh nghiệm",
+      "rating": 4.9,
+      "fee": "500,000đ",
+      "education": "Tốt nghiệp Đại học Y Dược TP.HCM, Tu nghiệp tại Hoa Kỳ",
+      "bio": "Chuyên gia về bệnh mạch vành, suy tim và tăng huyết áp vô căn. Bác sĩ Jenkins đã điều trị thành công hàng ngàn ca bệnh tim mạch phức tạp.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Dr. Arthur Pendelton",
+      "specialty": "Tim mạch",
+      "experience": "10 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "450,000đ",
+      "education": "Tốt nghiệp Thạc sĩ Tim mạch học - Đại học Y Hà Nội",
+      "bio": "Chuyên sâu về rối loạn nhịp tim, siêu âm tim và tầm soát dị tật tim bẩm sinh ở người lớn.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Dr. Emily Watson",
+      "specialty": "Vật lý trị liệu",
+      "experience": "8 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "350,000đ",
+      "education": "Cử nhân Phục hồi chức năng - Đại học Y khoa Phạm Ngọc Thạch",
+      "bio": "Chuyên về trị liệu chấn thương khớp gối, khớp vai sau phẫu thuật, phục hồi khả năng vận động tối ưu.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "10:30",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Dr. Marcus Aurelius",
+      "specialty": "Vật lý trị liệu",
+      "experience": "12 năm kinh nghiệm",
+      "rating": 4.9,
+      "fee": "400,000đ",
+      "education": "Thạc sĩ Vật lý trị liệu thể thao - Đại học Mahidol (Thái Lan)",
+      "bio": "Từng phụ trách phục hồi chấn thương cho các vận động viên đội tuyển quốc gia. Chuyên sâu về cột sống và thắt lưng.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Dr. Alex Rivera",
+      "specialty": "Đa khoa",
+      "experience": "20 năm kinh nghiệm",
+      "rating": 5,
+      "fee": "300,000đ",
+      "education": "Bác sĩ Chuyên khoa II - Đại học Y Hà Nội",
+      "bio": "Hơn 20 năm kinh nghiệm khám đa khoa, quản lý các bệnh mãn tính như tiểu đường, huyết áp, tầm soát sức khỏe tổng quát.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "10:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Dr. Diana Prince",
+      "specialty": "Đa khoa",
+      "experience": "9 năm kinh nghiệm",
+      "rating": 4.6,
+      "fee": "300,000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược Huế",
+      "bio": "Chuyên tư vấn y học gia đình, dinh dưỡng, điều trị các bệnh lý nội khoa thường gặp và tầm soát ung thư sớm.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30",
+        "15:30"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Dr. Hoàng Đức Sơn",
+      "specialty": "Tim mạch",
+      "experience": "23 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "450.000đ",
+      "education": "Thạc sĩ Tim mạch học - Đại học Y Hà Nội, chứng chỉ siêu âm tim nâng cao.",
+      "bio": "Chuyên khoa sâu về bệnh mạch vành, xơ vữa động mạch, kiểm soát huyết áp cao và tư vấn phòng ngừa đột quỵ.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Dr. Trần Hoàng Nam",
+      "specialty": "Vật lý trị liệu",
+      "experience": "22 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "450.000đ",
+      "education": "Tốt nghiệp Đại học Y khoa Phạm Ngọc Thạch, tu nghiệp trị liệu cột sống tại Singapore.",
+      "bio": "Chuyên gia phục hồi chức năng sau phẫu thuật dây chằng khớp gối, khớp vai và chấn thương cột sống.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Dr. Hồ Tiến Mai",
+      "specialty": "Đa khoa",
+      "experience": "11 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "250.000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên khám sức khỏe định kỳ, tư vấn y học gia đình, tiêm chủng dinh dưỡng và tầm soát ung thư sớm.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30",
+        "15:30"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Dr. Lê Thị Sơn",
+      "specialty": "Tim mạch",
+      "experience": "5 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "350.000đ",
+      "education": "Tốt nghiệp Bác sĩ Nội trú Đại học Y Dược TP.HCM, tu nghiệp tim mạch tại Pháp.",
+      "bio": "Chuyên gia điều trị suy tim, rối loạn nhịp tim và thực hiện siêu âm tim chuẩn đoán hình ảnh chất lượng cao.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "14:00"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Dr. Phạm Hữu Long",
+      "specialty": "Vật lý trị liệu",
+      "experience": "6 năm kinh nghiệm",
+      "rating": 4.5,
+      "fee": "500.000đ",
+      "education": "Thạc sĩ Phục hồi chức năng thể thao chấn thương - Đại học Mahidol (Thái Lan).",
+      "bio": "Chuyên phục hồi chức năng vận động cho bệnh nhân sau tai biến mạch máu não và chấn thương chỉnh hình phức tạp.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Dr. Đặng Thế Việt",
+      "specialty": "Đa khoa",
+      "experience": "12 năm kinh nghiệm",
+      "rating": 4.9,
+      "fee": "300.000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược TP.HCM.",
+      "bio": "Khám và điều trị các bệnh lý nội tiết, đường hô hấp, tiêu hóa thường gặp ở người lớn và trẻ em.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Dr. Phạm Thanh Trang",
+      "specialty": "Tim mạch",
+      "experience": "5 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "350.000đ",
+      "education": "Tốt nghiệp Bác sĩ Nội trú Đại học Y Dược TP.HCM, tu nghiệp tim mạch tại Pháp.",
+      "bio": "Chuyên sâu về can thiệp tim mạch, tư vấn lối sống và chế độ ăn kiêng cho bệnh nhân huyết áp cao mãn tính.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Dr. Trần Tiến Nam",
+      "specialty": "Vật lý trị liệu",
+      "experience": "15 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "400.000đ",
+      "education": "Thạc sĩ Phục hồi chức năng thể thao chấn thương - Đại học Mahidol (Thái Lan).",
+      "bio": "Chuyên gia phục hồi chức năng sau phẫu thuật dây chằng khớp gối, khớp vai và chấn thương cột sống.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Dr. Lê Gia Hồng",
+      "specialty": "Đa khoa",
+      "experience": "13 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "350.000đ",
+      "education": "Tốt nghiệp Bác sĩ Đa khoa - Đại học Y Hà Nội, hơn 15 năm công tác bệnh viện lớn.",
+      "bio": "Chuyên tư vấn chăm sóc sức khỏe ban đầu, quản lý bệnh tiểu đường tuýp 2 và các rối loạn chuyển hóa.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Dr. Trần Bích Bảo",
+      "specialty": "Tim mạch",
+      "experience": "19 năm kinh nghiệm",
+      "rating": 4.6,
+      "fee": "350.000đ",
+      "education": "Tốt nghiệp Bác sĩ Nội trú Đại học Y Dược TP.HCM, tu nghiệp tim mạch tại Pháp.",
+      "bio": "Chuyên sâu về can thiệp tim mạch, tư vấn lối sống và chế độ ăn kiêng cho bệnh nhân huyết áp cao mãn tính.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30",
+        "15:30"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Dr. Trần Thanh Tuấn",
+      "specialty": "Vật lý trị liệu",
+      "experience": "7 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "300.000đ",
+      "education": "Thạc sĩ Phục hồi chức năng thể thao chấn thương - Đại học Mahidol (Thái Lan).",
+      "bio": "Chuyên điều trị thoái hóa cột sống, thoát vị đĩa đệm bằng phương pháp vật lý trị liệu bảo tồn không phẫu thuật.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Dr. Bùi Bích Sơn",
+      "specialty": "Đa khoa",
+      "experience": "12 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "300.000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên khám sức khỏe định kỳ, tư vấn y học gia đình, tiêm chủng dinh dưỡng và tầm soát ung thư sớm.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Dr. Đỗ Anh Long",
+      "specialty": "Tim mạch",
+      "experience": "6 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "400.000đ",
+      "education": "Tốt nghiệp Đại học Y khoa Phạm Ngọc Thạch, khóa đào tạo chuyên sâu Viện Tim TP.HCM.",
+      "bio": "Chuyên gia điều trị suy tim, rối loạn nhịp tim và thực hiện siêu âm tim chuẩn đoán hình ảnh chất lượng cao.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Dr. Nguyễn Minh Sơn",
+      "specialty": "Vật lý trị liệu",
+      "experience": "10 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "450.000đ",
+      "education": "Tốt nghiệp Đại học Y khoa Phạm Ngọc Thạch, tu nghiệp trị liệu cột sống tại Singapore.",
+      "bio": "Chuyên phục hồi chức năng vận động cho bệnh nhân sau tai biến mạch máu não và chấn thương chỉnh hình phức tạp.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Dr. Phạm Tiến Việt",
+      "specialty": "Đa khoa",
+      "experience": "18 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "300.000đ",
+      "education": "Bác sĩ Chuyên khoa I Nội khoa - Đại học Y Dược Huế.",
+      "bio": "Chuyên tư vấn chăm sóc sức khỏe ban đầu, quản lý bệnh tiểu đường tuýp 2 và các rối loạn chuyển hóa.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Dr. Nguyễn Thanh Phương",
+      "specialty": "Tim mạch",
+      "experience": "20 năm kinh nghiệm",
+      "rating": 4.6,
+      "fee": "250.000đ",
+      "education": "Thạc sĩ Tim mạch học - Đại học Y Hà Nội, chứng chỉ siêu âm tim nâng cao.",
+      "bio": "Hơn 10 năm kinh nghiệm trong chẩn đoán và điều trị bệnh lý van tim, cơ tim bệnh lý và tầm soát tim bẩm sinh.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "10:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Dr. Hoàng Quốc Tùng",
+      "specialty": "Vật lý trị liệu",
+      "experience": "5 năm kinh nghiệm",
+      "rating": 4.6,
+      "fee": "300.000đ",
+      "education": "Cử nhân Vật lý trị liệu - Phục hồi chức năng Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên phục hồi chức năng vận động cho bệnh nhân sau tai biến mạch máu não và chấn thương chỉnh hình phức tạp.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Dr. Dương Gia Phương",
+      "specialty": "Đa khoa",
+      "experience": "23 năm kinh nghiệm",
+      "rating": 4.6,
+      "fee": "300.000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên khám sức khỏe định kỳ, tư vấn y học gia đình, tiêm chủng dinh dưỡng và tầm soát ung thư sớm.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Dr. Lý Minh Phương",
+      "specialty": "Tim mạch",
+      "experience": "14 năm kinh nghiệm",
+      "rating": 4.9,
+      "fee": "300.000đ",
+      "education": "Tốt nghiệp Đại học Y khoa Phạm Ngọc Thạch, khóa đào tạo chuyên sâu Viện Tim TP.HCM.",
+      "bio": "Hơn 10 năm kinh nghiệm trong chẩn đoán và điều trị bệnh lý van tim, cơ tim bệnh lý và tầm soát tim bẩm sinh.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "14:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Dr. Phạm Hoàng Nam",
+      "specialty": "Vật lý trị liệu",
+      "experience": "14 năm kinh nghiệm",
+      "rating": 4.5,
+      "fee": "400.000đ",
+      "education": "Cử nhân Vật lý trị liệu - Phục hồi chức năng Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên gia phục hồi chức năng sau phẫu thuật dây chằng khớp gối, khớp vai và chấn thương cột sống.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "14:00"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Dr. Hồ Quốc Khánh",
+      "specialty": "Đa khoa",
+      "experience": "15 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "350.000đ",
+      "education": "Bác sĩ Nội trú Đa khoa - Đại học Y Dược TP.HCM.",
+      "bio": "Hơn 15 năm khám sàng lọc tổng quát, chẩn đoán ban đầu và theo dõi các bệnh nội khoa mãn tính.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "10:30"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Dr. Trần Hữu Việt",
+      "specialty": "Tim mạch",
+      "experience": "11 năm kinh nghiệm",
+      "rating": 4.9,
+      "fee": "500.000đ",
+      "education": "Tốt nghiệp Đại học Y khoa Phạm Ngọc Thạch, khóa đào tạo chuyên sâu Viện Tim TP.HCM.",
+      "bio": "Chuyên khoa sâu về bệnh mạch vành, xơ vữa động mạch, kiểm soát huyết áp cao và tư vấn phòng ngừa đột quỵ.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Dr. Võ Minh Hải",
+      "specialty": "Vật lý trị liệu",
+      "experience": "6 năm kinh nghiệm",
+      "rating": 4.7,
+      "fee": "250.000đ",
+      "education": "Cử nhân Vật lý trị liệu - Phục hồi chức năng Đại học Y Dược TP.HCM.",
+      "bio": "Chuyên phục hồi chức năng vận động cho bệnh nhân sau tai biến mạch máu não và chấn thương chỉnh hình phức tạp.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "08:30",
+        "09:00",
+        "15:30"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "Dr. Đặng Khánh Tùng",
+      "specialty": "Đa khoa",
+      "experience": "12 năm kinh nghiệm",
+      "rating": 4.8,
+      "fee": "250.000đ",
+      "education": "Bác sĩ Chuyên khoa I Nội khoa - Đại học Y Dược Huế.",
+      "bio": "Chuyên khám sức khỏe định kỳ, tư vấn y học gia đình, tiêm chủng dinh dưỡng và tầm soát ung thư sớm.",
+      "avatarColor": "bg-[#111111] border border-[#1f1f1f] text-white",
+      "availableSlots": [
+        "09:00",
+        "14:00",
+        "15:30"
+      ]
+    }
+  ],
+  "appointments": [
+    {
+      "id": "h5un1nk",
+      "doctor": "Dr. Sarah Jenkins",
+      "specialty": "Tim mạch",
+      "date": "CN, 28/06",
+      "time": "09:00 AM",
+      "status": "CANCELLED",
+      "symptoms": "Cảm giác tức ngực sau khi vận động mạnh..."
+    },
+    {
+      "id": "1",
+      "doctor": "Dr. Sarah Jenkins",
+      "specialty": "Tim mạch",
+      "date": "Ngày mai",
+      "time": "09:00 AM",
+      "status": "CANCELLED"
+    },
+    {
+      "id": "2",
+      "doctor": "Dr. Emily Watson",
+      "specialty": "Vật lý trị liệu",
+      "date": "Thứ Sáu, 28 Th06",
+      "time": "02:30 PM",
+      "status": "CANCELLED"
+    },
+    {
+      "id": "3",
+      "doctor": "Dr. Alex Rivera",
+      "specialty": "Đa khoa",
+      "date": "12 Th06 2026",
+      "time": "11:00 AM",
+      "status": "CANCELLED"
+    }
+  ]
+}
