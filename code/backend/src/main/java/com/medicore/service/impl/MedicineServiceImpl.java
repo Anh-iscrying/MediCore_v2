@@ -79,17 +79,43 @@ public class MedicineServiceImpl implements MedicineService {
         medicineRepository.delete(medicine);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicineResponse> searchMedicines(String keyword) {
+        return medicineRepository.findAll((root, query, cb) -> {
+            if (keyword == null || keyword.isEmpty()) return cb.conjunction();
+            
+            String pattern = "%" + keyword.toLowerCase() + "%";
+            return cb.or(
+                cb.like(cb.lower(root.get("medicineName")), pattern),
+                cb.like(cb.lower(root.get("manufacturer")), pattern),
+                cb.like(cb.lower(root.get("category")), pattern)
+            );
+        }).stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     private MedicineResponse mapToResponse(Medicine medicine) {
+        // Xác định trạng thái dựa trên số lượng tồn kho (stock)
+        String status;
+        int stock = (medicine.getStock() != null) ? medicine.getStock() : 0;
+
+        if (stock > 10) {
+            status = "available"; // Còn hàng (màu xanh)
+        } else if (stock > 0) {
+            status = "low";       // Sắp hết (màu vàng)
+        } else {
+            status = "out";       // Hết hàng (màu đỏ) - Phải là "out" thay vì "out_of_stock"
+        }
+
         return MedicineResponse.builder()
                 .id(medicine.getId())
                 .name(medicine.getMedicineName())
-                .code(String.format("MED-%04d", medicine.getId()))
-                .category("Thuốc điều trị")
                 .unit(medicine.getUnit())
-                .price(15000.0)
-                .stock(100)
-                .manufacturer("Việt Nam")
-                .status("available")
+                .category(medicine.getCategory())
+                .price(medicine.getPrice())
+                .stock(stock)
+                .manufacturer(medicine.getManufacturer())
+                .status(status) // Trả về đúng từ khóa FE cần
                 .build();
     }
 }
