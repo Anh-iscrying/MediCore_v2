@@ -7,6 +7,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/providers/auth-provider"
 import { Button } from "@/components/base/ui/button"
+// Import Component Modal vừa tạo (Đảm bảo file doctor-profile-modal.tsx nằm cùng thư mục)
+import { DoctorProfileModal } from "./doctor-profile-modal"
 
 const doctorMenuItems = [
   { icon: Users, label: "Bệnh nhân chờ", href: "/doctor/waiting-patients" },
@@ -16,8 +18,19 @@ const doctorMenuItems = [
 
 export function DoctorSidebar() {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  
+  // 1. Thêm state quản lý việc đóng/mở Modal
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  
   const pathname = usePathname()
   const { user, logout } = useAuth()
+
+  // 2. Hàm xử lý khi ấn "Lưu thay đổi" từ Modal
+  const handleSaveProfile = (updatedData: any) => {
+    // Ở đây bạn có thể gọi API cập nhật dữ liệu lên Backend
+    // Hoặc gọi hàm update dữ liệu trong context auth-provider
+    console.log("Dữ liệu profile mới cần lưu:", updatedData)
+  }
 
   return (
     <aside className="fixed top-0 left-0 w-64 bg-card border-r border-border p-4 h-screen flex flex-col justify-between lg:flex z-40">
@@ -69,13 +82,19 @@ export function DoctorSidebar() {
 
       <div className="space-y-3 pt-4 border-t border-border">
         {user && (
-          <div className="p-3 bg-secondary/50 rounded-lg border border-border/50 flex flex-col gap-0.5">
-            <span className="font-semibold text-xs text-foreground truncate">{user.name}</span>
+          // 3. Biến khối này thành button để bấm mở Modal
+          <button 
+            onClick={() => setIsProfileOpen(true)}
+            className="w-full text-left p-3 bg-secondary/50 rounded-lg border border-border/50 flex flex-col gap-0.5 hover:bg-secondary/80 transition-colors group cursor-pointer"
+          >
+            <span className="font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors">
+              {user.name}
+            </span>
             <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
             <span className="inline-flex mt-1 items-center w-max px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/10 text-primary uppercase">
               Bác sĩ
             </span>
-          </div>
+          </button>
         )}
         <Button
           variant="outline"
@@ -87,6 +106,14 @@ export function DoctorSidebar() {
           Đăng xuất
         </Button>
       </div>
+
+      {/* 4. Gắn Modal vào Component (Chỉ render nội dung khi isProfileOpen = true) */}
+      <DoctorProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        currentDoctor={user}
+        onSave={handleSaveProfile}
+      />
     </aside>
   )
 }
