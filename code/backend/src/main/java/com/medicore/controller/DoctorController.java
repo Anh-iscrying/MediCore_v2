@@ -29,7 +29,7 @@ public class DoctorController {
     private final DoctorScheduleRepository scheduleRepository;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public ResponseEntity<ApiResponse<List<DoctorResponse>>> getAllDoctors() {
         return ResponseEntity.ok(ApiResponse.success(doctorService.getAllDoctors()));
     }

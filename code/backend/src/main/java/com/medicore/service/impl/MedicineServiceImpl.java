@@ -95,15 +95,27 @@ public class MedicineServiceImpl implements MedicineService {
     }
 
     private MedicineResponse mapToResponse(Medicine medicine) {
+        // Xác định trạng thái dựa trên số lượng tồn kho (stock)
+        String status;
+        int stock = (medicine.getStock() != null) ? medicine.getStock() : 0;
+
+        if (stock > 10) {
+            status = "available"; // Còn hàng (màu xanh)
+        } else if (stock > 0) {
+            status = "low";       // Sắp hết (màu vàng)
+        } else {
+            status = "out";       // Hết hàng (màu đỏ) - Phải là "out" thay vì "out_of_stock"
+        }
+
         return MedicineResponse.builder()
                 .id(medicine.getId())
                 .name(medicine.getMedicineName())
                 .unit(medicine.getUnit())
-                .category(medicine.getCategory()) // Lấy từ DB
-                .price(medicine.getPrice())       // Lấy từ DB
-                .stock(medicine.getStock())       // Lấy từ DB
-                .manufacturer(medicine.getManufacturer()) // Lấy từ DB
-                .status(medicine.getStock() > 0 ? "available" : "out_of_stock")
+                .category(medicine.getCategory())
+                .price(medicine.getPrice())
+                .stock(stock)
+                .manufacturer(medicine.getManufacturer())
+                .status(status) // Trả về đúng từ khóa FE cần
                 .build();
     }
 }

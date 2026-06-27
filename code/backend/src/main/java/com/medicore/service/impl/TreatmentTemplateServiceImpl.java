@@ -1,6 +1,7 @@
 package com.medicore.service.impl;
 
 import com.medicore.dto.request.TreatmentTemplateRequest;
+import com.medicore.dto.response.TreatmentTemplateResponse;
 import com.medicore.entity.catalog.Disease;
 import com.medicore.entity.catalog.Medicine;
 import com.medicore.entity.catalog.TemplateDetail;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +31,9 @@ public class TreatmentTemplateServiceImpl implements TreatmentTemplateService {
     @Override
     @Transactional
     public void createTemplate(TreatmentTemplateRequest request) {
-        // 1. Tìm mã bệnh ICD-10
         Disease disease = diseaseRepository.findById(request.getIcd10Code())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy mã bệnh: " + request.getIcd10Code()));
 
-        // 2. Lưu thông tin chung của Gói thuốc mẫu
         TreatmentTemplate template = TreatmentTemplate.builder()
                 .disease(disease)
                 .templateName(request.getTemplateName())
@@ -40,16 +41,15 @@ public class TreatmentTemplateServiceImpl implements TreatmentTemplateService {
                 .createdAt(LocalDateTime.now())
                 .build();
         
-        template = templateRepository.save(template);
+        TreatmentTemplate savedTemplate = templateRepository.save(template);
 
-        // 3. Lưu chi tiết từng loại thuốc nằm trong gói
         if (request.getMedicines() != null) {
             for (TreatmentTemplateRequest.MedicineItemRequest item : request.getMedicines()) {
                 Medicine medicine = medicineRepository.findById(item.getMedicineId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy thuốc ID: " + item.getMedicineId()));
                 
                 TemplateDetail detail = TemplateDetail.builder()
-                        .template(template)
+                        .template(savedTemplate)
                         .medicine(medicine)
                         .defaultQuantity(item.getQuantity())
                         .defaultDosage(item.getDosage())
@@ -58,5 +58,35 @@ public class TreatmentTemplateServiceImpl implements TreatmentTemplateService {
                 detailRepository.save(detail);
             }
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TreatmentTemplateResponse> getTemplatesByDisease(String icd10Code) {
+        // 1. Tìm tất cả các gói thuốc mẫu theo mã bệnh
+        List<TreatmentTemplate> templates = templateRepository.findByDiseaseIcd10Code(icd10Code);
+
+        // 2. Chuyển đổi từ Entity sang DTO để trả về cho Controller
+        return templates.stream().map(template -> {
+            // Lấy danh sách thuốc chi tiết của từng gói (Nếu Entity chưa cấu hình @OneToMany)
+            // Ở đây mình dùng detailRepository để truy vấn cho chắc chắn
+            List<TemplateDetail> details = detailRepository.findAll().stream()
+                    .filter(d -> d.getTemplate().getId().equals(template.getId()))
+                    .collect(Collectors.toList());
+
+            return TreatmentTemplateResponse.builder()
+                    .id(template.getId())
+                    .templateName(template.getTemplateName())
+                    .description(template.getDescription())
+                    .icd10Code(template.getDisease().getIcd10Code())
+                    .details(details.stream().map(d -> 
+                        TreatmentTemplateResponse.TemplateDetailResponse.builder()
+                            .medicineName(d.getMedicine().getMedicineName())
+                            .quantity(d.getDefaultQuantity())
+                            .dosage(d.getDefaultDosage())
+                            .build()
+                    ).collect(Collectors.toList()))
+                    .build();
+        }).collect(Collectors.toList());
     }
 }

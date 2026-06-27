@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MediCore WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h2>MediCore Real-time Test</h2>
+    <input type="text" id="token" placeholder="Dán Token vào đây" style="width: 80%; padding: 10px;"><br><br>
+    <button onclick="connect()" style="padding: 10px 20px; background: green; color: white; border: none; cursor: pointer;">
+        Kết nối và Đăng ký nhận tin
+    </button>
+    <div id="log" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; background: #f9f9f9;">
+        <b>Hệ thống đang đợi kết nối...</b><br>
+    </div>
+
+    <script>
+        var stompClient = null;
+
+        function connect() {
+            var token = document.getElementById('token').value;
+            if (!token) { alert("Hãy dán token Admin/Doctor vào!"); return; }
+
+            // 1. Khởi tạo SockJS (Bỏ đuôi /websocket vì thư viện tự thêm)
+            var socket = new SockJS('http://127.0.0.1:8080/api/v1/ws');
+            stompClient = Stomp.over(socket);
+
+            // 2. Kết nối kèm Header Authorization
+            stompClient.connect({ 'Authorization': 'Bearer ' + token }, function (frame) {
+                log("✅ Đã kết nối thành công: " + frame);
+
+                // 3. Đăng ký nghe tin từ hàng chờ chung
+                stompClient.subscribe('/topic/queue', function (response) {
+                    log("<b style='color:blue;'>[TIN NHẮN MỚI]:</b> " + response.body);
+                });
+
+                // 2. THÊM ĐOẠN NÀY: Nghe thông báo riêng của cá nhân tôi
+                stompClient.subscribe('/user/queue/notifications', function (response) {
+                    log("<b style='color:red;'>[TIN RIÊNG CHO BẠN]:</b> " + response.body);
+                });
+            }, function (error) {
+                log("<b style='color:red;'>❌ Lỗi kết nối:</b> " + error);
+            });
+        }
+
+        function log(msg) {
+            var div = document.getElementById('log');
+            div.innerHTML += msg + "<br>";
+            div.scrollTop = div.scrollHeight;
+        }
+    </script>
+</body>
+</html>

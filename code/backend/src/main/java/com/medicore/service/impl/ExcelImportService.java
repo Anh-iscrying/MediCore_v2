@@ -98,14 +98,21 @@ public class ExcelImportService {
         }
     }
 
-    // Hàm đọc chuỗi an toàn
     private String getCellValue(Cell cell) {
         if (cell == null) return null;
+        String value = "";
         switch (cell.getCellType()) {
-            case STRING: return cell.getStringCellValue();
-            case NUMERIC: return String.valueOf((int) cell.getNumericCellValue());
-            default: return null;
+            case STRING: 
+                value = cell.getStringCellValue(); 
+                break;
+            case NUMERIC: 
+                value = String.valueOf((int) cell.getNumericCellValue()); 
+                break;
+            default: 
+                return null;
         }
+    // Dùng trim() để xóa bỏ khoảng trắng thừa ở đầu và cuối chuỗi
+        return (value != null) ? value.trim() : null;
     }
 
     // Hàm đọc số an toàn
