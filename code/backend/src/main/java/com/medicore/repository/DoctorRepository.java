@@ -3,7 +3,10 @@ package com.medicore.repository;
 import com.medicore.entity.user.Doctor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 @Repository
-public interface DoctorRepository extends JpaRepository<Doctor, Long> {
+public interface DoctorRepository extends JpaRepository<Doctor, Integer> {
+    long countBySpecialtyId(Integer specialtyId);
+    List<Doctor> findBySpecialtyId(Integer specialtyId);
 }

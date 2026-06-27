@@ -5,6 +5,8 @@ import com.medicore.repository.SpecialtyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -13,16 +15,43 @@ import java.util.List;
 public class DataSeeder implements CommandLineRunner {
 
     private final SpecialtyRepository specialtyRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
+        // 1. Tạo bảng auth_credentials nếu chưa có
+        try {
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS public.auth_credentials (" +
+                    "email varchar(100) PRIMARY KEY, " +
+                    "password_hash varchar(255) NOT NULL, " +
+                    "role varchar(20) NOT NULL, " +
+                    "doctor_id integer REFERENCES public.doctors(id) ON DELETE CASCADE" +
+                    ")");
+        } catch (Exception e) {
+            System.err.println(">> DataSeeder Error: Không thể tạo bảng auth_credentials: " + e.getMessage());
+        }
+
+        // 2. Seed admin mẫu
+        try {
+            Integer adminCount = jdbcTemplate.queryForObject("SELECT count(*) FROM public.auth_credentials WHERE email = 'admin@medicore.com'", Integer.class);
+            if (adminCount == null || adminCount == 0) {
+                String encodedPassword = passwordEncoder.encode("admin123");
+                jdbcTemplate.update("INSERT INTO public.auth_credentials (email, password_hash, role) VALUES ('admin@medicore.com', ?, 'ADMIN')", encodedPassword);
+                System.out.println(">> DataSeeder: Đã khởi tạo tài khoản admin mẫu.");
+            }
+        } catch (Exception e) {
+            System.err.println(">> DataSeeder Error: Không thể seed tài khoản admin: " + e.getMessage());
+        }
+
+        // 3. Khởi tạo chuyên khoa
         if (specialtyRepository.count() == 0) { // Chỉ thêm nếu bảng đang trống
             List<Specialty> initialSpecialties = List.of(
-                Specialty.builder().specialtyName("Nội tổng quát").location("Tầng 1 - Khu A").build(),
-                Specialty.builder().specialtyName("Nhi khoa").location("Tầng 2 - Khu B").build(),
-                Specialty.builder().specialtyName("Sản phụ khoa").location("Tầng 2 - Khu C").build(),
-                Specialty.builder().specialtyName("Răng Hàm Mặt").location("Tầng 3 - Khu A").build(),
-                Specialty.builder().specialtyName("Tai Mũi Họng").location("Tầng 3 - Khu B").build()
+                Specialty.builder().specialtyName("Nội tổng quát").build(),
+                Specialty.builder().specialtyName("Nhi khoa").build(),
+                Specialty.builder().specialtyName("Sản phụ khoa").build(),
+                Specialty.builder().specialtyName("Răng Hàm Mặt").build(),
+                Specialty.builder().specialtyName("Tai Mũi Họng").build()
             );
             specialtyRepository.saveAll(initialSpecialties);
             System.out.println(">> DataSeeder: Đã khởi tạo danh mục chuyên khoa mẫu.");

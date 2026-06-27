@@ -1,17 +1,24 @@
 package com.medicore.entity.catalog;
 
-import com.medicore.common.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "specialties")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Specialty extends BaseEntity {
-    @Column(name = "specialty_name", nullable = false, unique = true)
+public class Specialty {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "specialty_name", nullable = false, unique = true, length = 100)
     private String specialtyName;
 
-    private String location; // Vị trí phòng khám (VD: Tầng 2, Phòng 201)
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
 }

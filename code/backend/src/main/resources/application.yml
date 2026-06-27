@@ -1,11 +1,11 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api/v1
 
 spring:
   datasource:
-    # URL lấy từ Supabase (Transaction Pooler - Mode: Transaction)
+    # URL lấy từ Supabase PostgreSQL
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -13,8 +13,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update # Tự động tạo bảng dựa trên Entity (Dùng lúc Dev)
-    show-sql: true
+      ddl-auto: update # Tự động cập nhật bảng mới
+    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
         format_sql: true
@@ -23,7 +23,7 @@ spring:
   security:
     jwt:
       secret-key: ${JWT_SECRET}
-      expiration: 86400000 # 1 ngày (ms)
+      expiration: ${JWT_EXPIRATION:86400000} # 1 ngày (ms)
 
 # Cấu hình Swagger/OpenAPI
 springdoc:
