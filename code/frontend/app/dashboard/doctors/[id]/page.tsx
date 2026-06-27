@@ -3,23 +3,25 @@
 import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Star, ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BookingSuccessToast } from "@/components/dashboard/booking-success-toast"
 
 interface Doctor {
   id: number
-  name: string
+  specialty_id: number
+  doctor_code: string
+  doctor_name: string
   specialty: string
-  experience: string
-  rating: number
-  fee: string
-  education: string
+  degree: string
+  experience_years: number
   bio: string
   avatarColor: string
   availableSlots: string[]
+  Achievements: string[]
 }
 
-const timeSlots = ["08:30", "09:00", "10:30", "14:00", "15:30"]
+const timeSlots = ["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"]
 
 export default function DoctorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: docId } = use(params)
@@ -29,7 +31,8 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
   const [isLoading, setIsLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState("2026-06-28")
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("")
-  const [symptoms, setSymptoms] = useState("Cảm giác tức ngực sau khi vận động mạnh...")
+  const [symptoms, setSymptoms] = useState("")
+  const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchDoctor() {
@@ -67,7 +70,7 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          doctor: doctor.name,
+          doctor: doctor.doctor_name,
           specialty: doctor.specialty,
           date: formattedDate,
           time: `${selectedTimeSlot} ${Number(selectedTimeSlot.split(":")[0]) < 12 ? "AM" : "PM"}`,
@@ -76,7 +79,13 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
       })
       if (!res.ok) throw new Error("Booking failed")
 
-      alert(`Đăng ký lịch hẹn thành công với ${doctor.name} vào lúc ${selectedTimeSlot} ngày ${selectedDate}!`)
+      const successMessage = `Đăng ký lịch hẹn thành công với ${doctor.doctor_name}`
+      setBookingSuccess(successMessage)
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("bookingSuccess", successMessage)
+      }
+
       router.push("/dashboard/appointments?tab=appointments")
     } catch (err) {
       console.error("Booking error:", err)
@@ -111,6 +120,8 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
+      <BookingSuccessToast message={bookingSuccess} />
+
       {/* Back button */}
       <div>
         <Link
@@ -127,19 +138,13 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
         <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-8 shadow-sm lg:col-span-2 space-y-6" style={cardShadow}>
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-[#e6dfd8]">
             <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-[#141413] shrink-0 shadow-md border border-[#e6dfd8] bg-[#faf9f5]">
-              {doctor.name.split(" ").slice(-1)[0][0]}
+              {doctor.doctor_name.split(" ").slice(-1)[0][0]}
             </div>
             <div className="text-center sm:text-left space-y-2">
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#cc785c] bg-[#cc785c]/10 px-3 py-1 rounded-full border border-[#cc785c]/20">
                 BS. Chuyên Khoa
               </span>
-              <h2 className="text-2xl font-serif font-medium text-[#141413] mt-2 tracking-tight">{doctor.name}</h2>
-              <p className="text-sm text-[#6c6a64] font-medium">{doctor.specialty} • {doctor.experience} kinh nghiệm</p>
-              
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-sm font-bold text-[#e8a55a] mt-1">
-                <Star className="w-4 h-4 fill-current" />
-                <span>{doctor.rating} / 5.0 đánh giá hài lòng</span>
-              </div>
+              <h2 className="text-2xl font-serif font-medium text-[#141413] mt-2 tracking-tight">{doctor.doctor_name}</h2>
             </div>
           </div>
 
@@ -147,26 +152,34 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
             <div>
               <h3 className="text-xs text-[#6c6a64] uppercase font-bold tracking-widest mb-2">Học vấn & Trình độ</h3>
               <p className="text-[#141413] bg-[#faf9f5] p-4 rounded-lg border border-[#e6dfd8] font-medium">
-                {doctor.education}
+                {doctor.degree} và có {doctor.experience_years} năm kinh nghiệm làm tại chuyên khoa {doctor.specialty}.
               </p>
             </div>
 
             <div>
               <h3 className="text-xs text-[#6c6a64] uppercase font-bold tracking-widest mb-2">Tiểu sử & Chuyên môn sâu</h3>
-              <p className="text-[#3d3d3a] bg-[#faf9f5] p-4 rounded-lg border border-[#e6dfd8] font-normal leading-relaxed">
+              <p className="text-[#141413] bg-[#faf9f5] p-4 rounded-lg border border-[#e6dfd8] font-medium">
                 {doctor.bio}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-[#e6dfd8]">
-              <div>
-                <h4 className="text-xs text-[#6c6a64] uppercase font-bold tracking-widest mb-1.5">Phí khám bệnh</h4>
-                <p className="text-[#141413] text-lg font-bold">{doctor.fee}</p>
-              </div>
-              <div>
-                <h4 className="text-xs text-[#6c6a64] uppercase font-bold tracking-widest mb-1.5">Bảo hiểm áp dụng</h4>
-                <p className="text-[#141413] text-sm font-bold">Hỗ trợ BHYT & Bảo hiểm Tư nhân</p>
-              </div>
+            <div>
+              <h3 className="text-xs text-[#6c6a64] uppercase font-bold tracking-widest mb-2">Thành tựu đạt được</h3>
+                <div className="bg-[#faf9f5] rounded-lg border border-[#e6dfd8] p-4">
+                  <ul className="space-y-3">
+                    {doctor.Achievements?.map((item, index) => (
+                      <li key={index} className="flex items-center gap-4">
+                        <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#cc785c]/10">
+                          <span className="text-[#cc785c] text-xs">⭐</span>
+                        </div>
+
+                        <span className="text-sm leading-6 text-[#141413]">
+                          {item}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
             </div>
           </div>
         </article>
@@ -194,8 +207,8 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
 
               {/* 2. Shifts Selection */}
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">2. Chọn ca khám (Khung giờ rảnh)</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">2. Chọn ca khám (Khung giờ)</label>
+                <div className="max-h-[150px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-3 gap-2">
                   {timeSlots.map((slot) => {
                     const isActive = selectedTimeSlot === slot
                     const isAvailable = doctor.availableSlots.includes(slot)
@@ -227,7 +240,7 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
                 <textarea
                   value={symptoms}
                   onChange={(e) => setSymptoms(e.target.value)}
-                  placeholder="Ghi rõ tình trạng sức khỏe của bạn để bác sĩ nắm thông tin trước..."
+                  placeholder="Ghi rõ các triệu chứng..."
                   className="w-full h-24 rounded-md border border-[#e6dfd8] bg-[#faf9f5] text-[#141413] px-4 py-3 text-xs font-medium outline-none focus:border-[#cc785c] resize-none transition-colors"
                 />
               </div>

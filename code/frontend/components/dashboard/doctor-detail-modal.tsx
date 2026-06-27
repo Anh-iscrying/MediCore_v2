@@ -49,27 +49,13 @@ export function DoctorDetailModal({
         {/* Content Details */}
         <div className="space-y-4 text-xs font-semibold text-[#141413] leading-relaxed select-none">
           <div>
-            <p className="text-[10px] text-[#6c6a64] uppercase font-bold tracking-widest mb-1">Học vấn / Trình độ</p>
-            <p className="text-[#141413] bg-[#faf9f5] p-2.5 rounded border border-[#e6dfd8] font-medium">{doctor.education}</p>
+            <p className="text-[10px] text-[#6c6a64] uppercase font-bold tracking-widest mb-1">Chuyên ngành / Trình độ</p>
+            <p className="text-[#141413] bg-[#faf9f5] p-2.5 rounded border border-[#e6dfd8] font-medium">{doctor.specialty} • {doctor.experience}</p>
           </div>
 
           <div>
             <p className="text-[10px] text-[#6c6a64] uppercase font-bold tracking-widest mb-1">Tiểu sử & Chuyên môn</p>
             <p className="text-[#3d3d3a] leading-relaxed bg-[#faf9f5] p-2.5 rounded border border-[#e6dfd8] font-normal">{doctor.bio}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-[10px] text-[#6c6a64] uppercase font-bold tracking-widest mb-1">Phí khám</p>
-              <p className="text-[#141413] text-sm font-bold">{doctor.fee}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[#6c6a64] uppercase font-bold tracking-widest mb-1">Đánh giá</p>
-              <div className="flex items-center gap-1 text-sm font-bold text-[#e8a55a] mt-0.5">
-                <Star className="w-4 h-4 fill-current" />
-                <span>{doctor.rating} / 5.0</span>
-              </div>
-            </div>
           </div>
         </div>
 

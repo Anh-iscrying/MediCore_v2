@@ -3,17 +3,30 @@ import path from "path"
 
 const DB_PATH = path.join(process.cwd(), "lib/db.json")
 
-export interface Doctor {
+export interface Specialty {
   id: number
   name: string
-  specialty: string
-  experience: string
+}
+
+export interface Doctor {
+  id: number
+  specialty_id: number
+  doctor_code: string
+  doctor_name: string
+  degree: string
+  experience_years: number
+  bio: string
   rating: number
   fee: string
-  education: string
-  bio: string
   avatarColor: string
-  availableSlots: string[]
+}
+
+export interface DoctorSchedule {
+  id: number
+  doctor_id: number
+  work_date: string
+  time_slot: string
+  is_booked: boolean
 }
 
 export interface Appointment {
@@ -27,83 +40,67 @@ export interface Appointment {
 }
 
 interface DBData {
+  specialties?: Specialty[]
   doctors: Doctor[]
+  doctor_schedules?: DoctorSchedule[]
   appointments: Appointment[]
 }
+
+const initialSpecialties: Specialty[] = [
+  { id: 1, name: "Tim mạch" },
+  { id: 2, name: "Vật lý trị liệu" },
+  { id: 3, name: "Đa khoa" }
+]
 
 const initialDoctors: Doctor[] = [
   {
     id: 1,
-    name: "Dr. Sarah Jenkins",
-    specialty: "Tim mạch",
-    experience: "15 năm kinh nghiệm",
+    specialty_id: 1,
+    doctor_code: "DOC001",
+    doctor_name: "Dr. Sarah Jenkins",
+    degree: "Tốt nghiệp Đại học Y Dược TP.HCM, Tu nghiệp tại Hoa Kỳ",
+    experience_years: 15,
+    bio: "Chuyên gia về bệnh mạch vành, suy tim và tăng huyết áp vô căn. Bác sĩ Jenkins đã điều trị thành công hàng ngàn ca bệnh tim mạch phức tạp.",
     rating: 4.9,
     fee: "500,000đ",
-    education: "Tốt nghiệp Đại học Y Dược TP.HCM, Tu nghiệp tại Hoa Kỳ",
-    bio: "Chuyên gia về bệnh mạch vành, suy tim và tăng huyết áp vô căn. Bác sĩ Jenkins đã điều trị thành công hàng ngàn ca bệnh tim mạch phức tạp.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["08:30", "09:00", "10:30"]
+    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white"
   },
   {
     id: 2,
-    name: "Dr. Arthur Pendelton",
-    specialty: "Tim mạch",
-    experience: "10 năm kinh nghiệm",
+    specialty_id: 1,
+    doctor_code: "DOC002",
+    doctor_name: "Dr. Arthur Pendelton",
+    degree: "Tốt nghiệp Thạc sĩ Tim mạch học - Đại học Y Hà Nội",
+    experience_years: 10,
+    bio: "Chuyên sâu về rối loạn nhịp tim, siêu âm tim và tầm soát dị tật tim bẩm sinh ở người lớn.",
     rating: 4.8,
     fee: "450,000đ",
-    education: "Tốt nghiệp Thạc sĩ Tim mạch học - Đại học Y Hà Nội",
-    bio: "Chuyên sâu về rối loạn nhịp tim, siêu âm tim và tầm soát dị tật tim bẩm sinh ở người lớn.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["09:00", "14:00", "15:30"]
+    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white"
   },
   {
     id: 3,
-    name: "Dr. Emily Watson",
-    specialty: "Vật lý trị liệu",
-    experience: "8 năm kinh nghiệm",
+    specialty_id: 2,
+    doctor_code: "DOC003",
+    doctor_name: "Dr. Emily Watson",
+    degree: "Cử nhân Phục hồi chức năng - Đại học Y khoa Phạm Ngọc Thạch",
+    experience_years: 8,
+    bio: "Chuyên về trị liệu chấn thương khớp gối, khớp vai sau phẫu thuật, phục hồi khả năng vận động tối ưu.",
     rating: 4.7,
     fee: "350,000đ",
-    education: "Cử nhân Phục hồi chức năng - Đại học Y khoa Phạm Ngọc Thạch",
-    bio: "Chuyên về trị liệu chấn thương khớp gối, khớp vai sau phẫu thuật, phục hồi khả năng vận động tối ưu.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["10:30", "14:00", "15:30"]
-  },
-  {
-    id: 4,
-    name: "Dr. Marcus Aurelius",
-    specialty: "Vật lý trị liệu",
-    experience: "12 năm kinh nghiệm",
-    rating: 4.9,
-    fee: "400,000đ",
-    education: "Thạc sĩ Vật lý trị liệu thể thao - Đại học Mahidol (Thái Lan)",
-    bio: "Từng phụ trách phục hồi chấn thương cho các vận động viên đội tuyển quốc gia. Chuyên sâu về cột sống và thắt lưng.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["08:30", "09:00", "15:30"]
-  },
-  {
-    id: 5,
-    name: "Dr. Alex Rivera",
-    specialty: "Đa khoa",
-    experience: "20 năm kinh nghiệm",
-    rating: 5.0,
-    fee: "300,000đ",
-    education: "Bác sĩ Chuyên khoa II - Đại học Y Hà Nội",
-    bio: "Hơn 20 năm kinh nghiệm khám đa khoa, quản lý các bệnh mãn tính như tiểu đường, huyết áp, tầm soát sức khỏe tổng quát.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["08:30", "10:30", "14:00"]
-  },
-  {
-    id: 6,
-    name: "Dr. Diana Prince",
-    specialty: "Đa khoa",
-    experience: "9 năm kinh nghiệm",
-    rating: 4.6,
-    fee: "300,000đ",
-    education: "Bác sĩ Nội trú Đa khoa - Đại học Y Dược Huế",
-    bio: "Chuyên tư vấn y học gia đình, dinh dưỡng, điều trị các bệnh lý nội khoa thường gặp và tầm soát ung thư sớm.",
-    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
-    availableSlots: ["09:00", "10:30", "15:30"]
+    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white"
   }
+]
+
+const initialDoctorSchedules: DoctorSchedule[] = [
+  { id: 1, doctor_id: 1, work_date: "2026-06-28", time_slot: "08:30", is_booked: false },
+  { id: 2, doctor_id: 1, work_date: "2026-06-28", time_slot: "09:00", is_booked: false },
+  { id: 3, doctor_id: 1, work_date: "2026-06-28", time_slot: "10:30", is_booked: false },
+  { id: 4, doctor_id: 2, work_date: "2026-06-28", time_slot: "09:00", is_booked: false },
+  { id: 5, doctor_id: 2, work_date: "2026-06-28", time_slot: "14:00", is_booked: false },
+  { id: 6, doctor_id: 2, work_date: "2026-06-28", time_slot: "15:30", is_booked: false },
+  { id: 7, doctor_id: 3, work_date: "2026-06-28", time_slot: "10:30", is_booked: false },
+  { id: 8, doctor_id: 3, work_date: "2026-06-28", time_slot: "14:00", is_booked: false },
+  { id: 9, doctor_id: 3, work_date: "2026-06-28", time_slot: "15:30", is_booked: false }
 ]
 
 const initialAppointments: Appointment[] = [
@@ -117,10 +114,12 @@ function ensureDB() {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
-  
+
   if (!fs.existsSync(DB_PATH)) {
     const data: DBData = {
+      specialties: initialSpecialties,
       doctors: initialDoctors,
+      doctor_schedules: initialDoctorSchedules,
       appointments: initialAppointments
     }
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf8")

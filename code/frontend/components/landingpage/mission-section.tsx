@@ -32,7 +32,7 @@ export function MissionSection() {
         <div className="absolute inset-0">
           <img src="/images/hero-hospital.png" alt="Nature background" className="w-full h-full object-cover" />
           {/* Subtle dark overlay for text readability */}
-          <div className="absolute inset-0 bg-black/75 dark:bg-black/85" />
+          <div className="absolute inset-0 bg-black/25 dark:bg-black/85" />
         </div>
 
         {/* Content with padding */}
