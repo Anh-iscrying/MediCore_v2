@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { X, Upload, User, Briefcase, GraduationCap, Phone, Stethoscope } from "lucide-react"
+import { X, Upload, User, Briefcase, GraduationCap, Phone, Stethoscope, FileText } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/base/ui/avatar"
 
 interface DoctorProfileModalProps {
@@ -21,7 +21,6 @@ const degrees = [
   "Giáo sư (GS.TS)"
 ]
 
-// Tạo mảng số năm kinh nghiệm từ 1 đến 40
 const experienceYears = Array.from({ length: 40 }, (_, i) => i + 1)
 
 export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: DoctorProfileModalProps) {
@@ -31,6 +30,7 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
   const [degree, setDegree] = useState(currentDoctor?.degree || "")
   const [specialty, setSpecialty] = useState(currentDoctor?.specialty || "")
   const [experience, setExperience] = useState(currentDoctor?.experience || "")
+  const [bio, setBio] = useState(currentDoctor?.bio || "") // Trường mô tả mới
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -42,6 +42,7 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
       setDegree(currentDoctor.degree || "")
       setSpecialty(currentDoctor.specialty || "")
       setExperience(currentDoctor.experience || "")
+      setBio(currentDoctor.bio || "")
     }
   }, [currentDoctor])
 
@@ -63,7 +64,8 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
       phone,
       degree,
       specialty,
-      experience
+      experience,
+      bio
     })
     onClose()
   }
@@ -86,7 +88,6 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
         {/* Body Form */}
         <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
           
-          {/* Avatar Section */}
           <div className="flex flex-col items-center justify-center gap-3 pb-4 border-b border-border/50">
             <Avatar className="w-24 h-24 border-4 border-background shadow-md">
               <AvatarImage src={avatar || "/placeholder.svg"} alt="Avatar" className="object-cover" />
@@ -94,121 +95,79 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
                 {name?.charAt(0) || "BS"}
               </AvatarFallback>
             </Avatar>
-            
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              ref={fileInputRef}
-              onChange={handleImageChange}
-            />
+            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 text-xs font-medium bg-secondary text-secondary-foreground px-3 py-1.5 rounded-md hover:bg-secondary/80 transition-colors"
             >
-              <Upload className="w-3 h-3" />
-              Tải ảnh lên
+              <Upload className="w-3 h-3" /> Tải ảnh lên
             </button>
           </div>
 
           <div className="space-y-5">
-            {/* Hàng 1: Tên & Điện thoại */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" /> Họ và tên
                 </label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="VD: Nguyễn Văn An"
-                  className="w-full border rounded-md p-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Nguyễn Văn An" className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50" />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5" /> Số điện thoại
                 </label>
-                <input 
-                  type="tel" 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="VD: 0912 345 678"
-                  className="w-full border rounded-md p-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="VD: 0912 345 678" className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50" />
               </div>
             </div>
 
-            {/* Hàng 2: Học vị & Chuyên khoa */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                   <GraduationCap className="w-3.5 h-3.5" /> Học vị
                 </label>
-                <select 
-                  value={degree}
-                  onChange={(e) => setDegree(e.target.value)}
-                  className="w-full border rounded-md p-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
+                <select value={degree} onChange={(e) => setDegree(e.target.value)} className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50">
                   <option value="">-- Chọn học vị --</option>
-                  {degrees.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {degrees.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                   <Stethoscope className="w-3.5 h-3.5" /> Chuyên khoa
                 </label>
-                <input 
-                  type="text" 
-                  value={specialty} 
-                  onChange={(e) => setSpecialty(e.target.value)}
-                  placeholder="VD: Nội tim mạch, Nhi khoa..."
-                  className="w-full border rounded-md p-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
+                <input type="text" value={specialty} onChange={(e) => setSpecialty(e.target.value)} placeholder="VD: Nội tim mạch..." className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50" />
               </div>
             </div>
 
-            {/* Hàng 3: Số năm làm việc */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5" /> Số năm làm việc
               </label>
-              <select 
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                className="w-full md:w-1/2 border rounded-md p-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
+              <select value={experience} onChange={(e) => setExperience(e.target.value)} className="w-full md:w-1/2 border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50">
                 <option value="">-- Chọn số năm --</option>
-                <option value="Dưới 1 năm">Dưới 1 năm</option>
-                {experienceYears.map(year => (
-                  <option key={year} value={`${year} năm`}>{year} năm</option>
-                ))}
-                <option value="Trên 40 năm">Trên 40 năm</option>
+                {experienceYears.map(year => <option key={year} value={`${year} năm`}>{year} năm</option>)}
               </select>
             </div>
 
+            {/* Trường Mô tả mới */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" /> Mô tả thông tin 
+              </label>
+              <textarea 
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Nhập ghi chú bệnh án, tiền sử y khoa hoặc mô tả chi tiết..."
+                className="w-full min-h-[120px] border rounded-md p-3 text-sm bg-background focus:ring-2 focus:ring-primary/50 transition-all"
+              />
+            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="flex justify-end gap-3 p-4 border-t border-border bg-secondary/10">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium bg-background border text-foreground rounded-md hover:bg-secondary/80 transition-colors"
-          >
-            Hủy bỏ
-          </button>
-          <button 
-            onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors shadow-sm"
-          >
-            Lưu hồ sơ
-          </button>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium bg-background border text-foreground rounded-md hover:bg-secondary transition-colors">Hủy bỏ</button>
+          <button onClick={handleSave} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors shadow-sm">Lưu hồ sơ</button>
         </div>
-
       </div>
     </div>
   )
