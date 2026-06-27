@@ -19,6 +19,8 @@ import type {
   PatientResponse,
   Prescription,
   ScheduleEntry,
+  ScheduleRequest,
+  ScheduleResponse,
   ShiftType,
   Specialty,
   SpecialtyResponse,
@@ -29,6 +31,7 @@ import {
   doctorsApi,
   medicinesApi,
   patientsApi,
+  schedulesApi,
   specialtiesApi,
 } from "@/lib/api"
 import { useAuth } from "@/providers/auth-provider"
@@ -62,7 +65,7 @@ interface DataContextValue {
   addDoctor: (d: Omit<Doctor, "id"> & { password?: string }) => void
   updateDoctor: (id: string, d: Omit<Doctor, "id"> & { password?: string }) => void
   deleteDoctor: (id: string) => void
-  setShift: (doctorId: string, day: number, shift: ShiftType) => void
+  setShift: (doctorId: string, dateStr: string, shift: ShiftType) => void
   // Medicine CRUD
   addMedicine: (m: Omit<Medicine, "id">) => void
   updateMedicine: (id: string, m: Omit<Medicine, "id">) => void
@@ -119,6 +122,7 @@ const mapDoctor = (d: DoctorResponse, fallback?: Partial<Doctor>): Doctor => ({
   experience: safeNumber(d.experience, fallback?.experience ?? 0),
   status: (d.status ?? fallback?.status ?? "active") as "active" | "on-leave" | "inactive",
   avatar: d.avatar ?? fallback?.avatar,
+  bio: d.bio ?? fallback?.bio,
   doctorCode: d.doctorCode ?? fallback?.doctorCode,
 })
 
@@ -175,6 +179,43 @@ const mapAppointment = (a: AppointmentResponse, patientList: Patient[], fallback
   }
 }
 
+const normalizeShift = (timeSlot?: string): ShiftType => {
+  const normalized = (timeSlot ?? "").trim().toLowerCase()
+  if (normalized === "morning" || normalized === "ca sáng" || normalized === "08:00 - 12:00") return "morning"
+  if (normalized === "afternoon" || normalized === "ca chiều" || normalized === "13:30 - 17:30") return "afternoon"
+  if (normalized === "full_day" || normalized === "cả ngày" || normalized === "ca cả ngày" || normalized === "08:00 - 17:30") return "full_day"
+  if (normalized === "night" || normalized === "ca tối" || normalized === "17:30 - 21:30") return "night"
+  return "off"
+}
+
+const toScheduleTimeSlot = (shift: ShiftType) => {
+  if (shift === "morning") return "08:00 - 12:00"
+  if (shift === "afternoon") return "13:30 - 17:30"
+  if (shift === "full_day") return "08:00 - 17:30"
+  if (shift === "night") return "17:30 - 21:30"
+  return "off"
+}
+
+const mapScheduleEntries = (scheduleResponses: ScheduleResponse[]): ScheduleEntry[] => {
+  const byDoctor = new Map<string, ScheduleEntry>()
+
+  scheduleResponses.forEach((scheduleResponse) => {
+    const doctorId = String(scheduleResponse.doctorId)
+    const entry = byDoctor.get(doctorId) ?? { doctorId, shifts: {}, scheduleIds: {} }
+    entry.shifts[scheduleResponse.workDate] = normalizeShift(scheduleResponse.timeSlot)
+    entry.scheduleIds = { ...(entry.scheduleIds ?? {}), [scheduleResponse.workDate]: String(scheduleResponse.id) }
+    byDoctor.set(doctorId, entry)
+  })
+
+  return Array.from(byDoctor.values())
+}
+
+const toScheduleRequest = (doctorId: string, dateStr: string, shift: ShiftType): ScheduleRequest => ({
+  doctorId: toNumber(doctorId),
+  workDate: dateStr,
+  timeSlot: toScheduleTimeSlot(shift),
+})
+
 const withDoctorCounts = (specialtyList: Specialty[], doctorList: Doctor[]) =>
   specialtyList.map((sp) => ({
     ...sp,
@@ -185,6 +226,7 @@ const toDoctorRequest = (d: Omit<Doctor, "id"> & { password?: string }): DoctorR
   name: d.name,
   specialtyId: toNumber(d.specialtyId),
   title: d.title,
+  bio: d.bio,
   phone: d.phone,
   experience: d.experience,
   email: d.email,
@@ -214,7 +256,7 @@ const toPatientRequest = (p: Omit<Patient, "id">): PatientRequest => ({
 })
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [specialties, setSpecialties] = useState<Specialty[]>(seedSpecialties)
   const [doctors, setDoctors] = useState<Doctor[]>(seedDoctors)
   const [medicines, setMedicines] = useState<Medicine[]>(seedMedicines)
@@ -232,14 +274,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     async function loadData() {
       try {
-        const [specialtyResponses, doctorResponses, medicineResponses, diseaseResponses, patientResponses] = await Promise.all([
+        const [specialtyResponses, doctorResponses, medicineResponses, diseaseResponses, patientResponses, appointmentResponses] = await Promise.all([
           specialtiesApi.list(),
           doctorsApi.list(),
           medicinesApi.list(),
           diseasesApi.list(),
           patientsApi.list(),
+          appointmentsApi.list(),
         ])
-        const appointmentResponses = await appointmentsApi.list()
+        const scheduleResponses = user?.role === "ADMIN" ? await schedulesApi.list() : []
 
         if (cancelled) return
 
@@ -252,6 +295,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const nextIcdCodes = diseaseResponses.map((d) => mapIcdCode(d))
         const nextPatients = patientResponses.map((p) => mapPatient(p))
         const nextAppointments = appointmentResponses.map((a) => mapAppointment(a, nextPatients))
+        const nextSchedule = mapScheduleEntries(scheduleResponses)
 
         setDoctors(nextDoctors)
         setSpecialties(nextSpecialties)
@@ -259,6 +303,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setIcdCodes(nextIcdCodes)
         setPatients(nextPatients)
         setAppointments(nextAppointments)
+        if (user?.role === "ADMIN") {
+          setSchedule(nextSchedule)
+        }
       } catch (error) {
         console.error("Không thể tải dữ liệu từ backend, giữ dữ liệu mock hiện tại", error)
       }
@@ -269,10 +316,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, user?.role])
 
   const updateDoctorCounts = (nextDoctors: Doctor[]) => {
     setSpecialties((prev) => withDoctorCounts(prev, nextDoctors))
+  }
+
+  const reloadMedicines = async () => {
+    const medicineResponses = await medicinesApi.list()
+    setMedicines(medicineResponses.map((m) => mapMedicine(m)))
   }
 
   const getAppointmentRequest = (a: Omit<Appointment, "id">): AppointmentRequest => {
@@ -360,29 +412,72 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.error("Không thể xóa bác sĩ", error)
       }
     },
-    setShift: (doctorId, day, shift) =>
-      setSchedule((p) => {
-        const exists = p.find((e) => e.doctorId === doctorId)
-        if (exists) {
-          return p.map((e) =>
-            e.doctorId === doctorId ? { ...e, shifts: { ...e.shifts, [day]: shift } } : e,
-          )
+    setShift: async (doctorId, dateStr, shift) => {
+      const existingEntry = schedule.find((e) => e.doctorId === doctorId)
+      const scheduleId = existingEntry?.scheduleIds?.[dateStr]
+
+      try {
+        if (shift === "off") {
+          if (scheduleId) {
+            await schedulesApi.delete(scheduleId)
+          }
+        } else if (scheduleId) {
+          await schedulesApi.update(scheduleId, toScheduleRequest(doctorId, dateStr, shift))
+        } else {
+          const created = await schedulesApi.create(toScheduleRequest(doctorId, dateStr, shift))
+          setSchedule((p) => {
+            const exists = p.find((e) => e.doctorId === doctorId)
+            if (exists) {
+              return p.map((e) =>
+                e.doctorId === doctorId
+                  ? {
+                      ...e,
+                      shifts: { ...e.shifts, [dateStr]: shift },
+                      scheduleIds: { ...(e.scheduleIds ?? {}), [dateStr]: String(created.id) },
+                    }
+                  : e,
+              )
+            }
+            return [{ doctorId, shifts: { [dateStr]: shift }, scheduleIds: { [dateStr]: String(created.id) } }, ...p]
+          })
+          return
         }
-        return [...p, { doctorId, shifts: { [day]: shift } }]
-      }),
+
+        setSchedule((p) => {
+          const exists = p.find((e) => e.doctorId === doctorId)
+          if (exists) {
+            return p.map((e) => {
+              if (e.doctorId !== doctorId) return e
+
+              const nextShifts = { ...e.shifts, [dateStr]: shift }
+              const nextScheduleIds = { ...(e.scheduleIds ?? {}) }
+              if (shift === "off") {
+                delete nextShifts[dateStr]
+                delete nextScheduleIds[dateStr]
+              }
+
+              return { ...e, shifts: nextShifts, scheduleIds: nextScheduleIds }
+            })
+          }
+          return shift === "off" ? p : [...p, { doctorId, shifts: { [dateStr]: shift } }]
+        })
+      } catch (error) {
+        console.error("Không thể cập nhật lịch trực", error)
+      }
+    },
 
     addMedicine: async (m) => {
       try {
-        const created = await medicinesApi.create(toMedicineRequest(m))
-        setMedicines((p) => [...p, mapMedicine(created, m)])
+        await medicinesApi.create(toMedicineRequest(m))
+        await reloadMedicines()
       } catch (error) {
         console.error("Không thể tạo thuốc", error)
       }
     },
     updateMedicine: async (id, m) => {
       try {
-        const updated = await medicinesApi.update(id, toMedicineRequest(m))
-        setMedicines((p) => p.map((x) => (x.id === id ? mapMedicine(updated, { ...x, ...m }) : x)))
+        await medicinesApi.update(id, toMedicineRequest(m))
+        await reloadMedicines()
       } catch (error) {
         console.error("Không thể cập nhật thuốc", error)
       }
@@ -390,7 +485,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     deleteMedicine: async (id) => {
       try {
         await medicinesApi.delete(id)
-        setMedicines((p) => p.filter((x) => x.id !== id))
+        await reloadMedicines()
       } catch (error) {
         console.error("Không thể xóa thuốc", error)
       }

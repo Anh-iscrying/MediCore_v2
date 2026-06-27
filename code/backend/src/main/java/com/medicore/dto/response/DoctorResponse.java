@@ -15,6 +15,7 @@ public class DoctorResponse {
     private Integer specialtyId;
     private String specialtyName;
     private String title;
+    private String bio;
     private String email;
     private String phone;
     private Integer experience;

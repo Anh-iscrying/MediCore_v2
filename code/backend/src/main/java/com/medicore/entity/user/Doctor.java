@@ -33,6 +33,9 @@ public class Doctor extends BaseEntity {
     @Column(name = "degree")
     private String degree;
 
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
     @Column(name = "experience_years")
     private Integer experienceYears;
 

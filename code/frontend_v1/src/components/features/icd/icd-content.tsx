@@ -71,16 +71,40 @@ export function IcdContent() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<Omit<IcdCode, "id">>(emptyForm)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+  const [groupFilter, setGroupFilter] = useState<string>("all")
+
+  // Dynamically extract all unique disease groups from icdCodes
+  const allGroups = useMemo(() => {
+    const list = new Set<string>()
+    icdCodes.forEach((c) => {
+      if (c.category) {
+        list.add(c.category)
+      }
+    })
+    CHAPTERS.forEach((ch) => list.add(ch))
+    return Array.from(list)
+  }, [icdCodes])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return icdCodes.filter((c) => {
       const matchesSearch =
         c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-      const matchesChapter = chapterFilter === "all" || c.category === chapterFilter
-      return matchesSearch && matchesChapter
+      const matchesGroup = groupFilter === "all" || c.category === groupFilter
+      return matchesSearch && matchesGroup
     })
-  }, [icdCodes, search, chapterFilter])
+  }, [icdCodes, search, groupFilter])
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const activePage = Math.min(currentPage, totalPages || 1)
+  const paginatedItems = useMemo(() => {
+    return filtered.slice(
+      (activePage - 1) * itemsPerPage,
+      activePage * itemsPerPage
+    )
+  }, [filtered, activePage, itemsPerPage])
 
   const openAdd = () => {
     setForm(emptyForm)
@@ -119,17 +143,26 @@ export function IcdContent() {
               <Input
                 placeholder="Tìm theo mã hoặc tên bệnh..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="pl-9 h-9 text-sm"
               />
             </div>
-            <Select value={chapterFilter} onValueChange={setChapterFilter}>
+            <Select 
+              value={groupFilter} 
+              onValueChange={(val) => {
+                setGroupFilter(val)
+                setCurrentPage(1)
+              }}
+            >
               <SelectTrigger className="h-9 text-sm w-full sm:w-64">
-                <SelectValue placeholder="Chương bệnh" />
+                <SelectValue placeholder="Nhóm bệnh" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả chương</SelectItem>
-                {CHAPTERS.map((ch) => (
+              <SelectContent className="max-h-[300px] overflow-y-auto">
+                <SelectItem value="all">Tất cả nhóm bệnh</SelectItem>
+                {allGroups.map((ch) => (
                   <SelectItem key={ch} value={ch}>
                     {ch}
                   </SelectItem>
@@ -145,14 +178,14 @@ export function IcdContent() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-x-auto min-h-[580px]">
+          <Table className="table-fixed w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-28">Mã ICD-10</TableHead>
-                <TableHead>Tên bệnh</TableHead>
-                <TableHead className="hidden md:table-cell">Chương bệnh</TableHead>
-                <TableHead className="text-right w-24">Thao tác</TableHead>
+                <TableHead className="w-[15%] min-w-[100px]">Mã ICD-10</TableHead>
+                <TableHead className="w-[48%]">Tên bệnh</TableHead>
+                <TableHead className="w-[27%] hidden md:table-cell">Nhóm bệnh</TableHead>
+                <TableHead className="w-[10%] text-right min-w-[80px]">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,7 +196,7 @@ export function IcdContent() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((c) => (
+                paginatedItems.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <Badge variant="secondary" className="font-mono font-semibold">
@@ -214,11 +247,54 @@ export function IcdContent() {
             </TableBody>
           </Table>
         </div>
-      </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Hiển thị {filtered.length} / {icdCodes.length} mã bệnh
-      </p>
+        {/* PHÂN TRANG */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-border bg-card/50">
+            <p className="text-xs text-muted-foreground">
+              Hiển thị <span className="font-medium">{((activePage - 1) * itemsPerPage) + 1}</span> đến{" "}
+              <span className="font-medium">
+                {Math.min(activePage * itemsPerPage, filtered.length)}
+              </span>{" "}
+              trong tổng số <span className="font-medium">{filtered.length}</span> mã bệnh
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={activePage === 1}
+                className="h-8 px-2 text-xs"
+              >
+                Trước
+              </Button>
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const p = idx + 1;
+                return (
+                  <Button
+                    key={p}
+                    variant={activePage === p ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(p)}
+                    className="h-8 w-8 text-xs p-0"
+                  >
+                    {p}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={activePage === totalPages}
+                className="h-8 px-2 text-xs"
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -247,8 +323,8 @@ export function IcdContent() {
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Chương bệnh</Label>
+             <div className="space-y-1.5">
+              <Label>Nhóm bệnh</Label>
               <Select
                 value={form.category}
                 onValueChange={(v) => setForm({ ...form, category: v })}
@@ -256,8 +332,8 @@ export function IcdContent() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {CHAPTERS.map((ch) => (
+                <SelectContent className="max-h-[300px] overflow-y-auto">
+                  {allGroups.map((ch) => (
                     <SelectItem key={ch} value={ch}>
                       {ch}
                     </SelectItem>

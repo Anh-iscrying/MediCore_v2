@@ -81,6 +81,12 @@ export const specialtiesApi = {
 export const doctorsApi = {
   list: () => request<any[]>("/doctors"),
   get: (id: string | number) => request<any>(`/doctors/${id}`),
+  getProfile: () => request<any>("/doctors/profile"),
+  updateProfile: (data: any) =>
+    request<any>("/doctors/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   create: (data: any) =>
     request<any>("/doctors", {
       method: "POST",
@@ -135,6 +141,30 @@ export const diseasesApi = {
     }),
 }
 
+export const treatmentTemplatesApi = {
+  list: (params?: { icd10Code?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.icd10Code) searchParams.set("icd10Code", params.icd10Code)
+    const query = searchParams.toString()
+    return request<any[]>(`/admin/treatment-templates${query ? `?${query}` : ""}`)
+  },
+  get: (id: string | number) => request<any>(`/admin/treatment-templates/${id}`),
+  create: (data: any) =>
+    request<any>("/admin/treatment-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string | number, data: any) =>
+    request<any>(`/admin/treatment-templates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string | number) =>
+    request<void>(`/admin/treatment-templates/${id}`, {
+      method: "DELETE",
+    }),
+}
+
 export const patientsApi = {
   list: () => request<any[]>("/patients"),
   get: (id: string | number) => request<any>(`/patients/${id}`),
@@ -170,5 +200,37 @@ export const appointmentsApi = {
   delete: (id: string | number) =>
     request<void>(`/appointments/${id}`, {
       method: "DELETE",
+    }),
+}
+
+export const schedulesApi = {
+  list: (params?: { doctorId?: string | number; date?: string; fromDate?: string; toDate?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.doctorId) searchParams.set("doctorId", String(params.doctorId))
+    if (params?.date) searchParams.set("date", params.date)
+    if (params?.fromDate) searchParams.set("fromDate", params.fromDate)
+    if (params?.toDate) searchParams.set("toDate", params.toDate)
+    const query = searchParams.toString()
+    return request<any[]>(`/admin/schedules${query ? `?${query}` : ""}`)
+  },
+  get: (id: string | number) => request<any>(`/admin/schedules/${id}`),
+  create: (data: any) =>
+    request<any>("/admin/schedules", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string | number, data: any) =>
+    request<any>(`/admin/schedules/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string | number) =>
+    request<void>(`/admin/schedules/${id}`, {
+      method: "DELETE",
+    }),
+  bulk: (data: any[]) =>
+    request<any[]>("/admin/schedules/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 }

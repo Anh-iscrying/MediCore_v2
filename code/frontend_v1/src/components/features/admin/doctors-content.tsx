@@ -147,7 +147,6 @@ export function DoctorsContent() {
               <TableHead>Chuyên khoa</TableHead>
               <TableHead>Học vị</TableHead>
               <TableHead>Tài khoản</TableHead>
-              <TableHead>Mật khẩu</TableHead>
               <TableHead className="hidden md:table-cell">Liên hệ</TableHead>
               <TableHead className="text-center">Kinh nghiệm</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -177,7 +176,6 @@ export function DoctorsContent() {
                     {d.doctorCode && <span className="text-xs text-muted-foreground">{d.doctorCode}</span>}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm font-mono text-muted-foreground">••••••••</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">

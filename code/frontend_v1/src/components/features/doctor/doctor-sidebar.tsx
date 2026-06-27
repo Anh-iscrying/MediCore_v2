@@ -23,13 +23,11 @@ export function DoctorSidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
 
   // 2. Hàm xử lý khi ấn "Lưu thay đổi" từ Modal
   const handleSaveProfile = (updatedData: any) => {
-    // Ở đây bạn có thể gọi API cập nhật dữ liệu lên Backend
-    // Hoặc gọi hàm update dữ liệu trong context auth-provider
-    console.log("Dữ liệu profile mới cần lưu:", updatedData)
+    updateUser({ name: updatedData.name ?? updatedData.doctorName ?? user?.name })
   }
 
   return (
