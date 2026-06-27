@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 @Entity
 @Table(name = "medicines")
 @Getter @Setter @Builder
@@ -21,6 +23,19 @@ public class Medicine {
     @Column(name = "unit", nullable = false, length = 20)
     private String unit; // Viên, Gói, Lọ
 
+    @Column(name = "category")
+    private String category; // Nhóm thuốc (Vd: Kháng sinh)
+
+    @Column(name = "price")
+    private Double price;
+
+    @Column(name = "stock")
+    private Integer stock;
+
+    @Column(name = "manufacturer")
+    private String manufacturer;
+
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 }

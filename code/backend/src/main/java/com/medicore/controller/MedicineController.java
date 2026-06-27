@@ -30,6 +30,12 @@ public class MedicineController {
         return ResponseEntity.ok(ApiResponse.success(medicine));
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<MedicineResponse>>> searchMedicines(
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(ApiResponse.success(medicineService.searchMedicines(keyword)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<MedicineResponse>> createMedicine(@Valid @RequestBody MedicineRequest request) {
         MedicineResponse medicine = medicineService.createMedicine(request);

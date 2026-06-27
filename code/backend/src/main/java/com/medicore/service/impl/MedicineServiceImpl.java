@@ -79,17 +79,31 @@ public class MedicineServiceImpl implements MedicineService {
         medicineRepository.delete(medicine);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicineResponse> searchMedicines(String keyword) {
+        return medicineRepository.findAll((root, query, cb) -> {
+            if (keyword == null || keyword.isEmpty()) return cb.conjunction();
+            
+            String pattern = "%" + keyword.toLowerCase() + "%";
+            return cb.or(
+                cb.like(cb.lower(root.get("medicineName")), pattern),
+                cb.like(cb.lower(root.get("manufacturer")), pattern),
+                cb.like(cb.lower(root.get("category")), pattern)
+            );
+        }).stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     private MedicineResponse mapToResponse(Medicine medicine) {
         return MedicineResponse.builder()
                 .id(medicine.getId())
                 .name(medicine.getMedicineName())
-                .code(String.format("MED-%04d", medicine.getId()))
-                .category("Thuốc điều trị")
                 .unit(medicine.getUnit())
-                .price(15000.0)
-                .stock(100)
-                .manufacturer("Việt Nam")
-                .status("available")
+                .category(medicine.getCategory()) // Lấy từ DB
+                .price(medicine.getPrice())       // Lấy từ DB
+                .stock(medicine.getStock())       // Lấy từ DB
+                .manufacturer(medicine.getManufacturer()) // Lấy từ DB
+                .status(medicine.getStock() > 0 ? "available" : "out_of_stock")
                 .build();
     }
 }
