@@ -98,6 +98,42 @@ public class AuthController {
             .body(ApiResponse.success("Đăng nhập thành công", response));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<LoginResponse>> getCurrentUser() {
+        // 1. Lấy Email từ SecurityContext (do Filter đã giải mã từ Cookie/Token)
+        String email = org.springframework.security.core.context.SecurityContextHolder
+                        .getContext().getAuthentication().getName();
+
+        // 2. Tìm thông tin User từ Database
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
+        // 3. Đóng gói thông tin trả về (giống hệt lúc Login)
+        String name = "User";
+        Integer busId = null;
+        String busCode = null;
+
+        if (credentials.getRole() == UserRole.DOCTOR && credentials.getDoctor() != null) {
+            name = credentials.getDoctor().getDoctorName();
+            busId = credentials.getDoctor().getId();
+            busCode = credentials.getDoctor().getDoctorCode();
+        } else if (credentials.getRole() == UserRole.PATIENT && credentials.getPatient() != null) {
+            name = credentials.getPatient().getFullName();
+            busId = credentials.getPatient().getId();
+            busCode = credentials.getPatient().getPatientCode();
+        }
+
+        LoginResponse response = LoginResponse.builder()
+                .role(credentials.getRole().name())
+                .email(credentials.getEmail())
+                .name(name)
+                .doctorId(credentials.getRole() == UserRole.DOCTOR ? busId : null)
+                .doctorCode(credentials.getRole() == UserRole.DOCTOR ? busCode : null)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin thành công", response));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<LoginResponse>> register(
             @Valid @RequestBody RegisterRequest request) {

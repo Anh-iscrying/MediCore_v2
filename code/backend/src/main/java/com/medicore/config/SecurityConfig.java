@@ -44,7 +44,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // THÊM: Cho phép cả localhost:3000, Live Server và file local
         configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "http://localhost:3001"
         )); 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
