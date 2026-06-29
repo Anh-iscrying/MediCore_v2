@@ -1,5 +1,6 @@
 package com.medicore.dto.request;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,7 +17,12 @@ public class MedicineRequest {
     private String unit;
 
     private String category;
+
+    @Min(value = 0, message = "Đơn giá không được âm")
     private Double price;
+
+    @Min(value = 0, message = "Tồn kho không được âm")
     private Integer stock;
+
     private String manufacturer;
 }

@@ -20,6 +20,7 @@ export function Sidebar() {
     { icon: FolderHeart, label: "Quản lý Chuyên khoa", href: "/specialties" },
     { icon: Pill, label: "Quản lý Thuốc", href: "/medicines" },
     { icon: FileText, label: "Quản lý ICD-10", href: "/icd" },
+    { icon: ClipboardList, label: "Combo thuốc ICD-10", href: "/treatment-templates" },
   ]
 
   const doctorMenu = [

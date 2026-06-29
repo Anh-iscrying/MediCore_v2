@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Save, AlertCircle, History, Lightbulb, Sparkles, User } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
@@ -23,7 +23,22 @@ interface ExaminationPageProps {
 
 export function ExaminationPage({ patient }: ExaminationPageProps) {
   const router = useRouter()
-  const { icdCodes, medicines, addExaminationRecord, addPrescription, updatePatient, examinationRecords, prescriptions } = useData()
+  const { 
+    icdCodes, 
+    medicines, 
+    addExaminationRecord, 
+    addPrescription, 
+    updatePatient, 
+    examinationRecords, 
+    prescriptions,
+    ensureMedicinesLoaded,
+    ensureIcdLoaded
+  } = useData()
+
+  useEffect(() => {
+    ensureMedicinesLoaded()
+    ensureIcdLoaded()
+  }, [ensureMedicinesLoaded, ensureIcdLoaded])
 
   const [icdCode, setIcdCode] = useState("")
   const [mainDiagnosis, setMainDiagnosis] = useState("")

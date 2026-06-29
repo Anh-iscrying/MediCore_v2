@@ -1,6 +1,6 @@
 "use client"
 
-import { Users, ClipboardList, FileText, LogOut } from "lucide-react"
+import { Users, ClipboardList, FileText, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import Link from "next/link"
@@ -14,6 +14,7 @@ const doctorMenuItems = [
   { icon: Users, label: "Bệnh nhân chờ", href: "/doctor/waiting-patients" },
   { icon: ClipboardList, label: "Kê đơn thuốc", href: "/doctor/prescriptions" },
   { icon: FileText, label: "Hồ sơ bệnh nhân", href: "/doctor/patient-records" },
+  { icon: Calendar, label: "Lịch làm việc", href: "/doctor/schedule" },
 ]
 
 export function DoctorSidebar() {
@@ -23,13 +24,11 @@ export function DoctorSidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
 
   // 2. Hàm xử lý khi ấn "Lưu thay đổi" từ Modal
   const handleSaveProfile = (updatedData: any) => {
-    // Ở đây bạn có thể gọi API cập nhật dữ liệu lên Backend
-    // Hoặc gọi hàm update dữ liệu trong context auth-provider
-    console.log("Dữ liệu profile mới cần lưu:", updatedData)
+    updateUser({ name: updatedData.name ?? updatedData.doctorName ?? user?.name })
   }
 
   return (

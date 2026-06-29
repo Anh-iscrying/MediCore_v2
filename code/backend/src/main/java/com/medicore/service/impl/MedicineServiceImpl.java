@@ -45,8 +45,12 @@ public class MedicineServiceImpl implements MedicineService {
         }
 
         Medicine medicine = Medicine.builder()
-                .medicineName(request.getName())
-                .unit(request.getUnit())
+                .medicineName(request.getName().trim())
+                .unit(request.getUnit().trim())
+                .category(normalizeText(request.getCategory()))
+                .price(normalizePrice(request.getPrice()))
+                .stock(normalizeStock(request.getStock()))
+                .manufacturer(normalizeText(request.getManufacturer()))
                 .createdAt(OffsetDateTime.now())
                 .build();
 
@@ -64,8 +68,12 @@ public class MedicineServiceImpl implements MedicineService {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
         }
 
-        medicine.setMedicineName(request.getName());
-        medicine.setUnit(request.getUnit());
+        medicine.setMedicineName(request.getName().trim());
+        medicine.setUnit(request.getUnit().trim());
+        medicine.setCategory(normalizeText(request.getCategory()));
+        medicine.setPrice(normalizePrice(request.getPrice()));
+        medicine.setStock(normalizeStock(request.getStock()));
+        medicine.setManufacturer(normalizeText(request.getManufacturer()));
 
         medicine = medicineRepository.save(medicine);
         return mapToResponse(medicine);
@@ -95,15 +103,48 @@ public class MedicineServiceImpl implements MedicineService {
     }
 
     private MedicineResponse mapToResponse(Medicine medicine) {
+        // Xác định trạng thái dựa trên số lượng tồn kho (stock)
+        String status;
+        int stock = (medicine.getStock() != null) ? medicine.getStock() : 0;
+
+        if (stock > 10) {
+            status = "available"; // Còn hàng (màu xanh)
+        } else if (stock > 0) {
+            status = "low";       // Sắp hết (màu vàng)
+        } else {
+            status = "out";       // Hết hàng (màu đỏ) - Phải là "out" thay vì "out_of_stock"
+        }
+
         return MedicineResponse.builder()
                 .id(medicine.getId())
                 .name(medicine.getMedicineName())
                 .unit(medicine.getUnit())
-                .category(medicine.getCategory()) // Lấy từ DB
-                .price(medicine.getPrice())       // Lấy từ DB
-                .stock(medicine.getStock())       // Lấy từ DB
-                .manufacturer(medicine.getManufacturer()) // Lấy từ DB
-                .status(medicine.getStock() > 0 ? "available" : "out_of_stock")
+                .category(medicine.getCategory())
+                .price(medicine.getPrice())
+                .stock(stock)
+                .manufacturer(medicine.getManufacturer())
+                .status(status) // Trả về đúng từ khóa FE cần
                 .build();
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private Double normalizePrice(Double price) {
+        if (price == null || price < 0) {
+            return 0D;
+        }
+        return price;
+    }
+
+    private Integer normalizeStock(Integer stock) {
+        if (stock == null || stock < 0) {
+            return 0;
+        }
+        return stock;
     }
 }

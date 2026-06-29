@@ -20,9 +20,12 @@ import com.medicore.repository.SpecialtyRepository;
 import com.medicore.service.IdGeneratorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -72,6 +75,15 @@ public class AuthController {
                 businessCode
         );
 
+        // 2. TẠO COOKIE
+        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
+            .httpOnly(true)                // Bảo mật: JS không đọc được, chống XSS
+            .secure(false)                 // Để false khi chạy localhost (http)
+            .path("/")                     // Cookie có hiệu lực toàn bộ website
+            .maxAge(24 * 60 * 60)          // Hết hạn sau 24 giờ (đúng AC-AUTH-04)
+            .sameSite("Lax")               // Hỗ trợ gửi cookie khi chuyển trang
+            .build();
+
         LoginResponse response = LoginResponse.builder()
                 .token(token)
                 .role(credentials.getRole().name())
@@ -81,7 +93,9 @@ public class AuthController {
                 .doctorCode(credentials.getRole() == UserRole.DOCTOR ? businessCode : null)
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString()) // Gửi "tem" về trình duyệt
+            .body(ApiResponse.success("Đăng nhập thành công", response));
     }
 
     @PostMapping("/register")
@@ -216,5 +230,19 @@ public class AuthController {
                         response
                 )
         );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        // Tạo một Cookie trống, có thời hạn bằng 0 để ghi đè lên Cookie cũ
+        ResponseCookie cookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0) // Hết hạn ngay lập tức
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success("Đăng xuất thành công", null));
     }
 }
