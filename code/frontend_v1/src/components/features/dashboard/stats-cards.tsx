@@ -13,13 +13,10 @@ interface StatsCardsProps {
 export function StatsCards({ dateRange, selectedSpecialty, selectedDoctor }: StatsCardsProps) {
   const { appointments, doctors, specialties } = useData()
 
-  // Filter appointments based on selected filters
+  // 1. Filter lịch khám dựa trên bộ lọc (thời gian, chuyên khoa, bác sĩ)
   const filteredAppointments = appointments.filter((apt) => {
-    // Filter by specialty if selected
     if (selectedSpecialty && apt.specialtyId !== selectedSpecialty) return false
-    // Filter by doctor if selected
     if (selectedDoctor && apt.doctorId !== selectedDoctor) return false
-    // Filter by date range if provided
     if (dateRange?.start || dateRange?.end) {
       const aptDate = new Date(apt.appointmentDate).toISOString().split("T")[0]
       const startDate = dateRange?.start || "1900-01-01"
@@ -29,21 +26,27 @@ export function StatsCards({ dateRange, selectedSpecialty, selectedDoctor }: Sta
     return true
   })
 
-  // Calculate KPIs (use reference date to avoid hydration mismatch)
-  const today = "2026-06-22"
-  const appointmentsToday = filteredAppointments.filter(
-    (apt) => apt.appointmentDate.split("T")[0] === today
-  )
+  // 2. Logic lấy tháng và năm hiện tại
+  const currentDate = new Date()
+  const currentMonth = currentDate.getMonth() + 1 // JS đếm tháng từ 0-11 nên cần +1
+  const currentYear = currentDate.getFullYear()
+
+  // 3. Tính Số ca khám TRONG THÁNG
+  const appointmentsThisMonth = filteredAppointments.filter((apt) => {
+    const aptDate = new Date(apt.appointmentDate)
+    return aptDate.getMonth() + 1 === currentMonth && aptDate.getFullYear() === currentYear
+  })
+
+  // 4. Tính Số bệnh nhân TRONG THÁNG (Lọc các ID không trùng lặp từ ca khám trong tháng)
+  const uniquePatientsThisMonth = new Set(appointmentsThisMonth.map((apt) => apt.patientId)).size
+
+  // Các chỉ số khác giữ nguyên
   const completedAppointments = filteredAppointments.filter((apt) => apt.status === "COMPLETED")
   const completionRate =
     filteredAppointments.length > 0
       ? Math.round((completedAppointments.length / filteredAppointments.length) * 100)
       : 0
 
-  // New patients (based on seeded data, would need proper tracking)
-  const uniquePatients = new Set(filteredAppointments.map((apt) => apt.patientId)).size
-
-  // Active doctors (have appointments)
   const activeDoctorsInFilter = new Set(filteredAppointments.map((apt) => apt.doctorId)).size
   const activeDoctors = selectedDoctor
     ? 1
@@ -51,11 +54,12 @@ export function StatsCards({ dateRange, selectedSpecialty, selectedDoctor }: Sta
       ? doctors.filter((d) => d.specialtyId === selectedSpecialty && d.status === "active").length
       : doctors.filter((d) => d.status === "active").length
 
+  // 5. Cập nhật dữ liệu hiển thị lên Thẻ
   const stats = [
     {
-      title: "Lượt khám hôm nay",
-      value: appointmentsToday.length,
-      sub: `tổng: ${filteredAppointments.length} lượt`,
+      title: `Lượt khám tháng ${currentMonth}`,
+      value: appointmentsThisMonth.length,
+      sub: `Tổng trong bộ lọc: ${filteredAppointments.length} lượt`,
       icon: Calendar,
       primary: true,
     },
@@ -67,8 +71,8 @@ export function StatsCards({ dateRange, selectedSpecialty, selectedDoctor }: Sta
       primary: false,
     },
     {
-      title: "Bệnh nhân trong bộ lọc",
-      value: uniquePatients,
+      title: `Bệnh nhân tháng ${currentMonth}`,
+      value: uniquePatientsThisMonth,
       sub: `Số bệnh nhân khác nhau`,
       icon: Users,
       primary: false,
@@ -93,9 +97,9 @@ export function StatsCards({ dateRange, selectedSpecialty, selectedDoctor }: Sta
           <div className="flex items-start justify-between mb-3">
             <h3 className="text-xs font-medium opacity-90">{stat.title}</h3>
             <div
-              className={`w-8 h-8 rounded-lg ${stat.primary ? "bg-primary-foreground/20" : "bg-primary"} flex items-center justify-center`}
+              className={`w-8 h-8 rounded-lg ${stat.primary ? "bg-primary-foreground/20" : "bg-primary/10"} flex items-center justify-center`}
             >
-              <stat.icon className={`w-4 h-4 ${stat.primary ? "text-primary-foreground" : "text-primary-foreground"}`} />
+              <stat.icon className={`w-4 h-4 ${stat.primary ? "text-primary-foreground" : "text-primary"}`} />
             </div>
           </div>
           <p className="text-3xl font-bold mb-1">{stat.value}</p>

@@ -44,7 +44,19 @@ public class DataSeeder implements CommandLineRunner {
             System.err.println(">> DataSeeder Error: Không thể seed tài khoản admin: " + e.getMessage());
         }
 
-        // 3. Khởi tạo chuyên khoa
+        // 3. Tạo index chống đặt trùng lịch
+        try {
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_appointments_doctor_date_time " +
+                    "ON public.appointments (doctor_id, appointment_date, time_slot)");
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_doctor_schedules_doctor_date " +
+                    "ON public.doctor_schedules (doctor_id, work_date)");
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_doctor_schedules_doctor_date_time " +
+                    "ON public.doctor_schedules (doctor_id, work_date, time_slot)");
+        } catch (Exception e) {
+            System.err.println(">> DataSeeder Error: Không thể tạo index lịch hẹn: " + e.getMessage());
+        }
+
+        // 4. Khởi tạo chuyên khoa
         if (specialtyRepository.count() == 0) { // Chỉ thêm nếu bảng đang trống
             List<Specialty> initialSpecialties = List.of(
                 Specialty.builder().specialtyName("Nội tổng quát").build(),

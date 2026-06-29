@@ -78,8 +78,9 @@ public class DiseaseServiceImpl implements DiseaseService {
                 .id(disease.getIcd10Code())
                 .code(disease.getIcd10Code())
                 .name(disease.getDiseaseName())
-                .category("Chương chung")
-                .description("Phân loại bệnh ICD-10")
+                // Lấy từ DB, nếu null thì hiện "Chưa phân loại"
+                .category(disease.getCategory() != null ? disease.getCategory() : "Chưa phân loại")
+                .description(disease.getDescription() != null ? disease.getDescription() : "N/A")
                 .build();
     }
 }

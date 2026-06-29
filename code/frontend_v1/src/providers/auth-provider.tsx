@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: String) => Promise<void>
   register: (data: any) => Promise<void>
   logout: () => void
+  updateUser: (patch: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       pathname.startsWith("/medicines") ||
       pathname.startsWith("/icd") ||
       pathname.startsWith("/schedule") ||
+      pathname.startsWith("/treatment-templates") ||
       pathname.startsWith("/admin")
       
     const isDoctorRoute = pathname.startsWith("/doctor")
@@ -160,12 +162,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login")
   }
 
+  const updateUser = (patch: Partial<User>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser
+
+      const nextUser = { ...currentUser, ...patch }
+      localStorage.setItem("user", JSON.stringify(nextUser))
+      return nextUser
+    })
+  }
+
   // Trong khi tải ban đầu hoặc kiểm tra route chuyển tiếp, chặn render giao diện nhạy cảm
   const isAuthRoute = pathname === "/login" || pathname === "/register"
   const showContent = !loading && (isAuthRoute || (token && user))
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
       {showContent ? children : (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
