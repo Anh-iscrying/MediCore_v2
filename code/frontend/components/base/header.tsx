@@ -15,7 +15,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <span className="font-sans text-foreground text-xl font-bold tracking-tight transition-opacity group-hover:opacity-90">
-              HealthCare<span className="text-primary">.</span>
+              Medicore<span className="text-primary">.</span>
             </span>
           </Link>
 
@@ -25,31 +25,31 @@ export function Header() {
               href="#specialties"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              Specialties
+              Chuyên Khoa
             </Link>
             <Link
               href="#ai-care"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              AI Care
+              Hỗ trợ AI
             </Link>
             <Link
               href="#tech"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              Technology
+              Công nghệ
             </Link>
             <Link
               href="#doctors"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              Doctors
+              Bác sĩ
             </Link>
             <Link
               href="#mission"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              About Us
+              Thông tin
             </Link>
           </div>
 
@@ -59,11 +59,11 @@ export function Header() {
               href="/auth/login"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
             >
-              Sign In
+              Đăng nhập
             </Link>
             <Link href="/auth/signup">
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-[11px] rounded-full px-6 py-3 transition-all duration-200">
-                Book Appointment
+                Đặt lịch hẹn
               </Button>
             </Link>
           </div>
@@ -86,44 +86,44 @@ export function Header() {
               className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              Specialties
+              Chuyên Khoa
             </Link>
             <Link
               href="#ai-care"
               className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              AI Care
+              Hỗ trợ AI
             </Link>
             <Link
               href="#tech"
               className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              Technology
+              Công nghệ
             </Link>
             <Link
               href="#doctors"
               className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              Doctors
+              Bác sĩ
             </Link>
             <Link
               href="#mission"
               className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              About Us
+              Thông tin
             </Link>
             <div className="h-px bg-border my-2" />
             <div className="flex flex-col gap-3">
               <Link href="/auth/login" onClick={() => setIsOpen(false)} className="w-full text-center py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                Sign In
+                Đăng nhập
               </Link>
               <Link href="/auth/signup" onClick={() => setIsOpen(false)} className="w-full">
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-widest text-[11px] rounded-full w-full py-4">
-                  Book Appointment
+                  Đặt lịch hẹn
                 </Button>
               </Link>
             </div>

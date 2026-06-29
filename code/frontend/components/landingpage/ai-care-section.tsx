@@ -94,7 +94,7 @@ export function AICareSection() {
               Chăm sóc khách hàng
             </p>
             <ScrollBlurText
-              text="Hỗ trợ y tế thông minh"
+              text="Hỗ trợ y tế"
               className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-5xl"
             />
             <p className="text-muted-foreground text-base leading-relaxed mb-10">

@@ -2,7 +2,7 @@ import Link from "next/link"
 
 const footerLinks = {
   specialties: [
-    { label: "Cardiology", href: "#specialties" },
+    { label: "Tim mạch", href: "#specialties" },
     { label: "Neurology", href: "#specialties" },
     { label: "Orthopedics", href: "#specialties" },
     { label: "Respiratory Care", href: "#specialties" },
@@ -14,10 +14,9 @@ const footerLinks = {
     { label: "Contact Us", href: "#" },
   ],
   patient: [
-    { label: "Book Appointment", href: "/auth/signup" },
-    { label: "Patient Portal", href: "/auth/login" },
-    { label: "AI Consultation", href: "#" },
-    { label: "FAQ", href: "#" },
+    { label: "Đặt lịch hẹn", href: "/auth/signup" },
+    { label: "Cổng thông tin bệnh nhân", href: "/auth/login" },
+    { label: "Tư vấn AI", href: "/auth/login" },
   ],
 }
 
@@ -30,28 +29,28 @@ export function Footer() {
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-6 group">
               <span className="font-sans text-xl font-bold tracking-tight text-foreground">
-                HealthCare<span className="text-primary">.</span>
+                Medicore<span className="text-primary">.</span>
               </span>
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed mb-6 max-w-sm">
-              Compassionate, expert medical care with advanced technology and AI-powered consultation available 24/7.
+              Dịch vụ chăm sóc y tế tận tâm, chuyên nghiệp với công nghệ tiên tiến và tư vấn dựa trên trí tuệ nhân tạo, hoạt động 24/7.
             </p>
             <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-3">
-                <span>Email: info@healthcarehospital.com</span>
+                <span>Email: info@medicorehospital.com</span>
               </div>
               <div className="flex items-center gap-3">
-                <span>Phone: 1-800-HEALTHCARE</span>
+                <span>Liên hệ: 1-800-medicore</span>
               </div>
               <div className="flex items-center gap-3">
-                <span>Address: Healthcare Plaza, Medical City</span>
+                <span>Địa chỉ: Medicore Hospital</span>
               </div>
             </div>
           </div>
 
           {/* Links */}
           <div>
-            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">Specialties</h4>
+            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">Chuyên khoa</h4>
             <ul className="space-y-3">
               {footerLinks.specialties.map((link) => (
                 <li key={link.label}>
@@ -64,7 +63,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">About</h4>
+            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">Thông tin</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
@@ -77,7 +76,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">Patients</h4>
+            <h4 className="font-bold text-foreground uppercase tracking-widest text-xs mb-4">Hỗ trợ</h4>
             <ul className="space-y-3">
               {footerLinks.patient.map((link) => (
                 <li key={link.label}>
@@ -92,16 +91,16 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-muted-foreground/60">© 2025 HealthCare Hospital. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground/60">© 2025 Medicore Hospital. All rights reserved.</p>
           <div className="flex gap-6 text-xs text-muted-foreground/60">
             <Link href="#" className="hover:text-foreground transition-colors">
-              Privacy Policy
+              Chính sách bảo mật
             </Link>
             <Link href="#" className="hover:text-foreground transition-colors">
-              Terms of Service
+              Điều khoản dịch vụ
             </Link>
             <Link href="#" className="hover:text-foreground transition-colors">
-              Patient Rights
+              Quyền riêng tư
             </Link>
           </div>
         </div>
