@@ -25,14 +25,13 @@ spring:
       secret-key: ${JWT_SECRET}
       expiration: ${JWT_EXPIRATION:86400000} # 1 ngày (ms)
 
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 # Cấu hình Swagger/OpenAPI
 springdoc:
   api-docs:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
-
-# test
-app:
-  cors:
-    allowed-origins: http://localhost:3000,http://localhost:3001,http://127.0.0.1:5500

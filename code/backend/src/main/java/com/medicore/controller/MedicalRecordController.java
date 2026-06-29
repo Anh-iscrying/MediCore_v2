@@ -5,6 +5,7 @@ import com.medicore.dto.request.MedicalRecordRequest;
 import com.medicore.service.MedicalRecordService; // Bạn sẽ tạo interface này
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

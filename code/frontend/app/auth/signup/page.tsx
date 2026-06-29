@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { AuthForm } from "@/components/auth/auth-form"
+import { AuthForm, type AuthFormData } from "@/components/auth/auth-form"
+import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 
 export default function SignupPage() {
   const router = useRouter()
+  const { register } = useAuth()
+  const [error, setError] = useState("")
   const sectionRef = useRef<HTMLDivElement>(null)
 
 
@@ -30,9 +33,14 @@ export default function SignupPage() {
 
 
 
-  const handleSubmit = () => {
-    // Simulate successful signup
-    router.push("/dashboard")
+  const handleSubmit = async (data: AuthFormData) => {
+    setError("")
+    try {
+      await register({ email: data.email, password: data.password, name: data.name })
+      router.push("/dashboard")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đăng ký thất bại")
+    }
   }
 
   return (
@@ -62,7 +70,7 @@ export default function SignupPage() {
 
         {/* Auth Form */}
         <div className="reveal opacity-0 animation-delay-200">
-          <AuthForm type="signup" onSubmit={handleSubmit} />
+          <AuthForm type="signup" error={error} onSubmit={handleSubmit} />
         </div>
 
         {/* Back to Home Link */}
