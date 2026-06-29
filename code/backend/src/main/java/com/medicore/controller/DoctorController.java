@@ -1,11 +1,11 @@
 package com.medicore.controller;
 
 import com.medicore.common.base.ApiResponse;
+import com.medicore.dto.request.DoctorProfileRequest;
 import com.medicore.dto.request.DoctorRequest;
 import com.medicore.dto.response.DoctorResponse;
 import com.medicore.entity.user.Doctor;
-import com.medicore.entity.user.Doctor; // Thêm import này
-import com.medicore.repository.DoctorRepository; // Thêm import này
+import com.medicore.repository.DoctorRepository;
 import com.medicore.repository.DoctorScheduleRepository;
 import com.medicore.service.DoctorService;
 
@@ -84,19 +84,26 @@ public class DoctorController {
         return ResponseEntity.ok(ApiResponse.success("Đã cập nhật trạng thái hoạt động", null));
     }
 
+    // API dành riêng cho Bác sĩ tự xem hồ sơ (Self-Profile)
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<ApiResponse<DoctorResponse>> getSelf() {
+        String currentEmail = org.springframework.security.core.context.SecurityContextHolder
+                                .getContext().getAuthentication().getName();
+
+        return ResponseEntity.ok(ApiResponse.success(doctorService.getDoctorByEmail(currentEmail)));
+    }
+
     // API dành riêng cho Bác sĩ tự cập nhật hồ sơ (Self-Update)
     @PutMapping("/profile")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<ApiResponse<DoctorResponse>> updateSelf(
-            @Valid @RequestBody DoctorRequest request) {
-        
-        // 1. Lấy Email từ SecurityContext (đã được set bởi JwtAuthenticationFilter)
+            @Valid @RequestBody DoctorProfileRequest request) {
         String currentEmail = org.springframework.security.core.context.SecurityContextHolder
                                 .getContext().getAuthentication().getName();
 
-        // 2. Gọi Service để cập nhật thông tin dựa trên email
         DoctorResponse updatedDoctor = doctorService.updateDoctorByEmail(currentEmail, request);
-        
+
         return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ cá nhân thành công", updatedDoctor));
     }
 }

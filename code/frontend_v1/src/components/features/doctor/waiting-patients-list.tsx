@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useData } from "@/providers/data-provider"
 import { Button } from "@/components/base/ui/button"
@@ -8,7 +8,14 @@ import { Card } from "@/components/base/ui/card"
 import { Badge } from "@/components/base/ui/badge"
 import { Input } from "@/components/base/ui/input"
 import { PatientProfileModal } from "./patient-profile-modal"
-import { Search } from "lucide-react"
+import { Search, Clock, FileText } from "lucide-react"
+import type { Patient, Appointment } from "@/types/medical"
+
+interface WaitingItem {
+  patient: Patient
+  appointment: Appointment | null
+  sortKey: string
+}
 
 export function WaitingPatientsList() {
   const router = useRouter()
@@ -18,16 +25,44 @@ export function WaitingPatientsList() {
   const [showProfileModal, setShowProfileModal] = useState(false)
 
   const waitingPatients = getWaitingPatients()
-  const filtered = waitingPatients.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone.includes(searchTerm) ||
-    p.id.includes(searchTerm),
+
+  // Tạo danh sách theo APPOINTMENT (mỗi lịch hẹn = 1 thẻ), sắp xếp theo giờ sớm nhất
+  const waitingItems = useMemo((): WaitingItem[] => {
+    const today = new Date().toISOString().split("T")[0]
+    const waitingStatuses = new Set(["WAITING", "PENDING"])
+
+    const items: WaitingItem[] = waitingPatients.flatMap((patient): WaitingItem[] => {
+      const patientAppointments = appointments.filter(
+        (a) =>
+          (a.patientId === patient.id || (patient.patientCode && a.patientCode === patient.patientCode)) &&
+          waitingStatuses.has(a.status) &&
+          a.appointmentDate === today
+      )
+
+      if (patientAppointments.length === 0) {
+        return [{ patient, appointment: null as Appointment | null, sortKey: "99:99" }]
+      }
+
+      return patientAppointments.map((appt) => ({
+        patient,
+        appointment: appt as Appointment | null,
+        sortKey: appt.timeSlot?.split(" - ")[0] ?? "99:99",
+      }))
+    })
+
+    // Sắp xếp theo giờ khám sớm nhất lên trước
+    return items.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+  }, [waitingPatients, appointments])
+
+  // Lọc theo từ khóa tìm kiếm
+  const filtered = waitingItems.filter(({ patient }) =>
+    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.phone.includes(searchTerm) ||
+    patient.id.includes(searchTerm) ||
+    (patient.patientCode && patient.patientCode.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   const selectedPatient = selectedPatientId ? patients.find((p) => p.id === selectedPatientId) : null
-  const patientAppointment = selectedPatientId
-    ? appointments.find((a) => a.patientId === selectedPatientId)
-    : null
 
   return (
     <div className="space-y-6">
@@ -35,7 +70,7 @@ export function WaitingPatientsList() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Tìm kiếm bệnh nhân (tên, số điện thoại, ID)..."
+            placeholder="Tìm kiếm bệnh nhân (tên, mã bệnh nhân, số điện thoại)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -49,52 +84,77 @@ export function WaitingPatientsList() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {filtered.map((patient) => (
-            <Card key={patient.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-foreground">{patient.name}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {patient.gender === "M" ? "Nam" : "Nữ"}
-                    </Badge>
+          {filtered.map(({ patient, appointment }) => {
+            const cardKey = appointment ? `${patient.id}-${appointment.id}` : patient.id
+            return (
+              <Card key={cardKey} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-foreground">{patient.name}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {patient.gender === "M" ? "Nam" : "Nữ"}
+                      </Badge>
+                      {patient.patientCode && (
+                        <Badge variant="outline" className="text-xs font-mono">
+                          {patient.patientCode}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <div>
+                        <span className="font-medium">Ngày sinh:</span> {new Date(patient.dateOfBirth).toLocaleDateString("vi-VN")}
+                      </div>
+                      <div>
+                        <span className="font-medium">Điện thoại:</span> {patient.phone}
+                      </div>
+                      <div>
+                        <span className="font-medium">Địa chỉ:</span> {patient.address}
+                      </div>
+                      <div>
+                        <span className="font-medium">Mã BHYT:</span> {patient.insuranceNumber || "Không có"}
+                      </div>
+                    </div>
+                    {/* Thông tin lịch hẹn */}
+                    {appointment && (
+                      <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                        {appointment.timeSlot && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{appointment.timeSlot}</span>
+                          </div>
+                        )}
+                        {appointment.symptomsInitial && (
+                          <div className="flex items-center gap-1">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="line-clamp-1">{appointment.symptomsInitial}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Ngày sinh:</span> {new Date(patient.dateOfBirth).toLocaleDateString("vi-VN")}
-                    </div>
-                    <div>
-                      <span className="font-medium">Điện thoại:</span> {patient.phone}
-                    </div>
-                    <div>
-                      <span className="font-medium">Địa chỉ:</span> {patient.address}
-                    </div>
-                    <div>
-                      <span className="font-medium">Mã BHYT:</span> {patient.insuranceNumber || "Không có"}
-                    </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedPatientId(patient.id)
+                        setShowProfileModal(true)
+                      }}
+                    >
+                      Hồ sơ
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/doctor/examination/${patient.id}`)}
+                    >
+                      Khám bệnh
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedPatientId(patient.id)
-                      setShowProfileModal(true)
-                    }}
-                  >
-                    Hồ sơ
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => router.push(`/doctor/examination/${patient.id}`)}
-                  >
-                    Khám bệnh
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
         </div>
       )}
 

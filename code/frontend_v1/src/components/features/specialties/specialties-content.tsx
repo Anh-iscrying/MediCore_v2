@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useData } from "@/providers/data-provider"
 import type { Specialty } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
@@ -38,12 +38,16 @@ const emptyForm = {
 }
 
 export function SpecialtiesContent() {
-  const { specialties, addSpecialty, updateSpecialty, deleteSpecialty } = useData()
+  const { specialties, addSpecialty, updateSpecialty, deleteSpecialty, ensureSpecialtiesLoaded } = useData()
   const [query, setQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Specialty | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<Specialty | null>(null)
+
+  useEffect(() => {
+    ensureSpecialtiesLoaded()
+  }, [ensureSpecialtiesLoaded])
 
   const filtered = specialties.filter(
     (s) =>

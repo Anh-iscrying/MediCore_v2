@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useData } from "@/providers/data-provider"
 import type { Medicine } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
@@ -60,13 +60,30 @@ const emptyForm = {
 }
 
 export function MedicinesContent() {
-  const { medicines, addMedicine, updateMedicine, deleteMedicine } = useData()
+  const { medicines, addMedicine, updateMedicine, deleteMedicine, ensureMedicinesLoaded } = useData()
+  useEffect(() => { ensureMedicinesLoaded() }, [ensureMedicinesLoaded])
   const [query, setQuery] = useState("")
   const [catFilter, setCatFilter] = useState("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Medicine | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<Medicine | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const [selectedCat, setSelectedCat] = useState(categories[0])
+  const [customCategory, setCustomCategory] = useState("")
+
+  // Predefined and dynamically unique categories from existing list
+  const allCategories = useMemo(() => {
+    const list = new Set(categories.filter((c) => c !== "Khác"))
+    medicines.forEach((m) => {
+      if (m.category && m.category !== "Khác") {
+        list.add(m.category)
+      }
+    })
+    return Array.from(list)
+  }, [medicines])
 
   const filtered = medicines.filter((m) => {
     const matchesQuery =
@@ -77,9 +94,18 @@ export function MedicinesContent() {
     return matchesQuery && matchesCat
   })
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const activePage = Math.min(currentPage, totalPages || 1)
+  const paginatedItems = filtered.slice(
+    (activePage - 1) * itemsPerPage,
+    activePage * itemsPerPage
+  )
+
   const openAdd = () => {
     setEditing(null)
     setForm(emptyForm)
+    setSelectedCat(categories[0])
+    setCustomCategory("")
     setDialogOpen(true)
   }
 
@@ -95,12 +121,25 @@ export function MedicinesContent() {
       manufacturer: m.manufacturer,
       status: m.status,
     })
+    if (categories.filter((c) => c !== "Khác").includes(m.category)) {
+      setSelectedCat(m.category)
+      setCustomCategory("")
+    } else {
+      setSelectedCat("Khác")
+      setCustomCategory(m.category)
+    }
     setDialogOpen(true)
   }
 
   const handleSubmit = () => {
-    if (!form.name.trim() || !form.code.trim()) return
-    const payload = { ...form, price: Number(form.price) || 0, stock: Number(form.stock) || 0 }
+    if (!form.name.trim()) return
+    const finalCategory = selectedCat === "Khác" ? (customCategory.trim() || "Khác") : selectedCat
+    const payload = { 
+      ...form, 
+      category: finalCategory, 
+      price: Number(form.price) || 0, 
+      stock: Number(form.stock) || 0 
+    }
     if (editing) updateMedicine(editing.id, payload)
     else addMedicine(payload)
     setDialogOpen(false)
@@ -114,17 +153,26 @@ export function MedicinesContent() {
           <Input
             placeholder="Tìm thuốc theo tên, mã, nhà sản xuất..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setCurrentPage(1)
+            }}
             className="pl-9 h-9 text-sm"
           />
         </div>
-        <Select value={catFilter} onValueChange={setCatFilter}>
+        <Select 
+          value={catFilter} 
+          onValueChange={(val) => {
+            setCatFilter(val)
+            setCurrentPage(1)
+          }}
+        >
           <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
             <SelectValue placeholder="Nhóm thuốc" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
             <SelectItem value="all">Tất cả nhóm</SelectItem>
-            {categories.map((c) => (
+            {allCategories.map((c) => (
               <SelectItem key={c} value={c}>
                 {c}
               </SelectItem>
@@ -137,21 +185,21 @@ export function MedicinesContent() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="overflow-x-auto min-h-[580px]">
+        <Table className="table-fixed w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[220px]">Tên thuốc</TableHead>
-              <TableHead>Nhóm</TableHead>
-              <TableHead className="hidden md:table-cell">Nhà sản xuất</TableHead>
-              <TableHead className="text-right">Đơn giá</TableHead>
-              <TableHead className="text-center">Tồn kho</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
+              <TableHead className="w-[28%] min-w-[200px]">Tên thuốc</TableHead>
+              <TableHead className="w-[15%]">Nhóm</TableHead>
+              <TableHead className="w-[18%] hidden md:table-cell">Nhà sản xuất</TableHead>
+              <TableHead className="w-[12%] text-right">Đơn giá</TableHead>
+              <TableHead className="w-[12%] text-center">Tồn kho</TableHead>
+              <TableHead className="w-[10%]">Trạng thái</TableHead>
+              <TableHead className="w-[5%] text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((m) => (
+            {paginatedItems.map((m) => (
               <TableRow key={m.id} className="hover:bg-secondary/50">
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -203,6 +251,53 @@ export function MedicinesContent() {
         </Table>
       </div>
 
+      {/* PHÂN TRANG */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between p-4 border-t border-border bg-card/50">
+          <p className="text-xs text-muted-foreground">
+            Hiển thị <span className="font-medium">{((activePage - 1) * itemsPerPage) + 1}</span> đến{" "}
+            <span className="font-medium">
+              {Math.min(activePage * itemsPerPage, filtered.length)}
+            </span>{" "}
+            trong tổng số <span className="font-medium">{filtered.length}</span> thuốc
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={activePage === 1}
+              className="h-8 px-2 text-xs"
+            >
+              Trước
+            </Button>
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const p = idx + 1;
+              return (
+                <Button
+                  key={p}
+                  variant={activePage === p ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(p)}
+                  className="h-8 w-8 text-xs p-0"
+                >
+                  {p}
+                </Button>
+              );
+            })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={activePage === totalPages}
+              className="h-8 px-2 text-xs"
+            >
+              Sau
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
@@ -210,24 +305,18 @@ export function MedicinesContent() {
             <DialogDescription>Nhập thông tin thuốc.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="grid gap-2 col-span-2">
-                <Label htmlFor="md-name">Tên thuốc</Label>
-                <Input id="md-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="md-code">Mã thuốc</Label>
-                <Input id="md-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="md-name">Tên thuốc</Label>
+              <Input id="md-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Nhóm thuốc</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                <Select value={selectedCat} onValueChange={(v) => setSelectedCat(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
                     {categories.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
@@ -252,6 +341,18 @@ export function MedicinesContent() {
                 </Select>
               </div>
             </div>
+            {selectedCat === "Khác" && (
+              <div className="grid gap-2 animate-slide-in-up">
+                <Label htmlFor="md-custom-cat">Tên nhóm thuốc tự viết</Label>
+                <Input
+                  id="md-custom-cat"
+                  placeholder="Nhập nhóm thuốc mới..."
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="md-price">Đơn giá (đ)</Label>

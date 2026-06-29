@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useData } from "@/providers/data-provider"
 import type { Patient, Appointment } from "@/types/medical"
 import {
@@ -35,7 +35,23 @@ export function ExaminationModal({
   open,
   onOpenChange,
 }: ExaminationModalProps) {
-  const { icdCodes, addExaminationRecord, addPrescription, updatePatient, medicines } = useData()
+  const { 
+    icdCodes, 
+    addExaminationRecord, 
+    addPrescription, 
+    updatePatient, 
+    medicines,
+    ensureMedicinesLoaded,
+    ensureIcdLoaded
+  } = useData()
+
+  useEffect(() => {
+    if (open) {
+      ensureMedicinesLoaded()
+      ensureIcdLoaded()
+    }
+  }, [open, ensureMedicinesLoaded, ensureIcdLoaded])
+
   const [step, setStep] = useState<"examination" | "prescription">("examination")
   const [icdCode, setIcdCode] = useState("")
   const [mainDiagnosis, setMainDiagnosis] = useState("")

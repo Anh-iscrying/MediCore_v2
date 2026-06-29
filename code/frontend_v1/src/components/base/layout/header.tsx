@@ -1,8 +1,7 @@
 "use client"
 
-import { Search, Mail, Bell } from "lucide-react"
+import { Mail, Bell } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
-import { Input } from "@/components/base/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/base/ui/avatar"
 import { MobileNav } from "./mobile-nav"
 import type { ReactNode } from "react"
@@ -19,17 +18,6 @@ export function Header({ title, description, actions }: HeaderProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1">
           <MobileNav />
-
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm..."
-              className="pl-9 pr-3 md:pr-16 h-9 text-sm bg-card border-border transition-all duration-300 focus:shadow-lg focus:shadow-primary/10"
-            />
-            <kbd className="hidden md:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground bg-muted rounded border border-border">
-              ⌘F
-            </kbd>
-          </div>
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2">

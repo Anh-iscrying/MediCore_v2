@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useData } from "@/providers/data-provider"
 import type { Doctor } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
@@ -58,13 +58,18 @@ const emptyForm = {
 }
 
 export function DoctorsContent() {
-  const { doctors, specialties, addDoctor, updateDoctor, deleteDoctor } = useData()
+  const { doctors, specialties, addDoctor, updateDoctor, deleteDoctor, ensureDoctorsLoaded, ensureSpecialtiesLoaded } = useData()
   const [query, setQuery] = useState("")
   const [specialtyFilter, setSpecialtyFilter] = useState<string>("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Doctor | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<Doctor | null>(null)
+
+  useEffect(() => {
+    ensureDoctorsLoaded()
+    ensureSpecialtiesLoaded()
+  }, [ensureDoctorsLoaded, ensureSpecialtiesLoaded])
 
   const specialtyName = (id: string) => specialties.find((s) => s.id === id)?.name ?? "—"
 
@@ -147,7 +152,6 @@ export function DoctorsContent() {
               <TableHead>Chuyên khoa</TableHead>
               <TableHead>Học vị</TableHead>
               <TableHead>Tài khoản</TableHead>
-              <TableHead>Mật khẩu</TableHead>
               <TableHead className="hidden md:table-cell">Liên hệ</TableHead>
               <TableHead className="text-center">Kinh nghiệm</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -177,7 +181,6 @@ export function DoctorsContent() {
                     {d.doctorCode && <span className="text-xs text-muted-foreground">{d.doctorCode}</span>}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm font-mono text-muted-foreground">••••••••</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">

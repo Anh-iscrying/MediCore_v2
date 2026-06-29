@@ -50,7 +50,7 @@ export function PatientRecordModal({ patient, open, onOpenChange }: PatientRecor
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Mã bệnh nhân</p>
-                  <p className="font-medium text-sm">{patient.id}</p>
+                  <p className="font-medium text-sm">{patient.patientCode || patient.id}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Họ và tên</p>

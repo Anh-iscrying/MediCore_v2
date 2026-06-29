@@ -1,12 +1,15 @@
 package com.medicore.service;
 
-import java.util.List;
-
 import com.medicore.dto.request.TreatmentTemplateRequest;
 import com.medicore.dto.response.TreatmentTemplateResponse;
 
+import java.util.List;
+
 public interface TreatmentTemplateService {
-    // Khai báo hàm tạo gói thuốc mẫu cho MC-05
-    void createTemplate(TreatmentTemplateRequest request);
+    List<TreatmentTemplateResponse> getTemplates(String icd10Code);
+    TreatmentTemplateResponse getTemplateById(Integer id);
+    TreatmentTemplateResponse createTemplate(TreatmentTemplateRequest request);
+    TreatmentTemplateResponse updateTemplate(Integer id, TreatmentTemplateRequest request);
+    void deleteTemplate(Integer id);
     List<TreatmentTemplateResponse> getTemplatesByDisease(String icd10Code);
 }
