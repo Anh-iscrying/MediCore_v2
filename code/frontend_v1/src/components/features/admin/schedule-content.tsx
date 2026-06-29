@@ -1,116 +1,185 @@
 "use client"
 
+import { useState } from "react"
 import { useData } from "@/providers/data-provider"
-import type { ShiftType } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/base/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/base/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/base/ui/avatar"
 import { cn } from "@/lib/utils"
+import { ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react"
 
-const days = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"]
+// --- CẤU HÌNH CA TRỰC ---
+type ShiftType = 'morning' | 'afternoon' | 'off';
 
-const shiftConfig: Record<ShiftType, { label: string; short: string; className: string }> = {
-  morning: { label: "Ca sáng", short: "Sáng", className: "bg-primary/15 text-primary border-primary/25" },
-  afternoon: { label: "Ca chiều", short: "Chiều", className: "bg-amber-500/15 text-amber-600 border-amber-500/25 dark:text-amber-400" },
-  night: { label: "Ca đêm", short: "Đêm", className: "bg-chart-2/15 text-chart-2 border-chart-2/30" },
-  off: { label: "Nghỉ", short: "—", className: "bg-muted text-muted-foreground border-border" },
+const shiftConfig: Record<ShiftType, { label: string; className: string }> = {
+  morning: { 
+    label: "Ca sáng (8h-12h)", 
+    className: "bg-green-500/20 text-green-800 border-green-500/30" 
+  },
+  afternoon: { 
+    label: "Ca chiều (13h30-17h30)", 
+    className: "bg-yellow-400/30 text-yellow-900 border-yellow-500/30" 
+  },
+  off: { 
+    label: "Nghỉ", 
+    className: "bg-transparent border-border" 
+  },
 }
 
-const shiftOrder: ShiftType[] = ["morning", "afternoon", "night", "off"]
+const shiftOrder: ShiftType[] = ["morning", "afternoon", "off"];
+const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
 export function ScheduleContent() {
   const { doctors, schedule, specialties, setShift } = useData()
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState(currentDate.getDate())
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
+  const [bulkDoctorId, setBulkDoctorId] = useState("")
+  const [bulkShift, setBulkShift] = useState<ShiftType>("morning")
+  const [bulkDays, setBulkDays] = useState<number[]>([]) 
+  const [selectedDoctor, setSelectedDoctor] = useState<any>(null)
+
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDayOfMonth = new Date(year, month, 1).getDay()
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1))
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1))
 
   const getShift = (doctorId: string, day: number): ShiftType => {
     const entry = schedule.find((e) => e.doctorId === doctorId)
-    return entry?.shifts[day] ?? "off"
+    const shift = entry?.shifts[day - 1]
+    return (shift === 'morning' || shift === 'afternoon') ? shift : 'off'
   }
 
   const specialtyName = (id: string) => specialties.find((s) => s.id === id)?.name ?? "—"
 
   return (
-    <Card className="p-0 overflow-hidden animate-slide-in-up">
-      <div className="flex flex-wrap items-center gap-3 p-4 border-b border-border">
-        <p className="text-sm font-medium text-foreground mr-2">Chú thích:</p>
-        {shiftOrder.map((s) => (
-          <span
-            key={s}
-            className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium", shiftConfig[s].className)}
-          >
-            {shiftConfig[s].label}
-          </span>
-        ))}
-        <p className="text-xs text-muted-foreground w-full sm:w-auto sm:ml-auto">Nhấn vào ô để thay đổi ca trực</p>
-      </div>
+    <div className="relative animate-slide-in-up">
+      <div className="flex flex-col lg:flex-row gap-6">
+        
+        {/* CỘT TRÁI: LỊCH THÁNG HIỂN THỊ CHI TIẾT BÁC SĨ */}
+        <div className="flex-1 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">
+              {selectedDoctor ? `Lịch trực: ${selectedDoctor.name}` : "Lịch trực bác sĩ"}
+            </h2>
+            <button onClick={() => setIsBulkModalOpen(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90">
+              <CalendarPlus className="w-4 h-4" /> Gán lịch chi tiết
+            </button>
+          </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border bg-secondary/40">
-              <th className="text-left text-xs font-semibold text-muted-foreground px-4 py-3 min-w-[200px] sticky left-0 bg-secondary/40">
-                Bác sĩ
-              </th>
-              {days.map((d) => (
-                <th key={d} className="text-center text-xs font-semibold text-muted-foreground px-2 py-3 min-w-[90px]">
-                  {d}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {doctors.map((doc) => (
-              <tr key={doc.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
-                <td className="px-4 py-3 sticky left-0 bg-card">
+          <Card className="p-6 border-none shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Tháng {month + 1} năm {year}</h3>
+              <div className="flex gap-2">
+                <button onClick={prevMonth} className="p-2 border rounded-md hover:bg-secondary"><ChevronLeft className="w-4 h-4" /></button>
+                <button onClick={nextMonth} className="p-2 border rounded-md hover:bg-secondary"><ChevronRight className="w-4 h-4" /></button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-2 text-center text-sm">
+              {daysOfWeek.map((day) => <div key={day} className="text-muted-foreground font-medium">{day}</div>)}
+              {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`e-${i}`} />)}
+              
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const doctorShift = selectedDoctor ? getShift(selectedDoctor.id, day) : null;
+                const config = doctorShift ? shiftConfig[doctorShift] : null;
+
+                return (
+                  <button 
+                    key={day} 
+                    onClick={() => setSelectedDay(day)} 
+                    className={cn(
+                      "h-20 w-full rounded-lg flex flex-col items-center justify-center transition-all border",
+                      day === selectedDay ? "ring-2 ring-primary" : "",
+                      doctorShift && doctorShift !== 'off' ? config?.className : "bg-transparent hover:bg-secondary/20"
+                    )}
+                  >
+                    <span className="font-bold">{day}</span>
+                    {selectedDoctor && doctorShift && (
+                      <span className="text-[8px] mt-1 truncate w-full px-1 font-medium text-muted-foreground">
+                        {config?.label}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+
+        {/* CỘT PHẢI: DANH SÁCH BÁC SĨ */}
+        <div className="w-full lg:w-[420px]">
+          <Card className="p-6 shadow-sm h-fit">
+            <h3 className="text-base font-semibold mb-6">Danh sách bác sĩ</h3>
+            <div className="flex flex-col gap-3">
+              {doctors.map((doc) => (
+                <button 
+                  key={doc.id} 
+                  onClick={() => setSelectedDoctor(doc)} 
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-colors text-left w-full",
+                    selectedDoctor?.id === doc.id ? "bg-primary/10 border-primary" : "bg-card/50 hover:bg-secondary"
+                  )}
+                >
                   <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={doc.avatar || "/placeholder.svg"} alt={doc.name} />
-                      <AvatarFallback className="text-xs">{doc.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    <Avatar className="w-9 h-9"><AvatarFallback>{doc.name.charAt(0)}</AvatarFallback></Avatar>
                     <div>
-                      <p className="text-sm font-medium text-foreground whitespace-nowrap">{doc.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{specialtyName(doc.specialtyId)}</p>
+                      <p className="text-sm font-medium">{doc.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{specialtyName(doc.specialtyId)}</p>
                     </div>
                   </div>
-                </td>
-                {days.map((_, dayIdx) => {
-                  const shift = getShift(doc.id, dayIdx)
-                  return (
-                    <td key={dayIdx} className="px-2 py-2 text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className={cn(
-                              "w-full rounded-md border px-2 py-1.5 text-xs font-medium transition-all hover:scale-105",
-                              shiftConfig[shift].className,
-                            )}
-                          >
-                            {shiftConfig[shift].short}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center">
-                          {shiftOrder.map((s) => (
-                            <DropdownMenuItem key={s} onClick={() => setShift(doc.id, dayIdx, s)}>
-                              <span
-                                className={cn("w-2.5 h-2.5 rounded-sm mr-2 border", shiftConfig[s].className)}
-                              />
-                              {shiftConfig[s].label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
-    </Card>
+
+      {/* MODAL GÁN LỊCH CHI TIẾT */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-card w-full max-w-sm rounded-xl p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4">Gán lịch chi tiết</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Bác sĩ</label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={bulkDoctorId} onChange={(e) => setBulkDoctorId(e.target.value)}>
+                  <option value="">-- Chọn bác sĩ --</option>
+                  {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Ca trực</label>
+                <select className="w-full border rounded p-2 text-sm bg-background" value={bulkShift} onChange={(e) => setBulkShift(e.target.value as ShiftType)}>
+                  {shiftOrder.map(s => <option key={s} value={s}>{shiftConfig[s].label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Chọn ngày trong tháng</label>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    return (
+                      <button key={day} onClick={() => setBulkDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])}
+                        className={cn("h-7 w-7 rounded-full text-xs border transition-colors", bulkDays.includes(day) ? "bg-primary text-white" : "bg-secondary hover:bg-secondary/80")}>
+                        {day}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                <button onClick={() => setIsBulkModalOpen(false)} className="px-4 py-2 text-sm rounded bg-secondary hover:bg-secondary/80">Hủy</button>
+                <button onClick={() => { bulkDays.forEach(d => setShift(bulkDoctorId, d - 1, bulkShift)); setIsBulkModalOpen(false); setBulkDays([]); }} 
+                  className="px-4 py-2 text-sm rounded bg-primary text-white hover:bg-primary/90">Lưu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
