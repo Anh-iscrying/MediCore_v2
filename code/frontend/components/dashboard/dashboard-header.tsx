@@ -1,14 +1,31 @@
 "use client"
 
 import { useState } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Bell, ChevronDown, ExternalLink, LogOut, Settings } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/components/auth/auth-provider"
 import { cn } from "@/lib/utils"
 
 export function DashboardHeader() {
   const [showDropdown, setShowDropdown] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuth()
+
+  const displayName = user?.name || user?.email || "Người dùng"
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "ND"
+
+  const handleLogout = async () => {
+    await logout()
+    setShowDropdown(false)
+    router.push("/")
+  }
 
   // Dynamic headers based on current route in Vietnamese
   const getHeaderInfo = () => {
@@ -73,9 +90,9 @@ export function DashboardHeader() {
             className="flex items-center gap-2 rounded-full border border-border bg-muted p-1 pr-3 text-xs font-bold text-foreground transition-all hover:bg-card"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground">
-              AC
+              {initials}
             </div>
-            <span className="hidden md:inline">Alexander Carter</span>
+            <span className="hidden md:inline">{displayName}</span>
             <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", showDropdown && "rotate-180")} />
           </button>
 
@@ -100,13 +117,14 @@ export function DashboardHeader() {
                 <Settings className="h-3.5 w-3.5" />
               </button>
               <div className="my-1 h-px bg-border" />
-              <Link
-                href="/"
+              <button
+                type="button"
+                onClick={handleLogout}
                 className="flex w-full items-center justify-between rounded p-2.5 text-left text-destructive transition-colors hover:bg-muted"
               >
                 <span>Đăng xuất</span>
                 <LogOut className="h-3.5 w-3.5" />
-              </Link>
+              </button>
             </div>
           )}
         </div>
