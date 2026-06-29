@@ -24,25 +24,25 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
     const newErrors: Record<string, string> = {}
 
     if (!formData.email) {
-      newErrors.email = "Email is required"
+      newErrors.email = "Email là bắt buộc"
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email"
+      newErrors.email = "Email không hợp lệ"
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required"
+      newErrors.password = "Mật khẩu là bắt buộc"
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters"
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự"
     }
 
     if (type === "signup") {
       if (!formData.name) {
-        newErrors.name = "Name is required"
+        newErrors.name = "Tên là bắt buộc"
       }
       if (!formData.confirmPassword) {
-        newErrors.confirmPassword = "Please confirm your password"
+        newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu"
       } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match"
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp"
       }
     }
 
@@ -86,12 +86,12 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
         {/* Header */}
         <div className="mb-8">
           <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
-            {type === "login" ? "Welcome Back" : "Create Account"}
+            {type === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
           </h1>
           <p className="text-secondary text-sm leading-relaxed">
             {type === "login"
-              ? "Access your medical records and appointments"
-              : "Join our hospital network for personalized healthcare"}
+              ? "Đăng nhập để truy cập hồ sơ y tế và lịch hẹn của bạn."
+              : "Hãy tham gia mạng lưới bệnh viện của chúng tôi để được chăm sóc sức khỏe cá nhân hóa."}
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {type === "signup" && (
             <div>
               <label htmlFor="name" className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wider">
-                Full Name
+                Họ và tên
               </label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
@@ -111,7 +111,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="John Doe"
+                  placeholder="Nguyễn Văn A"
                   className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   style={{
                     boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
@@ -125,7 +125,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wider">
-              Email Address
+              Địa chỉ email
             </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
@@ -148,7 +148,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {/* Password Field */}
           <div>
             <label htmlFor="password" className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wider">
-              Password
+              Mật khẩu
             </label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
@@ -172,7 +172,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {type === "signup" && (
             <div>
               <label htmlFor="confirmPassword" className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wider">
-                Confirm Password
+                Nhập lại mật khẩu
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
@@ -197,7 +197,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {type === "login" && (
             <div className="flex justify-end pt-1">
               <Link href="#" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium">
-                Forgot password?
+                Quên mật khẩu?
               </Link>
             </div>
           )}
@@ -209,10 +209,10 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm group mt-6 transition-all"
           >
             {isLoading ? (
-              <span className="opacity-70">Processing...</span>
+              <span className="opacity-70">Đang xử lý...</span>
             ) : (
               <>
-                {type === "login" ? "Sign In" : "Create Account"}
+                {type === "login" ? "Đăng nhập" : "Tạo tài khoản"}
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </>
             )}
@@ -223,16 +223,16 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
         <div className="mt-6 pt-6 border-t border-border text-center text-xs text-secondary">
           {type === "login" ? (
             <>
-              Don&apos;t have an account?{" "}
+              Bạn chưa có tài khoản?{" "}
               <Link href="/auth/signup" className="text-primary hover:text-primary/80 font-bold transition-colors">
-                Sign up
+                Đăng ký
               </Link>
             </>
           ) : (
             <>
-              Already have an account?{" "}
+              Bạn đã có tài khoản?{" "}
               <Link href="/auth/login" className="text-primary hover:text-primary/80 font-bold transition-colors">
-                Sign in
+                Đăng nhập
               </Link>
             </>
           )}
@@ -241,8 +241,8 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
 
       {/* Additional Info */}
       <div className="mt-6 text-center text-xs text-secondary space-y-2">
-        <p>By proceeding, you agree to our Terms of Service</p>
-        <p>Your health data is protected and encrypted</p>
+        <p>Bằng cách tiếp tục, bạn đồng ý với Điều khoản dịch vụ của chúng tôi.</p>
+        <p>Dữ liệu sức khỏe của bạn được bảo vệ và mã hóa.</p>
       </div>
     </div>
   )

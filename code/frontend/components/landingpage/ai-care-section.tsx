@@ -41,10 +41,10 @@ export function AICareSection() {
                     AI
                   </div>
                   <div>
-                    <div className="text-foreground text-xs font-bold uppercase tracking-wider">HealthCare AI</div>
+                    <div className="text-foreground text-xs font-bold uppercase tracking-wider">Medicore AI</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                      <span className="text-[10px] text-muted-foreground">Available 24/7</span>
+                      <span className="text-[10px] text-muted-foreground">Hoạt động 24/7</span>
                     </div>
                   </div>
                 </div>
@@ -55,7 +55,7 @@ export function AICareSection() {
                 
                 {/* User Message */}
                 <div className="bg-primary text-primary-foreground p-3.5 rounded-lg rounded-tr-none self-end max-w-[80%] leading-relaxed">
-                  I&apos;m having a mild headache and fatigue. What should I do?
+                  Xin chào, tôi cảm thấy chóng mặt và buồn nôn. Tôi nên làm gì?
                 </div>
 
                 {/* AI Triage Message */}
@@ -64,13 +64,8 @@ export function AICareSection() {
                     AI
                   </div>
                   <div>
-                    Based on your symptoms, it is recommended to rest and hydrate. Keep track of any changes in temperature. 
+                    Bạn có thể đang gặp phải tình trạng chóng mặt do nhiều nguyên nhân khác nhau. Tôi khuyên bạn nên nghỉ ngơi, uống nước và theo dõi các triệu chứng. Nếu tình trạng không cải thiện hoặc trở nên nghiêm trọng, hãy đặt lịch hẹn với bác sĩ chuyên khoa để được tư vấn chi tiết.
                   </div>
-                </div>
-
-                {/* AI suggestion message */}
-                <div className="bg-primary text-primary-foreground p-3.5 rounded-lg rounded-tl-none self-start max-w-[80%] font-semibold leading-relaxed shadow-lg shadow-black/5">
-                  Would you like me to schedule a virtual check-in with Dr. Vance (Neurology) for tomorrow morning?
                 </div>
 
                 {/* Typing indicators */}
@@ -84,7 +79,7 @@ export function AICareSection() {
               {/* Chat Input */}
               <div className="p-4 border-t border-border bg-muted flex gap-2.5">
                 <div className="flex-1 bg-background border border-border rounded-full px-4 py-2 text-xs text-muted-foreground flex items-center justify-between">
-                  <span>Type a message...</span>
+                  <span>Nhập tin nhắn...</span>
                 </div>
                 <button className="size-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center text-primary-foreground transition-colors cursor-pointer">
                   <Send className="w-3.5 h-3.5" />
@@ -96,40 +91,40 @@ export function AICareSection() {
           {/* Descriptive Content on the Right */}
           <div className="reveal opacity-0 order-1 lg:order-2 flex flex-col justify-center">
             <p className="text-xs uppercase tracking-[0.25em] text-primary font-bold mb-4">
-              AI Customer Care
+              Chăm sóc khách hàng
             </p>
             <ScrollBlurText
-              text="24/7 Intelligent Support"
+              text="Hỗ trợ y tế thông minh"
               className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-5xl"
             />
             <p className="text-muted-foreground text-base leading-relaxed mb-10">
-              Our intelligent AI health companion is available round-the-clock to answer medical queries, evaluate symptoms, and book doctor appointments instantly.
+              Trợ lý y tế thông minh AI của chúng tôi luôn sẵn sàng 24/7 để giải đáp các thắc mắc y tế, đánh giá triệu chứng và đặt lịch hẹn khám bác sĩ ngay lập tức.
             </p>
 
             <div className="space-y-6">
               <div className="flex items-start gap-4">
                 <div>
-                  <h4 className="text-foreground font-bold text-base mb-1">Instant Symptom Triage</h4>
+                  <h4 className="text-foreground font-bold text-base mb-1">Sàng lọc triệu chứng</h4>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    Evaluate symptoms immediately and receive safety guidelines tailored to your current vitals and conditions.
+                    Đánh giá triệu chứng ngay lập tức và nhận hướng dẫn an toàn phù hợp với tình trạng của bạn.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
                 <div>
-                  <h4 className="text-foreground font-bold text-base mb-1">Smart Scheduling</h4>
+                  <h4 className="text-foreground font-bold text-base mb-1">Hướng dẫn đăng ký khám</h4>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    Instantly match and schedule appointments with the correct board-certified specialist without long queue times.
+                    Nhận hướng dẫn chi tiết về cách đặt lịch hẹn với bác sĩ chuyên khoa phù hợp với nhu cầu của bạn.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
                 <div>
-                  <h4 className="text-foreground font-bold text-base mb-1">Continuous Follow-ups</h4>
+                  <h4 className="text-foreground font-bold text-base mb-1">Theo dõi sức khỏe</h4>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    Receive post-consultation prescription schedules, check-up alerts, and progress logging prompts automatically.
+                    Nhận lịch kê đơn sau tư vấn, cảnh báo kiểm tra và nhắc nhở nhật ký tiến độ, giúp bạn duy trì sức khỏe tốt nhất.
                   </p>
                 </div>
               </div>

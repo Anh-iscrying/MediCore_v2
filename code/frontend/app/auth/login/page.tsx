@@ -55,15 +55,9 @@ export default function LoginPage() {
       <div ref={sectionRef} className="w-full max-w-md mx-auto">
         {/* Header Text */}
         <div className="text-center mb-8 reveal opacity-0">
-          <p className="text-xs uppercase tracking-widest text-secondary font-bold mb-3">
-            Patient Portal
-          </p>
           <h1 className="font-sans text-4xl md:text-5xl font-bold leading-tight text-foreground text-balance mb-3">
-            Sign In
+            Cổng thông tin bệnh nhân
           </h1>
-          <p className="text-base text-secondary leading-relaxed">
-            Access your medical records and appointments
-          </p>
         </div>
 
         {/* Auth Form */}
@@ -77,7 +71,7 @@ export default function LoginPage() {
             href="/"
             className="text-secondary hover:text-foreground transition-colors text-xs font-medium underline underline-offset-4"
           >
-            ← Back to home
+            ← Quay lại trang chủ
           </Link>
         </div>
       </div>
