@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { ExaminationPage } from "./examination-page"
 import { useData } from "@/providers/data-provider"
 
@@ -8,7 +9,12 @@ interface ExaminationPageWrapperProps {
 }
 
 export function ExaminationPageWrapper({ patientId }: ExaminationPageWrapperProps) {
-  const { patients } = useData()
+  const { patients, ensurePatientsLoaded } = useData()
+
+  useEffect(() => {
+    ensurePatientsLoaded()
+  }, [ensurePatientsLoaded])
+
   const patient = patients.find((p) => p.id === patientId)
 
   // Fallback to a mock patient if not found (for demo purposes)

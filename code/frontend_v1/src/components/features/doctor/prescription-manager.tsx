@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useData } from "@/providers/data-provider"
 import { Button } from "@/components/base/ui/button"
 import { Card } from "@/components/base/ui/card"
@@ -24,8 +24,24 @@ import {
 import { Search, Plus, Trash2 } from "lucide-react"
 
 export function PrescriptionManager() {
-  const { prescriptions, patients, medicines, updatePrescription, deletePrescription, addPrescription } =
-    useData()
+  const {
+    prescriptions,
+    patients,
+    medicines,
+    updatePrescription,
+    deletePrescription,
+    addPrescription,
+    ensureMedicinesLoaded,
+    ensurePatientsLoaded,
+    ensureAppointmentsLoaded,
+  } = useData()
+
+  useEffect(() => {
+    ensureMedicinesLoaded()
+    ensurePatientsLoaded()
+    ensureAppointmentsLoaded()
+  }, [ensureAppointmentsLoaded, ensureMedicinesLoaded, ensurePatientsLoaded])
+
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "issued" | "dispensed">("all")
   const [showNewModal, setShowNewModal] = useState(false)

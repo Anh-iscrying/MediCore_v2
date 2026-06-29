@@ -1,6 +1,6 @@
 "use client"
 
-import { Users, ClipboardList, FileText, LogOut } from "lucide-react"
+import { Users, ClipboardList, FileText, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import Link from "next/link"
@@ -14,6 +14,7 @@ const doctorMenuItems = [
   { icon: Users, label: "Bệnh nhân chờ", href: "/doctor/waiting-patients" },
   { icon: ClipboardList, label: "Kê đơn thuốc", href: "/doctor/prescriptions" },
   { icon: FileText, label: "Hồ sơ bệnh nhân", href: "/doctor/patient-records" },
+  { icon: Calendar, label: "Lịch làm việc", href: "/doctor/schedule" },
 ]
 
 export function DoctorSidebar() {

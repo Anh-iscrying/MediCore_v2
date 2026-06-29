@@ -66,7 +66,7 @@ export interface IcdCode {
   description: string
 }
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW"
+export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "WAITING" | "IN_PROGRESS" | "DONE"
 
 export interface Appointment {
   id: string
@@ -155,7 +155,7 @@ export interface DoctorRequest {
   email?: string
   password?: string
   status?: Doctor["status"]
-  avatar?: string
+  avatarUrl?: string
 }
 
 export interface DoctorProfileRequest {

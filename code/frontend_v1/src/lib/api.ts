@@ -186,6 +186,7 @@ export const patientsApi = {
 
 export const appointmentsApi = {
   list: () => request<any[]>("/appointments"),
+  listByDoctor: (doctorId: string | number) => request<any[]>(`/appointments/doctor/${doctorId}`),
   get: (id: string | number) => request<any>(`/appointments/${id}`),
   create: (data: any) =>
     request<any>("/appointments", {

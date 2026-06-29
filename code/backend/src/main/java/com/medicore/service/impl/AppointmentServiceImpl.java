@@ -40,7 +40,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll().stream()
+        // JOIN FETCH: 1 query thay vì N+1 lazy loading
+        return appointmentRepository.findAllWithRelations().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

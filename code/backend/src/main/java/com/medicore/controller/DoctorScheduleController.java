@@ -6,6 +6,7 @@ import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.CycleScheduleRequest;
 import com.medicore.dto.request.ScheduleRequest;
 import com.medicore.dto.response.DoctorScheduleResponse;
+import com.medicore.entity.clinical.Appointment;
 import com.medicore.entity.clinical.DoctorSchedule;
 import com.medicore.entity.user.Doctor;
 import com.medicore.repository.AppointmentRepository;
@@ -20,16 +21,18 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin/schedules")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
 public class DoctorScheduleController {
 
     private final DoctorScheduleRepository scheduleRepository;
@@ -73,6 +76,7 @@ public class DoctorScheduleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<DoctorScheduleResponse>> createSchedule(@Valid @RequestBody ScheduleRequest request) {
         DoctorSchedule schedule = buildSchedule(request);
@@ -81,6 +85,7 @@ public class DoctorScheduleController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<DoctorScheduleResponse>> updateSchedule(
             @PathVariable Integer id,
@@ -91,12 +96,9 @@ public class DoctorScheduleController {
 
         Integer oldDoctorId = schedule.getDoctor() != null ? schedule.getDoctor().getId() : null;
         LocalDate oldWorkDate = schedule.getWorkDate();
-        if (oldDoctorId != null && oldWorkDate != null
-                && appointmentRepository.existsByDoctorIdAndAppointmentDate(oldDoctorId, oldWorkDate)) {
-            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Không thể sửa lịch trực đã có lịch hẹn");
-        }
-
         Doctor doctor = findActiveDoctor(request.getDoctorId());
+
+        validateAppointmentsRemainCoveredAfterUpdate(schedule, oldDoctorId, oldWorkDate, request);
         validateDuplicateSchedule(request.getDoctorId(), request.getWorkDate(), request.getTimeSlot(), id);
 
         schedule.setDoctor(doctor);
@@ -109,21 +111,20 @@ public class DoctorScheduleController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<Void>> deleteSchedule(@PathVariable Integer id) {
         DoctorSchedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
 
-        Integer doctorId = schedule.getDoctor() != null ? schedule.getDoctor().getId() : null;
-        if (doctorId != null && appointmentRepository.existsByDoctorIdAndAppointmentDate(doctorId, schedule.getWorkDate())) {
-            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Không thể xóa lịch trực đã có lịch hẹn");
-        }
+        validateAppointmentsRemainCoveredAfterDelete(schedule);
 
         scheduleRepository.delete(schedule);
         return ResponseEntity.ok(ApiResponse.success("Đã xóa lịch trực thành công", null));
     }
 
     @PostMapping("/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<List<DoctorScheduleResponse>>> createBulkSchedules(@Valid @RequestBody List<ScheduleRequest> requests) {
         List<DoctorSchedule> schedules = requests.stream()
@@ -139,6 +140,7 @@ public class DoctorScheduleController {
     }
 
     @PostMapping("/copy")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<List<DoctorScheduleResponse>>> copySchedules(
             @RequestParam Integer doctorId,
@@ -173,6 +175,7 @@ public class DoctorScheduleController {
     }
 
     @PostMapping("/cycle")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<List<DoctorScheduleResponse>>> assignCycleSchedule(@RequestBody CycleScheduleRequest request) {
         List<DoctorSchedule> newSchedules = new ArrayList<>();
@@ -233,6 +236,129 @@ public class DoctorScheduleController {
         if (exists) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Bác sĩ đã có lịch trực trong ca này");
         }
+    }
+
+    private void validateAppointmentsRemainCoveredAfterUpdate(
+            DoctorSchedule schedule,
+            Integer oldDoctorId,
+            LocalDate oldWorkDate,
+            ScheduleRequest request) {
+
+        if (oldDoctorId == null || oldWorkDate == null) {
+            return;
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndAppointmentDate(oldDoctorId, oldWorkDate);
+        if (appointments.isEmpty()) {
+            return;
+        }
+
+        boolean doctorOrDateChanged = !Objects.equals(oldDoctorId, request.getDoctorId())
+                || !Objects.equals(oldWorkDate, request.getWorkDate());
+        if (doctorOrDateChanged) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Không thể đổi bác sĩ/ngày trực đã có lịch hẹn");
+        }
+
+        List<String> resultingSlots = scheduleRepository.findByDoctorIdAndWorkDate(oldDoctorId, oldWorkDate).stream()
+                .filter(existingSchedule -> !Objects.equals(existingSchedule.getId(), schedule.getId()))
+                .map(DoctorSchedule::getTimeSlot)
+                .collect(Collectors.toCollection(ArrayList::new));
+        resultingSlots.add(request.getTimeSlot());
+
+        validateAppointmentsCovered(appointments, resultingSlots);
+    }
+
+    private void validateAppointmentsRemainCoveredAfterDelete(DoctorSchedule schedule) {
+        Integer doctorId = schedule.getDoctor() != null ? schedule.getDoctor().getId() : null;
+        LocalDate workDate = schedule.getWorkDate();
+        if (doctorId == null || workDate == null) {
+            return;
+        }
+
+        List<Appointment> appointments = appointmentRepository.findByDoctorIdAndAppointmentDate(doctorId, workDate);
+        if (appointments.isEmpty()) {
+            return;
+        }
+
+        List<String> resultingSlots = scheduleRepository.findByDoctorIdAndWorkDate(doctorId, workDate).stream()
+                .filter(existingSchedule -> !Objects.equals(existingSchedule.getId(), schedule.getId()))
+                .map(DoctorSchedule::getTimeSlot)
+                .collect(Collectors.toList());
+
+        validateAppointmentsCovered(appointments, resultingSlots);
+    }
+
+    private void validateAppointmentsCovered(List<Appointment> appointments, List<String> scheduleTimeSlots) {
+        for (Appointment appointment : appointments) {
+            boolean covered = scheduleTimeSlots.stream()
+                    .filter(this::isWorkingSchedule)
+                    .anyMatch(scheduleTimeSlot -> isAppointmentSlotInsideSchedule(appointment.getTimeSlot(), scheduleTimeSlot));
+
+            if (!covered) {
+                throw new CustomBusinessException(
+                        ErrorCodes.BAD_REQUEST,
+                        "Không thể thay đổi lịch trực vì có lịch hẹn ngoài khung giờ mới");
+            }
+        }
+    }
+
+    private boolean isWorkingSchedule(String scheduleTimeSlot) {
+        if (scheduleTimeSlot == null || scheduleTimeSlot.isBlank()) {
+            return false;
+        }
+        String normalized = scheduleTimeSlot.trim().toLowerCase();
+        return !normalized.equals("off") && !normalized.equals("nghỉ");
+    }
+
+    private boolean isAppointmentSlotInsideSchedule(String appointmentTimeSlot, String scheduleTimeSlot) {
+        if (appointmentTimeSlot == null || scheduleTimeSlot == null) {
+            return false;
+        }
+
+        try {
+            String normalizedSchedule = normalizeScheduleTimeSlot(scheduleTimeSlot);
+            LocalTime[] appointmentRange = parseTimeRange(appointmentTimeSlot);
+            LocalTime[] scheduleRange = parseTimeRange(normalizedSchedule);
+
+            return !appointmentRange[0].isBefore(scheduleRange[0]) && !appointmentRange[1].isAfter(scheduleRange[1]);
+        } catch (RuntimeException e) {
+            return appointmentTimeSlot.trim().equalsIgnoreCase(scheduleTimeSlot.trim());
+        }
+    }
+
+    private String normalizeScheduleTimeSlot(String scheduleTimeSlot) {
+        String normalized = scheduleTimeSlot.trim().toLowerCase();
+        if (normalized.equals("morning") || normalized.equals("ca sáng")) return "08:00 - 12:00";
+        if (normalized.equals("afternoon") || normalized.equals("ca chiều")) return "13:30 - 17:30";
+        if (normalized.equals("full_day") || normalized.equals("cả ngày") || normalized.equals("ca cả ngày")) return "08:00 - 17:30";
+        if (normalized.equals("night") || normalized.equals("ca tối")) return "17:30 - 21:30";
+        return scheduleTimeSlot;
+    }
+
+    private LocalTime[] parseTimeRange(String timeRange) {
+        String[] parts = timeRange.split("\\s*-\\s*");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid time range: " + timeRange);
+        }
+        return new LocalTime[] {
+                LocalTime.parse(normalizeTime(parts[0])),
+                LocalTime.parse(normalizeTime(parts[1]))
+        };
+    }
+
+    private String normalizeTime(String value) {
+        String normalized = value.trim();
+        if (normalized.matches("^\\d{1,2}h$")) {
+            normalized = normalized.replace("h", ":00");
+        } else if (normalized.matches("^\\d{1,2}h\\d{1,2}$")) {
+            normalized = normalized.replace("h", ":");
+        }
+
+        String[] parts = normalized.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid time: " + value);
+        }
+        return String.format("%02d:%02d", Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
     }
 
     private DoctorScheduleResponse mapToResponse(DoctorSchedule schedule) {

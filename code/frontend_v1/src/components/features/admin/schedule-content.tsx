@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useData } from "@/providers/data-provider"
 import { Card } from "@/components/base/ui/card"
 import { Avatar, AvatarFallback } from "@/components/base/ui/avatar"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, CalendarPlus, Search } from "lucide-react"
+import { AlertCircle, ChevronLeft, ChevronRight, CalendarPlus, Search } from "lucide-react"
 import { Input } from "@/components/base/ui/input"
 
 // --- CẤU HÌNH CA TRỰC ---
@@ -34,7 +34,8 @@ const shiftOrder: ShiftType[] = ["morning", "afternoon", "full_day", "off"];
 const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
 export function ScheduleContent() {
-  const { doctors, schedule, specialties, setShift } = useData()
+  const { doctors, schedule, specialties, setShift, ensureScheduleLoaded } = useData()
+  useEffect(() => { ensureScheduleLoaded() }, [ensureScheduleLoaded])
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(currentDate.getDate())
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
@@ -43,6 +44,8 @@ export function ScheduleContent() {
   const [activeShift, setActiveShift] = useState<ShiftType>("morning") 
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [scheduleError, setScheduleError] = useState("")
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -73,7 +76,7 @@ export function ScheduleContent() {
           <h2 className="text-xl font-bold animate-fade-in">
             {selectedDoctor ? `Lịch trực: ${selectedDoctor.name}` : "Lịch trực bác sĩ"}
           </h2>
-          <button onClick={() => setIsBulkModalOpen(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-sm">
+          <button onClick={() => { setScheduleError(""); setIsBulkModalOpen(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-sm">
             <CalendarPlus className="w-4 h-4" /> Gán lịch chi tiết
           </button>
         </div>
@@ -276,19 +279,45 @@ export function ScheduleContent() {
                   })}
                 </div>
               </div>
+              {scheduleError && (
+                <div className="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-medium">Không thể lưu lịch trực</p>
+                    <p className="text-xs opacity-90">{scheduleError}</p>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                <button onClick={() => { setIsBulkModalOpen(false); setBulkShifts({}); }} className="px-4 py-2 text-sm rounded bg-secondary hover:bg-secondary/80">Hủy</button>
+                <button
+                  onClick={() => { setIsBulkModalOpen(false); setBulkShifts({}); setScheduleError(""); }}
+                  className="px-4 py-2 text-sm rounded bg-secondary hover:bg-secondary/80"
+                  disabled={isSavingSchedule}
+                >
+                  Hủy
+                </button>
                 <button onClick={async () => {
                   if (!bulkDoctorId) return
-                  await Promise.all(Object.entries(bulkShifts).map(([dStr, s]) => {
-                    const day = parseInt(dStr);
-                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    return setShift(bulkDoctorId, dateStr, s);
-                  }));
-                  setIsBulkModalOpen(false);
-                  setBulkShifts({});
+                  setIsSavingSchedule(true)
+                  setScheduleError("")
+                  try {
+                    await Promise.all(Object.entries(bulkShifts).map(([dStr, s]) => {
+                      const day = parseInt(dStr);
+                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      return setShift(bulkDoctorId, dateStr, s);
+                    }));
+                    setIsBulkModalOpen(false);
+                    setBulkShifts({});
+                  } catch (error) {
+                    setScheduleError(error instanceof Error ? error.message : "Không thể cập nhật lịch trực")
+                  } finally {
+                    setIsSavingSchedule(false)
+                  }
                 }}
-                  className="px-4 py-2 text-sm rounded bg-primary text-white hover:bg-primary/90">Lưu</button>
+                  disabled={isSavingSchedule || !bulkDoctorId || Object.keys(bulkShifts).length === 0}
+                  className="px-4 py-2 text-sm rounded bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isSavingSchedule ? "Đang lưu..." : "Lưu"}
+                  </button>
               </div>
             </div>
           </div>

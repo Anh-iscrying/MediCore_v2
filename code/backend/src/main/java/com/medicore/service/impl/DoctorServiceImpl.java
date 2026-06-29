@@ -20,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -37,8 +39,14 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     @Transactional(readOnly = true)
     public List<DoctorResponse> getAllDoctors() {
+        // Batch email lookup: 1 query thay vì N+1
+        Map<Integer, String> emailMap = new HashMap<>();
+        authCredentialsRepository.findAllDoctorEmails().forEach(row ->
+            emailMap.put(((Number) row[0]).intValue(), (String) row[1])
+        );
+
         return doctorRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(doctor -> mapToResponseWithEmail(doctor, emailMap))
                 .collect(Collectors.toList());
     }
 
@@ -233,6 +241,28 @@ public class DoctorServiceImpl implements DoctorService {
                         ? doctor.getDoctorCode().toLowerCase() + "@medicore.com" 
                         : "doctor." + doctor.getId() + "@medicore.com");
                 
+        return DoctorResponse.builder()
+                .id(doctor.getId())
+                .name(doctor.getDoctorName())
+                .specialtyId(doctor.getSpecialty() != null ? doctor.getSpecialty().getId() : null)
+                .specialtyName(doctor.getSpecialty() != null ? doctor.getSpecialty().getSpecialtyName() : null)
+                .title(doctor.getDegree())
+                .bio(doctor.getBio())
+                .email(email)
+                .phone(doctor.getPhone())
+                .experience(doctor.getExperienceYears())
+                .status("active")
+                .avatar(doctor.getAvatarUrl())
+                .doctorCode(doctor.getDoctorCode())
+                .build();
+    }
+
+    private DoctorResponse mapToResponseWithEmail(Doctor doctor, Map<Integer, String> emailMap) {
+        String email = emailMap.getOrDefault(doctor.getId(),
+                doctor.getDoctorCode() != null
+                        ? doctor.getDoctorCode().toLowerCase() + "@medicore.com"
+                        : "doctor." + doctor.getId() + "@medicore.com");
+
         return DoctorResponse.builder()
                 .id(doctor.getId())
                 .name(doctor.getDoctorName())

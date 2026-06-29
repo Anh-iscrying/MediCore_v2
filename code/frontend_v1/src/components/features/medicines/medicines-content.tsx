@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useData } from "@/providers/data-provider"
 import type { Medicine } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
@@ -60,7 +60,8 @@ const emptyForm = {
 }
 
 export function MedicinesContent() {
-  const { medicines, addMedicine, updateMedicine, deleteMedicine } = useData()
+  const { medicines, addMedicine, updateMedicine, deleteMedicine, ensureMedicinesLoaded } = useData()
+  useEffect(() => { ensureMedicinesLoaded() }, [ensureMedicinesLoaded])
   const [query, setQuery] = useState("")
   const [catFilter, setCatFilter] = useState("all")
   const [dialogOpen, setDialogOpen] = useState(false)

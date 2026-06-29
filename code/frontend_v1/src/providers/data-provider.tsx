@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import type {
   Appointment,
   AppointmentRequest,
@@ -65,7 +65,7 @@ interface DataContextValue {
   addDoctor: (d: Omit<Doctor, "id"> & { password?: string }) => void
   updateDoctor: (id: string, d: Omit<Doctor, "id"> & { password?: string }) => void
   deleteDoctor: (id: string) => void
-  setShift: (doctorId: string, dateStr: string, shift: ShiftType) => void
+  setShift: (doctorId: string, dateStr: string, shift: ShiftType) => Promise<void>
   // Medicine CRUD
   addMedicine: (m: Omit<Medicine, "id">) => void
   updateMedicine: (id: string, m: Omit<Medicine, "id">) => void
@@ -94,6 +94,14 @@ interface DataContextValue {
   getWaitingPatients: () => Patient[]
   getPatientPrescriptions: (patientId: string) => Prescription[]
   getPatientRecords: (patientId: string) => ExaminationRecord[]
+  // Lazy loaders — gọi khi vào trang cần data
+  ensureMedicinesLoaded: () => Promise<void>
+  ensureIcdLoaded: () => Promise<void>
+  ensurePatientsLoaded: () => Promise<void>
+  ensureAppointmentsLoaded: () => Promise<void>
+  ensureScheduleLoaded: () => Promise<void>
+  ensureDoctorsLoaded: () => Promise<void>
+  ensureSpecialtiesLoaded: () => Promise<void>
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
@@ -232,7 +240,7 @@ const toDoctorRequest = (d: Omit<Doctor, "id"> & { password?: string }): DoctorR
   email: d.email,
   password: d.password,
   status: d.status,
-  avatar: d.avatar,
+  avatarUrl: d.avatar,
 })
 
 const toMedicineRequest = (m: Omit<Medicine, "id">): MedicineRequest => ({
@@ -267,44 +275,151 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(seedPrescriptions)
   const [examinationRecords, setExaminationRecords] = useState<ExaminationRecord[]>(seedExaminationRecords)
 
+  // Track which datasets have been loaded from backend to avoid duplicate fetches
+  const loadedRef = React.useRef<Record<string, boolean>>({})
+
+  // ── Lazy loaders: only fetch from backend once per session ──────────
+  const ensureMedicinesLoaded = React.useCallback(async () => {
+    if (loadedRef.current.medicines || !token) return
+    loadedRef.current.medicines = true
+    try {
+      const res = await medicinesApi.list()
+      setMedicines(res.map((m) => mapMedicine(m)))
+    } catch (e) {
+      loadedRef.current.medicines = false
+      console.error("Không thể tải danh sách thuốc", e)
+    }
+  }, [token])
+
+  const ensureIcdLoaded = React.useCallback(async () => {
+    if (loadedRef.current.icd || !token) return
+    loadedRef.current.icd = true
+    try {
+      const res = await diseasesApi.list()
+      setIcdCodes(res.map((d) => mapIcdCode(d)))
+    } catch (e) {
+      loadedRef.current.icd = false
+      console.error("Không thể tải danh sách ICD", e)
+    }
+  }, [token])
+
+  const ensurePatientsLoaded = React.useCallback(async () => {
+    if (loadedRef.current.patients || !token) return
+    loadedRef.current.patients = true
+    try {
+      const res = await patientsApi.list()
+      setPatients(res.map((p) => mapPatient(p)))
+    } catch (e) {
+      loadedRef.current.patients = false
+      console.error("Không thể tải danh sách bệnh nhân", e)
+    }
+  }, [token])
+
+  const ensureAppointmentsLoaded = React.useCallback(async () => {
+    if (loadedRef.current.appointments || !token) return
+    loadedRef.current.appointments = true
+    try {
+      const res = user?.role === "DOCTOR" && user?.doctorId
+        ? await appointmentsApi.listByDoctor(user.doctorId)
+        : await appointmentsApi.list()
+      setAppointments(res.map((a) => mapAppointment(a, patients)))
+    } catch (e) {
+      loadedRef.current.appointments = false
+      console.error("Không thể tải danh sách lịch hẹn", e)
+    }
+  }, [token, patients, user])
+
+  const ensureScheduleLoaded = React.useCallback(async () => {
+    if (loadedRef.current.schedule || !token) return
+    loadedRef.current.schedule = true
+    try {
+      const params = user?.role === "DOCTOR" && user?.doctorId ? { doctorId: user.doctorId } : undefined
+      const res = await schedulesApi.list(params)
+      setSchedule(mapScheduleEntries(res))
+    } catch (e) {
+      loadedRef.current.schedule = false
+      console.error("Không thể tải lịch trực", e)
+    }
+  }, [token, user])
+
+  const ensureDoctorsLoaded = React.useCallback(async () => {
+    if (loadedRef.current.doctors || !token) return
+    loadedRef.current.doctors = true
+    try {
+      const res = await doctorsApi.list()
+      setDoctors(res.map((d) => mapDoctor(d)))
+    } catch (e) {
+      loadedRef.current.doctors = false
+      console.error("Không thể tải danh sách bác sĩ", e)
+    }
+  }, [token])
+
+  const ensureSpecialtiesLoaded = React.useCallback(async () => {
+    if (loadedRef.current.specialties || !token) return
+    loadedRef.current.specialties = true
+    try {
+      const res = await specialtiesApi.list()
+      const nextSpecialties = res.map((s) => mapSpecialty(s))
+      setSpecialties(withDoctorCounts(nextSpecialties, doctors))
+    } catch (e) {
+      loadedRef.current.specialties = false
+      console.error("Không thể tải danh sách chuyên khoa", e)
+    }
+  }, [token, doctors])
+
+  // ── Initial load by role ──────────────────────────────────────────
   useEffect(() => {
     if (!token) return
 
     let cancelled = false
 
+    // Reset loaded flags on token change (re-login)
+    loadedRef.current = {}
+
     async function loadData() {
       try {
-        const [specialtyResponses, doctorResponses, medicineResponses, diseaseResponses, patientResponses, appointmentResponses] = await Promise.all([
-          specialtiesApi.list(),
-          doctorsApi.list(),
-          medicinesApi.list(),
-          diseasesApi.list(),
-          patientsApi.list(),
-          appointmentsApi.list(),
-        ])
-        const scheduleResponses = user?.role === "ADMIN" ? await schedulesApi.list() : []
-
-        if (cancelled) return
-
-        const nextDoctors = doctorResponses.map((d) => mapDoctor(d))
-        const nextSpecialties = withDoctorCounts(
-          specialtyResponses.map((s) => mapSpecialty(s)),
-          nextDoctors,
-        )
-        const nextMedicines = medicineResponses.map((m) => mapMedicine(m))
-        const nextIcdCodes = diseaseResponses.map((d) => mapIcdCode(d))
-        const nextPatients = patientResponses.map((p) => mapPatient(p))
-        const nextAppointments = appointmentResponses.map((a) => mapAppointment(a, nextPatients))
-        const nextSchedule = mapScheduleEntries(scheduleResponses)
-
-        setDoctors(nextDoctors)
-        setSpecialties(nextSpecialties)
-        setMedicines(nextMedicines)
-        setIcdCodes(nextIcdCodes)
-        setPatients(nextPatients)
-        setAppointments(nextAppointments)
         if (user?.role === "ADMIN") {
-          setSchedule(nextSchedule)
+          // ADMIN Dashboard cần: specialties, doctors, appointments
+          const [specialtyResponses, doctorResponses, appointmentResponses] = await Promise.all([
+            specialtiesApi.list(),
+            doctorsApi.list(),
+            appointmentsApi.list(),
+          ])
+
+          if (cancelled) return
+
+          const nextDoctors = doctorResponses.map((d) => mapDoctor(d))
+          const nextSpecialties = withDoctorCounts(
+            specialtyResponses.map((s) => mapSpecialty(s)),
+            nextDoctors,
+          )
+          const nextAppointments = appointmentResponses.map((a) => mapAppointment(a, patients))
+
+          setDoctors(nextDoctors)
+          setSpecialties(nextSpecialties)
+          setAppointments(nextAppointments)
+
+          loadedRef.current.doctors = true
+          loadedRef.current.specialties = true
+          loadedRef.current.appointments = true
+        } else {
+          // DOCTOR cần: patients, appointments (chỉ của bác sĩ này)
+          const doctorId = user?.doctorId
+          const [patientResponses, appointmentResponses] = await Promise.all([
+            patientsApi.list(),
+            doctorId ? appointmentsApi.listByDoctor(doctorId) : appointmentsApi.list(),
+          ])
+
+          if (cancelled) return
+
+          const nextPatients = patientResponses.map((p) => mapPatient(p))
+          const nextAppointments = appointmentResponses.map((a) => mapAppointment(a, nextPatients))
+
+          setPatients(nextPatients)
+          setAppointments(nextAppointments)
+
+          loadedRef.current.patients = true
+          loadedRef.current.appointments = true
         }
       } catch (error) {
         console.error("Không thể tải dữ liệu từ backend, giữ dữ liệu mock hiện tại", error)
@@ -463,6 +578,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         })
       } catch (error) {
         console.error("Không thể cập nhật lịch trực", error)
+        throw error
       }
     },
 
@@ -576,9 +692,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateExaminationRecord: (id, e) => setExaminationRecords((prev) => prev.map((x) => (x.id === id ? { ...x, ...e } : x))),
     deleteExaminationRecord: (id) => setExaminationRecords((prev) => prev.filter((x) => x.id !== id)),
 
-    getWaitingPatients: () => patients.filter((p) => p.status === "waiting"),
+    getWaitingPatients: () => {
+      // Nếu là bác sĩ: chỉ hiển thị bệnh nhân có lịch hẹn WAITING của bác sĩ này
+      if (user?.role === "DOCTOR" && user?.doctorId) {
+        const doctorIdStr = String(user.doctorId)
+        const today = new Date().toISOString().split("T")[0]
+        const waitingStatuses = new Set(["WAITING", "PENDING"])
+        const doctorWaitingAppointments = appointments.filter(
+          (a) => a.doctorId === doctorIdStr && waitingStatuses.has(a.status) && a.appointmentDate === today
+        )
+        const waitingPatientIds = new Set(
+          doctorWaitingAppointments.map((a) => a.patientId)
+        )
+        const waitingPatientCodes = new Set(
+          doctorWaitingAppointments.map((a) => a.patientCode).filter(Boolean)
+        )
+        return patients.filter(
+          (p) => waitingPatientIds.has(p.id) || (p.patientCode && waitingPatientCodes.has(p.patientCode))
+        )
+      }
+      // Admin: hiển thị tất cả bệnh nhân có status waiting
+      return patients.filter((p) => p.status === "waiting")
+    },
     getPatientPrescriptions: (patientId) => prescriptions.filter((p) => p.patientId === patientId),
     getPatientRecords: (patientId) => examinationRecords.filter((e) => e.patientId === patientId),
+
+    ensureMedicinesLoaded,
+    ensureIcdLoaded,
+    ensurePatientsLoaded,
+    ensureAppointmentsLoaded,
+    ensureScheduleLoaded,
+    ensureDoctorsLoaded,
+    ensureSpecialtiesLoaded,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

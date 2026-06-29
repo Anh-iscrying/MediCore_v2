@@ -82,7 +82,8 @@ const toForm = (template: TreatmentTemplate): TemplateForm => ({
 })
 
 export function TreatmentTemplatesContent() {
-  const { medicines, icdCodes } = useData()
+  const { medicines, icdCodes, ensureMedicinesLoaded, ensureIcdLoaded } = useData()
+  useEffect(() => { ensureMedicinesLoaded(); ensureIcdLoaded() }, [ensureMedicinesLoaded, ensureIcdLoaded])
   const [templates, setTemplates] = useState<TreatmentTemplate[]>([])
   const [search, setSearch] = useState("")
   const [icdFilter, setIcdFilter] = useState("all")
