@@ -6,37 +6,37 @@ import { ScrollBlurText } from "@/components/base/scroll-blur-text"
 const patientStories = [
   {
     quote:
-      "The cardiology team at HealthCare Hospital saved my life. Their expertise and compassionate care made all the difference in my recovery.",
+      "Đội ngũ tim mạch tại Medicore Hospital đã cứu sống tôi. Chuyên môn cao và sự chăm sóc tận tâm của họ tạo nên khác biệt lớn trong quá trình hồi phục của tôi.",
     author: "Robert M.",
-    role: "Cardiac Surgery Patient",
+    role: "Bệnh nhân phẫu thuật tim",
     avatar: "/placeholder.svg?height=80&width=80",
   },
   {
     quote:
-      "Dr. Chen's treatment for my neurological condition changed everything. I'm now able to enjoy life again with proper management and AI-powered monitoring.",
+      "Phác đồ điều trị của bác sĩ Chen cho bệnh lý thần kinh của tôi đã thay đổi mọi thứ. Giờ đây tôi có thể tận hưởng cuộc sống trở lại nhờ quản lý phù hợp và theo dõi bằng AI.",
     author: "Jennifer K.",
-    role: "Neurology Patient",
+    role: "Bệnh nhân thần kinh",
     avatar: "/placeholder.svg?height=80&width=80",
   },
   {
     quote:
-      "The orthopedic surgery was exactly what I needed. The minimally invasive approach meant faster recovery and less pain than I expected.",
+      "Ca phẫu thuật chỉnh hình đúng là điều tôi cần. Phương pháp ít xâm lấn giúp tôi hồi phục nhanh hơn và ít đau hơn mong đợi.",
     author: "David S.",
-    role: "Orthopedic Surgery Patient",
+    role: "Bệnh nhân phẫu thuật chỉnh hình",
     avatar: "/placeholder.svg?height=80&width=80",
   },
   {
     quote:
-      "24/7 AI consultation support has been incredible for managing my health between appointments. The doctors here truly care about their patients.",
+      "Hỗ trợ tư vấn AI 24/7 thật sự hữu ích trong việc quản lý sức khỏe giữa các lần tái khám. Các bác sĩ ở đây thực sự quan tâm đến bệnh nhân.",
     author: "Maria T.",
-    role: "Long-term Patient",
+    role: "Bệnh nhân điều trị lâu dài",
     avatar: "/placeholder.svg?height=80&width=80",
   },
   {
     quote:
-      "Professional, caring, and thorough. HealthCare Hospital set a new standard for what patient care should be.",
+      "Chuyên nghiệp, tận tâm và kỹ lưỡng. Medicore Hospital đã thiết lập một tiêu chuẩn mới cho dịch vụ chăm sóc bệnh nhân.",
     author: "Stephen W.",
-    role: "General Patient",
+    role: "Bệnh nhân khám tổng quát",
     avatar: "/placeholder.svg?height=80&width=80",
   },
 ]
@@ -109,10 +109,10 @@ export function PatientStoriesSection() {
       <div className="w-full">
         <div className="text-center mb-16 lg:mb-20 px-6">
           <p className="reveal opacity-0 text-xs md:text-sm uppercase tracking-[0.25em] text-primary font-bold mb-4">
-            Patient Stories
+            Câu chuyện bệnh nhân
           </p>
           <ScrollBlurText
-            text="Real Results, Real Recovery"
+            text="Kết quả thực tế, hồi phục thực sự"
             className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-6xl"
           />
         </div>

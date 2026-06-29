@@ -26,9 +26,9 @@ export interface SpecialtiesGalleryProps {
 }
 
 const SpecialtiesGallery = ({
-  subtitle = "MEDICAL EXPERTISE",
-  title = "World-Class Specialties",
-  description = "Comprehensive healthcare services delivered by experienced specialists using advanced medical technology.",
+  subtitle = "CHUYÊN MÔN Y TẾ",
+  title = "Các chuyên khoa hàng đầu",
+  description = "Dịch vụ chăm sóc sức khỏe toàn diện được cung cấp bởi các chuyên gia giàu kinh nghiệm, ứng dụng công nghệ y tế tiên tiến.",
   items,
 }: SpecialtiesGalleryProps) => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
@@ -109,7 +109,7 @@ const SpecialtiesGallery = ({
                 currentSlide === index ? "w-5 bg-primary" : "w-2 bg-primary/20 hover:bg-primary/40"
               }`}
               onClick={() => carouselApi?.scrollTo(index)}
-              aria-label={`Go to slide ${index + 1}`}
+              aria-label={`Đi tới slide ${index + 1}`}
             />
           ))}
         </div>

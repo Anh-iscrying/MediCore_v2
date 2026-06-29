@@ -6,26 +6,26 @@ import { SpecialtiesGallery } from "./specialties-gallery"
 const specialties = [
   {
     id: "cardiology",
-    title: "Heart Care",
-    description: "Advanced cardiac treatments and preventive heart disease management with cutting-edge technology.",
+    title: "Chăm sóc tim mạch",
+    description: "Điều trị tim mạch tiên tiến và quản lý phòng ngừa bệnh tim bằng công nghệ hiện đại.",
     icon: <HeartCareIcon />,
   },
   {
     id: "neurology",
-    title: "Brain Health",
-    description: "Specialized neurological care for stroke prevention, memory disorders, and neurological conditions.",
+    title: "Sức khỏe thần kinh",
+    description: "Chăm sóc thần kinh chuyên sâu cho phòng ngừa đột quỵ, rối loạn trí nhớ và các bệnh lý thần kinh.",
     icon: <BrainHealthIcon />,
   },
   {
     id: "orthopedics",
-    title: "Bone & Joint",
-    description: "Expert orthopedic surgery and sports medicine with minimally invasive techniques.",
+    title: "Cơ xương khớp",
+    description: "Phẫu thuật chỉnh hình và y học thể thao chuyên nghiệp với kỹ thuật ít xâm lấn.",
     icon: <BoneJointIcon />,
   },
   {
     id: "pulmonary",
-    title: "Respiratory Care",
-    description: "Comprehensive pulmonary and respiratory system treatment for optimal lung health.",
+    title: "Chăm sóc hô hấp",
+    description: "Điều trị toàn diện hệ phổi và hô hấp nhằm duy trì sức khỏe lá phổi tối ưu.",
     icon: <PulmonaryIcon />,
   },
 ]
@@ -34,9 +34,9 @@ export function ScienceSection() {
   return (
     <SpecialtiesGallery
       items={specialties}
-      title="Clinical Specialties"
-      subtitle="MEDICAL EXPERTISE"
-      description="Comprehensive medical care provided by board-certified specialists equipped with advanced diagnostics and treatments."
+      title="Các chuyên khoa lâm sàng"
+      subtitle="CHUYÊN MÔN Y TẾ"
+      description="Dịch vụ chăm sóc y tế toàn diện được thực hiện bởi các bác sĩ chuyên khoa được chứng nhận, với hệ thống chẩn đoán và điều trị hiện đại."
     />
   )
 }

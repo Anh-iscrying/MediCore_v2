@@ -63,7 +63,7 @@ export function HeroSection() {
       >
         <img
           src="/images/hero-hospital.png"
-          alt="Professional healthcare team providing patient care"
+          alt="Đội ngũ y tế chuyên nghiệp đang chăm sóc bệnh nhân"
           className="w-full h-full object-cover animate-zoom-in"
         />
         {/* Deep gradient overlay for premium look & excellent text readability */}
@@ -75,17 +75,17 @@ export function HeroSection() {
         <div className="max-w-2xl">
           {/* Text content */}
           <p className="reveal opacity-0 text-xs md:text-sm uppercase tracking-[0.25em] text-primary font-bold mb-6">
-            Advanced Healthcare Solutions
+            Giải pháp chăm sóc sức khỏe tiên tiến
           </p>
           <h1 className="font-sans text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-white tracking-tight mb-8">
-            <AnimatedText text="Your Health" delay={0.2} />
+            <AnimatedText text="Sức khỏe của bạn" delay={0.2} />
             <br />
             <span className="text-primary">
-              <AnimatedText text="Our Priority" delay={0.6} />
+              <AnimatedText text="Ưu tiên của chúng tôi" delay={0.6} />
             </span>
           </h1>
           <p className="reveal opacity-0 animation-delay-400 text-base md:text-lg text-neutral-300 leading-relaxed mb-10 max-w-xl">
-            Experience compassionate care from experienced specialists. AI-powered consultation and personalized treatment plans for your wellness journey.
+Trải nghiệm dịch vụ chăm sóc tận tâm từ các bác sĩ chuyên khoa giàu kinh nghiệm. Tư vấn ứng dụng AI và phác đồ điều trị cá nhân hóa cho hành trình chăm sóc sức khỏe của bạn.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/auth/signup">
@@ -93,7 +93,7 @@ export function HeroSection() {
                 size="lg"
                 className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-xs rounded-full px-8 py-6 transition-all duration-200 shadow-lg shadow-black/10 group"
               >
-                Book Consultation
+                Đặt lịch tư vấn
                 <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
@@ -103,7 +103,7 @@ export function HeroSection() {
                 variant="outline"
                 className="rounded-full px-8 py-6 text-xs font-bold uppercase tracking-widest border-neutral-700 hover:border-white text-white bg-transparent backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
               >
-                Our Specialties
+                Chuyên khoa của chúng tôi
               </Button>
             </Link>
           </div>

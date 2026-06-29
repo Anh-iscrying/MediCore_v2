@@ -7,21 +7,21 @@ import { UserCheck2 } from "lucide-react"
 
 const doctors = [
   {
-    name: "Dr. Evelyn Chen",
-    role: "Chief of Cardiology",
-    specialty: "Advanced Cardiac Diagnostics",
+    name: "BS. Evelyn Chen",
+    role: "Trưởng khoa Tim mạch",
+    specialty: "Chẩn đoán tim mạch chuyên sâu",
     image: "/images/doctor-chen.png",
   },
   {
-    name: "Dr. Marcus Vance",
-    role: "Director of Neurosurgery",
-    specialty: "Minimally Invasive Neuro-navigation",
+    name: "BS. Marcus Vance",
+    role: "Giám đốc Ngoại thần kinh",
+    specialty: "Định vị thần kinh ít xâm lấn",
     image: "/images/doctor-vance.png",
   },
   {
-    name: "Dr. Sarah Jenkins",
-    role: "Head of Orthopedics",
-    specialty: "Sports Medicine & Joint Replacement",
+    name: "BS. Sarah Jenkins",
+    role: "Trưởng khoa Chỉnh hình",
+    specialty: "Y học thể thao & thay khớp",
     image: "/images/doctor-jenkins.png",
   },
 ]
@@ -54,14 +54,14 @@ export function DoctorsSection() {
         {/* Section Header */}
         <div className="text-center mb-16 lg:mb-20">
           <p className="reveal opacity-0 text-xs uppercase tracking-[0.25em] text-primary font-bold mb-4">
-            BOARD-CERTIFIED SPECIALISTS
+            BÁC SĨ CHUYÊN KHOA ĐƯỢC CHỨNG NHẬN
           </p>
           <ScrollBlurText
-            text="World-Class Medical Team"
+            text="Đội ngũ y tế hàng đầu"
             className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-6xl"
           />
           <p className="reveal opacity-0 animation-delay-400 text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Meet our esteemed directors and chief specialists, combining years of clinical excellence with continuous technological integration.
+Gặp gỡ các giám đốc chuyên môn và bác sĩ trưởng khoa uy tín, kết hợp nhiều năm kinh nghiệm lâm sàng xuất sắc với công nghệ y tế hiện đại.
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export function DoctorsSection() {
                 variant="outline"
                 className="w-full border-border hover:border-foreground text-foreground bg-transparent rounded-full py-3 font-bold uppercase tracking-widest text-[10px] transition-all duration-200"
               >
-                View Profile
+                Xem hồ sơ
               </Button>
 
             </div>

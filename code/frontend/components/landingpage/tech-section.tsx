@@ -6,19 +6,19 @@ import { Cpu, ShieldCheck, Activity, Zap } from "lucide-react"
 
 const technologies = [
   {
-    title: "Robotic-Assisted Surgical Systems",
-    description: "Employs high-precision surgical robotic arms for minimally invasive procedures, resulting in shorter recovery periods and minimal scarring.",
-    highlight: "Sub-millimeter accuracy",
+    title: "Hệ thống phẫu thuật hỗ trợ robot",
+    description: "Ứng dụng cánh tay robot phẫu thuật có độ chính xác cao cho các thủ thuật ít xâm lấn, giúp rút ngắn thời gian hồi phục và giảm sẹo.",
+    highlight: "Độ chính xác dưới milimet",
   },
   {
-    title: "AI-Powered Diagnostic Imaging",
-    description: "Deep learning models instantly screen MRI and CT scans, highlighting micro-anomalies and predicting potential risks years in advance.",
-    highlight: "Early risk screening",
+    title: "Chẩn đoán hình ảnh hỗ trợ AI",
+    description: "Mô hình học sâu sàng lọc tức thì ảnh MRI và CT, làm nổi bật các bất thường vi mô và dự báo nguy cơ tiềm ẩn từ sớm.",
+    highlight: "Sàng lọc nguy cơ sớm",
   },
   {
-    title: "Biometric Wearable Remote Monitoring",
-    description: "Wearable sensor bands log real-time telemetry like ECG, oxygen saturation, and body temperature directly to our physician dashboards.",
-    highlight: "Real-time telemetry",
+    title: "Theo dõi từ xa bằng thiết bị đeo sinh trắc học",
+    description: "Vòng cảm biến ghi nhận dữ liệu thời gian thực như ECG, độ bão hòa oxy và nhiệt độ cơ thể trực tiếp lên bảng điều khiển của bác sĩ.",
+    highlight: "Dữ liệu thời gian thực",
   },
 ]
 
@@ -51,15 +51,15 @@ export function TechSection() {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 lg:mb-20">
           <div className="max-w-2xl text-left">
             <p className="text-xs uppercase tracking-[0.25em] text-primary font-bold mb-4">
-              ADVANCED CLINICAL INNOVATION
+              ĐỔI MỚI LÂM SÀNG TIÊN TIẾN
             </p>
             <ScrollBlurText
-              text="State-of-the-Art Medical Technology"
+              text="Công nghệ y tế hiện đại"
               className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-5xl"
             />
           </div>
           <p className="text-muted-foreground text-base max-w-sm mt-4 md:mt-0 leading-relaxed">
-            Combining scientific expertise with clinical-grade infrastructure for superior diagnostic outcomes.
+Kết hợp chuyên môn khoa học với hạ tầng đạt chuẩn lâm sàng để mang lại kết quả chẩn đoán vượt trội.
           </p>
         </div>
 
