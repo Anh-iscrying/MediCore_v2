@@ -44,7 +44,7 @@ export default function DashboardPage() {
         <div>
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#6c6a64]">Cổng bệnh nhân</p>
           <h1 className="font-serif text-3xl font-normal leading-tight text-foreground text-balance md:text-5xl tracking-tight">
-            Chào buổi sáng, Alexander
+            Chào Alexander
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#3d3d3a] md:text-base">
             Quản lý lịch hẹn khám, hồ sơ sức khỏe, đơn thuốc điện tử và các nhắc nhở chăm sóc sức khỏe.
@@ -74,8 +74,8 @@ export default function DashboardPage() {
             key={card.href}
             className={cn(
               "rounded-lg border p-6 shadow-sm transition-all",
-              card.highlight 
-                ? "bg-[#cc785c] border-[#cc785c] text-white" 
+              card.highlight
+                ? "bg-[#cc785c] border-[#cc785c] text-white"
                 : "bg-[#efe9de] border-[#e6dfd8] text-foreground"
             )}
             style={cardShadow}
@@ -91,7 +91,7 @@ export default function DashboardPage() {
             </div>
 
             <h2 className="mt-5 text-xl font-serif font-medium tracking-tight">{card.title}</h2>
-            <p className={cn("mt-2 text-sm leading-relaxed", 
+            <p className={cn("mt-2 text-sm leading-relaxed",
               card.highlight ? "text-white/95" : "text-[#3d3d3a]"
             )}>{card.description}</p>
 

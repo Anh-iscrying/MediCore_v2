@@ -29,11 +29,11 @@ export function AICareSection() {
     <section ref={sectionRef} id="ai-care" className="py-24 lg:py-32 bg-background border-t border-border">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          
+
           {/* Visual Chat Mockup on the Left */}
           <div className="reveal opacity-0 order-2 lg:order-1 flex justify-center">
             <div className="w-full max-w-[380px] bg-card rounded-xl border border-border overflow-hidden shadow-2xl shadow-black/5 dark:shadow-black/20 flex flex-col h-[480px]">
-              
+
               {/* Chat Header */}
               <div className="bg-muted px-5 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export function AICareSection() {
 
               {/* Chat Messages */}
               <div className="flex-1 p-5 overflow-y-auto space-y-4 flex flex-col justify-end text-xs">
-                
+
                 {/* User Message */}
                 <div className="bg-primary text-primary-foreground p-3.5 rounded-lg rounded-tr-none self-end max-w-[80%] leading-relaxed">
                   Xin chào, tôi cảm thấy chóng mặt và buồn nôn. Tôi nên làm gì?
@@ -94,7 +94,7 @@ export function AICareSection() {
               Chăm sóc khách hàng
             </p>
             <ScrollBlurText
-              text="Hỗ trợ y tế"
+              text="Hỗ trợ y tế thông minh"
               className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-5xl"
             />
             <p className="text-muted-foreground text-base leading-relaxed mb-10">

@@ -3,7 +3,7 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 
 export const metadata = {
-  title: "HealthCare Patient Portal — Dashboard",
+  title: "Medicore Patient Portal — Dashboard",
   description: "Review your appointments, daily care tasks, and latest health updates."
 }
 

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { AIHealthAssistant } from "@/components/dashboard/ai-health-assistant"
 import { BookingSuccessToast } from "@/components/dashboard/booking-success-toast"
 
 const cardShadow = { boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }
@@ -503,11 +502,6 @@ export default function AppointmentsPage() {
           </div>
         </section>
       )}
-
-      {/* AI Assistant Chat Section */}
-      <section className="mt-8">
-        <AIHealthAssistant />
-      </section>
     </div>
   )
 }

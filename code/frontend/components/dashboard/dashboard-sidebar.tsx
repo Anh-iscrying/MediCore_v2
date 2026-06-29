@@ -45,7 +45,7 @@ export function DashboardSidebar() {
         <Link href="/" className="flex items-center gap-2 group">
           <span className="font-sans text-foreground text-xl font-bold tracking-tight flex items-center gap-1">
             <span className="text-sidebar-primary text-xl leading-none font-serif select-none">*</span>
-            HealthCare
+            Medicore
           </span>
         </Link>
       </div>
