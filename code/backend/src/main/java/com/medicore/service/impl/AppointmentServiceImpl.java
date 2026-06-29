@@ -6,18 +6,22 @@ import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.AppointmentRequest;
 import com.medicore.dto.response.AppointmentResponse;
 import com.medicore.entity.clinical.Appointment;
+import com.medicore.entity.clinical.DoctorSchedule;
 import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient;
 import com.medicore.repository.AppointmentRepository;
 import com.medicore.repository.DoctorRepository;
+import com.medicore.repository.DoctorScheduleRepository;
 import com.medicore.repository.PatientRepository;
 import com.medicore.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,12 +33,15 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final DoctorScheduleRepository doctorScheduleRepository;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll().stream()
+        // JOIN FETCH: 1 query thay vì N+1 lazy loading
+        return appointmentRepository.findAllWithRelations().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -76,6 +83,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
+        validateAppointmentAvailability(doctor.getId(), appDate, request.getTimeSlot(), null);
 
         Appointment appointment = Appointment.builder()
                 .patient(patient)
@@ -89,7 +97,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setCreatedAt(LocalDateTime.now());
         appointment.setUpdatedAt(LocalDateTime.now());
 
-        appointment = appointmentRepository.save(appointment);
+        try {
+            appointment = appointmentRepository.save(appointment);
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
         return mapToResponse(appointment);
     }
 
@@ -105,6 +117,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
+        validateAppointmentAvailability(doctor.getId(), appDate, request.getTimeSlot(), appointment.getId());
 
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
@@ -114,7 +127,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(status);
         appointment.setUpdatedAt(LocalDateTime.now());
 
-        appointment = appointmentRepository.save(appointment);
+        try {
+            appointment = appointmentRepository.save(appointment);
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
         return mapToResponse(appointment);
     }
 
@@ -124,6 +141,92 @@ public class AppointmentServiceImpl implements AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
         appointmentRepository.delete(appointment);
+    }
+
+    private void validateAppointmentAvailability(Integer doctorId, LocalDate appDate, String appointmentTimeSlot, Integer currentAppointmentId) {
+        List<DoctorSchedule> schedules = doctorScheduleRepository.findByDoctorIdAndWorkDate(doctorId, appDate).stream()
+                .filter(schedule -> schedule.getIsBooked() == null || !schedule.getIsBooked())
+                .filter(schedule -> isWorkingSchedule(schedule.getTimeSlot()))
+                .collect(Collectors.toList());
+
+        if (schedules.isEmpty()) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Bác sĩ không có lịch trực vào ngày đã chọn");
+        }
+
+        boolean timeSlotInSchedule = schedules.stream()
+                .anyMatch(schedule -> isAppointmentSlotInsideSchedule(appointmentTimeSlot, schedule.getTimeSlot()));
+
+        if (!timeSlotInSchedule) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ hẹn không nằm trong ca trực của bác sĩ");
+        }
+
+        boolean isBooked = currentAppointmentId == null
+                ? appointmentRepository.existsByDoctorIdAndAppointmentDateAndTimeSlot(doctorId, appDate, appointmentTimeSlot)
+                : appointmentRepository.existsByDoctorIdAndAppointmentDateAndTimeSlotAndIdNot(doctorId, appDate, appointmentTimeSlot, currentAppointmentId);
+
+        if (isBooked) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
+    }
+
+    private boolean isWorkingSchedule(String scheduleTimeSlot) {
+        if (scheduleTimeSlot == null || scheduleTimeSlot.isBlank()) {
+            return false;
+        }
+        String normalized = scheduleTimeSlot.trim().toLowerCase();
+        return !normalized.equals("off") && !normalized.equals("nghỉ");
+    }
+
+    private boolean isAppointmentSlotInsideSchedule(String appointmentTimeSlot, String scheduleTimeSlot) {
+        if (appointmentTimeSlot == null || scheduleTimeSlot == null) {
+            return false;
+        }
+
+        try {
+            String normalizedSchedule = scheduleTimeSlot.trim().toLowerCase();
+            if (normalizedSchedule.equals("morning") || normalizedSchedule.equals("ca sáng")) {
+                normalizedSchedule = "08:00 - 12:00";
+            } else if (normalizedSchedule.equals("afternoon") || normalizedSchedule.equals("ca chiều")) {
+                normalizedSchedule = "13:30 - 17:30";
+            } else if (normalizedSchedule.equals("full_day") || normalizedSchedule.equals("cả ngày") || normalizedSchedule.equals("ca cả ngày")) {
+                normalizedSchedule = "08:00 - 17:30";
+            } else if (normalizedSchedule.equals("night") || normalizedSchedule.equals("ca tối")) {
+                normalizedSchedule = "17:30 - 21:30";
+            }
+
+            LocalTime[] appointmentRange = parseTimeRange(appointmentTimeSlot);
+            LocalTime[] scheduleRange = parseTimeRange(normalizedSchedule);
+
+            return !appointmentRange[0].isBefore(scheduleRange[0]) && !appointmentRange[1].isAfter(scheduleRange[1]);
+        } catch (RuntimeException e) {
+            return appointmentTimeSlot.trim().equalsIgnoreCase(scheduleTimeSlot.trim());
+        }
+    }
+
+    private LocalTime[] parseTimeRange(String timeRange) {
+        String[] parts = timeRange.split("\\s*-\\s*");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid time range: " + timeRange);
+        }
+        return new LocalTime[] {
+                LocalTime.parse(normalizeTime(parts[0]), TIME_FORMATTER),
+                LocalTime.parse(normalizeTime(parts[1]), TIME_FORMATTER)
+        };
+    }
+
+    private String normalizeTime(String value) {
+        String normalized = value.trim();
+        if (normalized.matches("^\\d{1,2}h$")) {
+            normalized = normalized.replace("h", ":00");
+        } else if (normalized.matches("^\\d{1,2}h\\d{1,2}$")) {
+            normalized = normalized.replace("h", ":");
+        }
+
+        String[] parts = normalized.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid time: " + value);
+        }
+        return String.format("%02d:%02d", Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
     }
 
     private Patient findPatientByIdOrCode(String patientIdOrCode) {

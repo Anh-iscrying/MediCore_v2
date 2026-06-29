@@ -3,6 +3,7 @@ package com.medicore.service.impl;
 import com.medicore.common.constants.ErrorCodes;
 import com.medicore.common.constants.UserRole;
 import com.medicore.common.exception.CustomBusinessException;
+import com.medicore.dto.request.DoctorProfileRequest;
 import com.medicore.dto.request.DoctorRequest;
 import com.medicore.dto.response.DoctorResponse;
 import com.medicore.entity.catalog.Specialty;
@@ -19,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -36,8 +39,14 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     @Transactional(readOnly = true)
     public List<DoctorResponse> getAllDoctors() {
+        // Batch email lookup: 1 query thay vì N+1
+        Map<Integer, String> emailMap = new HashMap<>();
+        authCredentialsRepository.findAllDoctorEmails().forEach(row ->
+            emailMap.put(((Number) row[0]).intValue(), (String) row[1])
+        );
+
         return doctorRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(doctor -> mapToResponseWithEmail(doctor, emailMap))
                 .collect(Collectors.toList());
     }
 
@@ -57,6 +66,20 @@ public class DoctorServiceImpl implements DoctorService {
     public DoctorResponse getDoctorById(Integer id) {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        return mapToResponse(doctor);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DoctorResponse getDoctorByEmail(String email) {
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
+        Doctor doctor = credentials.getDoctor();
+        if (doctor == null) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+
         return mapToResponse(doctor);
     }
 
@@ -83,6 +106,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .doctorName(request.getName())
                 .phone(request.getPhone())
                 .degree(request.getTitle())
+                .bio(request.getBio())
                 .experienceYears(request.getExperience())
                 .avatarUrl(request.getAvatarUrl())
                 .build();
@@ -120,6 +144,7 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setSpecialty(specialty);
         doctor.setPhone(request.getPhone());
         doctor.setDegree(request.getTitle());
+        doctor.setBio(request.getBio());
         doctor.setExperienceYears(request.getExperience());
         doctor.setAvatarUrl(request.getAvatarUrl());
         doctor.setUpdatedAt(LocalDateTime.now());
@@ -184,26 +209,30 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Override
     @Transactional
-    public DoctorResponse updateDoctorByEmail(String email, DoctorRequest request) {
-        // 1. Tìm tài khoản dựa trên email
+    public DoctorResponse updateDoctorByEmail(String email, DoctorProfileRequest request) {
         AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
-        
+
         Doctor doctor = credentials.getDoctor();
         if (doctor == null) {
             throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
         }
 
-        // 2. Chỉ cập nhật những trường được phép tự sửa
+        Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
         doctor.setDoctorName(request.getName());
         doctor.setPhone(request.getPhone());
         doctor.setDegree(request.getTitle());
+        doctor.setBio(request.getBio());
         doctor.setExperienceYears(request.getExperience());
-        doctor.setAvatarUrl(request.getAvatarUrl()); // Lưu link ảnh từ Supabase Storage
+        doctor.setSpecialty(specialty);
+        doctor.setAvatarUrl(request.getAvatarUrl());
+        doctor.setUpdatedAt(LocalDateTime.now());
 
         doctor = doctorRepository.save(doctor);
         return mapToResponse(doctor);
-}
+    }
 
     private DoctorResponse mapToResponse(Doctor doctor) {
         String email = authCredentialsRepository.findByDoctorId(doctor.getId())
@@ -218,6 +247,29 @@ public class DoctorServiceImpl implements DoctorService {
                 .specialtyId(doctor.getSpecialty() != null ? doctor.getSpecialty().getId() : null)
                 .specialtyName(doctor.getSpecialty() != null ? doctor.getSpecialty().getSpecialtyName() : null)
                 .title(doctor.getDegree())
+                .bio(doctor.getBio())
+                .email(email)
+                .phone(doctor.getPhone())
+                .experience(doctor.getExperienceYears())
+                .status("active")
+                .avatar(doctor.getAvatarUrl())
+                .doctorCode(doctor.getDoctorCode())
+                .build();
+    }
+
+    private DoctorResponse mapToResponseWithEmail(Doctor doctor, Map<Integer, String> emailMap) {
+        String email = emailMap.getOrDefault(doctor.getId(),
+                doctor.getDoctorCode() != null
+                        ? doctor.getDoctorCode().toLowerCase() + "@medicore.com"
+                        : "doctor." + doctor.getId() + "@medicore.com");
+
+        return DoctorResponse.builder()
+                .id(doctor.getId())
+                .name(doctor.getDoctorName())
+                .specialtyId(doctor.getSpecialty() != null ? doctor.getSpecialty().getId() : null)
+                .specialtyName(doctor.getSpecialty() != null ? doctor.getSpecialty().getSpecialtyName() : null)
+                .title(doctor.getDegree())
+                .bio(doctor.getBio())
                 .email(email)
                 .phone(doctor.getPhone())
                 .experience(doctor.getExperienceYears())

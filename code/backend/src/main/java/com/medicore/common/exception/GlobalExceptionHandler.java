@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleCustomBusinessException(CustomBusinessException ex) {
         log.error("CustomBusinessException: {}", ex.getMessage(), ex);
         ErrorCodes errorCode = ex.getErrorCode();
-        ApiResponse<Void> response = ApiResponse.error(errorCode.getCode(), errorCode.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(errorCode.getCode(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.valueOf(response.getStatus() >= 100 && response.getStatus() < 600 ? response.getStatus() : 500)).body(response);
     }
 

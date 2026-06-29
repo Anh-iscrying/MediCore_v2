@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,8 +27,18 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     @Override
     @Transactional(readOnly = true)
     public List<SpecialtyResponse> getAllSpecialties() {
+        // Batch count: 1 query thay vì N+1
+        Map<Integer, Long> countMap = new java.util.HashMap<>();
+        doctorRepository.countGroupBySpecialtyId().forEach(row ->
+            countMap.put(((Number) row[0]).intValue(), ((Number) row[1]).longValue())
+        );
+
         return specialtyRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(s -> SpecialtyResponse.builder()
+                        .id(s.getId())
+                        .name(s.getSpecialtyName())
+                        .doctorCount(countMap.getOrDefault(s.getId(), 0L))
+                        .build())
                 .collect(Collectors.toList());
     }
 

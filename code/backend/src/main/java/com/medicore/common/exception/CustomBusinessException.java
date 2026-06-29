@@ -11,4 +11,9 @@ public class CustomBusinessException extends RuntimeException {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
     }
+
+    public CustomBusinessException(ErrorCodes errorCode, String message) {
+        super(message);
+        this.errorCode = errorCode;
+    }
 }
