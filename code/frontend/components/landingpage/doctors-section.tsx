@@ -50,7 +50,7 @@ export function DoctorsSection() {
   return (
     <section ref={sectionRef} id="doctors" className="py-24 lg:py-32 bg-background border-t border-border">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <div className="text-center mb-16 lg:mb-20">
           <p className="reveal opacity-0 text-xs uppercase tracking-[0.25em] text-primary font-bold mb-4">
@@ -61,7 +61,7 @@ export function DoctorsSection() {
             className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-6xl"
           />
           <p className="reveal opacity-0 animation-delay-400 text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-Gặp gỡ các giám đốc chuyên môn và bác sĩ trưởng khoa uy tín, kết hợp nhiều năm kinh nghiệm lâm sàng xuất sắc với công nghệ y tế hiện đại.
+            Gặp gỡ các giám đốc chuyên môn và bác sĩ trưởng khoa uy tín, kết hợp nhiều năm kinh nghiệm lâm sàng xuất sắc với công nghệ y tế hiện đại.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ Gặp gỡ các giám đốc chuyên môn và bác sĩ trưởng khoa uy tín, k
                 boxShadow: 'rgba(0,0,0,0.05) 0px 8px 8px'
               }}
             >
-              
+
               {/* Circular Avatar Container */}
               <div className="size-48 rounded-full overflow-hidden mb-6 relative border border-border group-hover:border-primary transition-colors duration-300">
                 <img
@@ -95,14 +95,6 @@ Gặp gỡ các giám đốc chuyên môn và bác sĩ trưởng khoa uy tín, k
               <p className="text-muted-foreground text-sm leading-relaxed mb-6 h-12 overflow-hidden">
                 {doctor.specialty}
               </p>
-
-              {/* View Profile Button */}
-              <Button
-                variant="outline"
-                className="w-full border-border hover:border-foreground text-foreground bg-transparent rounded-full py-3 font-bold uppercase tracking-widest text-[10px] transition-all duration-200"
-              >
-                Xem hồ sơ
-              </Button>
 
             </div>
           ))}

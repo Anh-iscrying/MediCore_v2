@@ -1,32 +1,44 @@
 "use client"
 
-import { HeartCareIcon, BrainHealthIcon, BoneJointIcon, PulmonaryIcon } from "@/components/base/medical-icons"
 import { SpecialtiesGallery } from "./specialties-gallery"
+import { HeartPulse, Stethoscope, Syringe, Sparkles, Ear, Baby } from "lucide-react"
 
 const specialties = [
   {
     id: "cardiology",
-    title: "Chăm sóc tim mạch",
-    description: "Điều trị tim mạch tiên tiến và quản lý phòng ngừa bệnh tim bằng công nghệ hiện đại.",
-    icon: <HeartCareIcon />,
+    title: "Tim mạch",
+    description: "Chẩn đoán, điều trị chuyên sâu và dự phòng các bệnh lý tim mạch, mạch vành và tăng huyết áp bằng kỹ thuật can thiệp tiên tiến.",
+    icon: <HeartPulse className="size-8 stroke-[1.5]" />,
   },
   {
-    id: "neurology",
-    title: "Sức khỏe thần kinh",
-    description: "Chăm sóc thần kinh chuyên sâu cho phòng ngừa đột quỵ, rối loạn trí nhớ và các bệnh lý thần kinh.",
-    icon: <BrainHealthIcon />,
+    id: "internal-medicine",
+    title: "Nội khoa",
+    description: "Quản lý và điều trị toàn diện các bệnh lý nội tiết, tiêu hóa, hô hấp và các bệnh lý mãn tính của người trưởng thành.",
+    icon: <Stethoscope className="size-8 stroke-[1.5]" />,
   },
   {
-    id: "orthopedics",
-    title: "Cơ xương khớp",
-    description: "Phẫu thuật chỉnh hình và y học thể thao chuyên nghiệp với kỹ thuật ít xâm lấn.",
-    icon: <BoneJointIcon />,
+    id: "surgery",
+    title: "Ngoại khoa",
+    description: "Phẫu thuật nội soi ít xâm lấn, phẫu thuật chỉnh hình chấn thương ngoại khoa kỹ thuật cao giúp rút ngắn thời gian hồi phục.",
+    icon: <Syringe className="size-8 stroke-[1.5]" />,
   },
   {
-    id: "pulmonary",
-    title: "Chăm sóc hô hấp",
-    description: "Điều trị toàn diện hệ phổi và hô hấp nhằm duy trì sức khỏe lá phổi tối ưu.",
-    icon: <PulmonaryIcon />,
+    id: "dermatology",
+    title: "Da liễu",
+    description: "Khám và trị liệu hiệu quả các bệnh lý về da, tóc, móng kết hợp các liệu pháp thẩm mỹ da công nghệ cao chuẩn y khoa.",
+    icon: <Sparkles className="size-8 stroke-[1.5]" />,
+  },
+  {
+    id: "ent",
+    title: "Tai mũi họng",
+    description: "Chẩn đoán nâng cao và điều trị các bệnh lý tai mũi họng bằng phương pháp nội soi ống mềm thế hệ mới, nhẹ nhàng và chính xác.",
+    icon: <Ear className="size-8 stroke-[1.5]" />,
+  },
+  {
+    id: "pediatrics",
+    title: "Nhi khoa",
+    description: "Chăm sóc sức khỏe toàn diện cho trẻ em, theo dõi sự phát triển thể chất và tinh thần, tư vấn dinh dưỡng và tiêm chủng.",
+    icon: <Baby className="size-8 stroke-[1.5]" />,
   },
 ]
 

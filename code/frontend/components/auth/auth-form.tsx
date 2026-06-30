@@ -202,7 +202,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
           {/* Forgot Password - Login only */}
           {type === "login" && (
             <div className="flex justify-end pt-1">
-              <Link href="#" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium">
+              <Link href="/auth/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium font-bold">
                 Quên mật khẩu?
               </Link>
             </div>

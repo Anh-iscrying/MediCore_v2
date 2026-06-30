@@ -81,11 +81,11 @@ export function HeroSection() {
             <AnimatedText text="Sức khỏe của bạn" delay={0.2} />
             <br />
             <span className="text-primary">
-              <AnimatedText text="Ưu tiên của chúng tôi" delay={0.6} />
+              <AnimatedText text="Ưu tiên hàng đầu" delay={0.6} />
             </span>
           </h1>
           <p className="reveal opacity-0 animation-delay-400 text-base md:text-lg text-neutral-300 leading-relaxed mb-10 max-w-xl">
-Trải nghiệm dịch vụ chăm sóc tận tâm từ các bác sĩ chuyên khoa giàu kinh nghiệm. Tư vấn ứng dụng AI và phác đồ điều trị cá nhân hóa cho hành trình chăm sóc sức khỏe của bạn.
+            Trải nghiệm dịch vụ chăm sóc tận tâm từ các bác sĩ chuyên khoa giàu kinh nghiệm. Tư vấn ứng dụng AI và phác đồ điều trị cá nhân hóa cho hành trình chăm sóc sức khỏe của bạn.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/auth/signup">

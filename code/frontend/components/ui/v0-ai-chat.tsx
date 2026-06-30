@@ -178,10 +178,10 @@ export function VercelV0Chat() {
 
     return (
         <div className={cn(
-            "flex flex-col items-center w-full mx-auto p-4 transition-all duration-300 ease-in-out select-none",
+            "flex flex-col w-full mx-auto transition-all duration-300 ease-in-out select-none h-full",
             hasMessages 
-                ? "justify-between min-h-[calc(100vh-12rem)] max-w-4xl space-y-6" 
-                : "justify-center min-h-[calc(100vh-14rem)] max-w-2xl space-y-8"
+                ? "justify-between max-w-4xl min-h-0" 
+                : "justify-center items-center max-w-2xl space-y-8 py-12 md:py-24"
         )}>
             {/* 1. Welcome Title (Centered Mode Only) - EDITORIAL SERIF */}
             {!hasMessages && (
@@ -194,7 +194,7 @@ export function VercelV0Chat() {
 
             {/* 2. Chat History View (Chat Mode Only) */}
             {hasMessages && (
-                <div className="flex-grow w-full overflow-y-auto space-y-6 pr-2 max-h-[calc(100vh-22rem)] scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent">
+                <div className="flex-grow flex-1 min-h-0 w-full overflow-y-auto space-y-6 pr-2 mb-4 scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent">
                     {messages.map((msg) => {
                         const isAI = msg.sender === "ai";
                         return (
@@ -254,7 +254,7 @@ export function VercelV0Chat() {
             )}
 
             {/* 3. Main Chat Input Block (Claude Light Card style) */}
-            <div className="w-full space-y-4">
+            <div className="w-full space-y-4 shrink-0">
                 <div className="relative bg-[#faf9f5] rounded-xl border border-[#e6dfd8] shadow-sm p-1">
                     <div className="overflow-y-auto">
                         <Textarea

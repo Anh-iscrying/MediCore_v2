@@ -2,7 +2,7 @@ import type React from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 
 export const metadata = {
-  title: "HealthCare Patient Portal — Dashboard",
+  title: "Medicore Patient Portal — Dashboard",
   description: "Review your appointments, daily care tasks, and latest health updates."
 }
 
