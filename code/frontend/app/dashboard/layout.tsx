@@ -1,6 +1,5 @@
 import type React from "react"
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 
 export const metadata = {
   title: "Medicore Patient Portal — Dashboard",
@@ -12,20 +11,5 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <div className="relative h-screen overflow-hidden bg-background text-foreground font-sans antialiased">
-      <div className="flex h-screen overflow-hidden">
-        <div className="hidden h-screen w-64 shrink-0 md:block">
-          <DashboardSidebar />
-        </div>
-
-        <div className="flex h-screen min-h-0 flex-1 flex-col overflow-hidden">
-          <DashboardHeader />
-          <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-            {children}
-          </main>
-        </div>
-      </div>
-    </div>
-  )
+  return <DashboardShell>{children}</DashboardShell>
 }

@@ -5,7 +5,9 @@ import com.medicore.common.constants.GenderType;
 import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.PatientRequest;
 import com.medicore.dto.response.PatientResponse;
+import com.medicore.entity.user.AuthCredentials;
 import com.medicore.entity.user.Patient;
+import com.medicore.repository.AuthCredentialsRepository;
 import com.medicore.repository.PatientRepository;
 import com.medicore.service.IdGeneratorService;
 import com.medicore.service.PatientService;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 public class PatientServiceImpl implements PatientService {
 
     private final PatientRepository patientRepository;
+    private final AuthCredentialsRepository authCredentialsRepository;
     private final IdGeneratorService idGeneratorService;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -33,6 +36,17 @@ public class PatientServiceImpl implements PatientService {
         return patientRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PatientResponse getCurrentPatient(String email) {
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+        if (credentials.getPatient() == null) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+        return mapToResponse(credentials.getPatient(), credentials.getEmail());
     }
 
     @Override
@@ -122,6 +136,10 @@ public class PatientServiceImpl implements PatientService {
     }
 
     private PatientResponse mapToResponse(Patient patient) {
+        return mapToResponse(patient, null);
+    }
+
+    private PatientResponse mapToResponse(Patient patient, String emailOverride) {
         String genderStr = "M";
         if (patient.getGender() == GenderType.FEMALE) {
             genderStr = "F";
@@ -132,8 +150,10 @@ public class PatientServiceImpl implements PatientService {
             dobStr = patient.getDob().format(DATE_FORMATTER);
         }
 
-        String email = patient.getPatientCode() != null 
-                ? patient.getPatientCode().toLowerCase() + "@medicore.com" 
+        String email = emailOverride != null
+                ? emailOverride
+                : patient.getPatientCode() != null
+                ? patient.getPatientCode().toLowerCase() + "@medicore.com"
                 : "patient." + patient.getId() + "@medicore.com";
 
         String insNum = "GD" + String.format("%08d", patient.getId());

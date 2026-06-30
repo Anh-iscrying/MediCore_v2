@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface PatientService {
     List<PatientResponse> getAllPatients();
+    PatientResponse getCurrentPatient(String email);
     PatientResponse getPatientById(Integer id);
     PatientResponse getPatientByCode(String code);
     PatientResponse createPatient(PatientRequest request);

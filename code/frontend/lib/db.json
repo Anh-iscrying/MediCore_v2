@@ -1037,29 +1037,11 @@
   ],
   "appointments": [
     {
-      "id": "hho8mfj",
+      "id": "k123p8f",
       "doctor": "Dr. Sarah Jenkins",
       "specialty": "Tim mạch",
       "date": "CN, 28/06",
-      "time": "08:30 AM",
-      "status": "CANCELLED",
-      "symptoms": ""
-    },
-    {
-      "id": "ebz9c4w",
-      "doctor": "Dr. Sarah Jenkins",
-      "specialty": "Tim mạch",
-      "date": "CN, 28/06",
-      "time": "08:30 AM",
-      "status": "CANCELLED",
-      "symptoms": ""
-    },
-    {
-      "id": "h7jtu8k",
-      "doctor": "Dr. Sarah Jenkins",
-      "specialty": "Tim mạch",
-      "date": "CN, 28/06",
-      "time": "08:30 AM",
+      "time": "09:00 AM",
       "status": "CANCELLED",
       "symptoms": ""
     },
