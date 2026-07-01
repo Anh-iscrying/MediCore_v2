@@ -44,7 +44,7 @@ export function DashboardSidebar() {
       <div className="p-6 pb-4">
         <Link href="/" className="flex items-center gap-2 group">
           <span className="font-sans text-foreground text-xl font-bold tracking-tight flex items-center gap-1">
-            <span className="text-sidebar-primary text-xl leading-none font-serif select-none">*</span>
+            <span className="text-sidebar-primary text-xl leading-none font-sans font-black select-none">*</span>
             Medicore
           </span>
         </Link>
@@ -59,10 +59,10 @@ export function DashboardSidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-4 px-4 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200 border",
+                "flex items-center gap-4 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border",
                 isActive
-                  ? "bg-background text-foreground border-sidebar-border shadow-sm"
-                  : "border-transparent text-sidebar-foreground/70 hover:text-foreground hover:bg-sidebar-accent/80"
+                  ? "bg-sidebar-accent text-foreground border-sidebar-border shadow-none"
+                  : "border-transparent text-sidebar-foreground/70 hover:text-foreground hover:bg-sidebar-accent/50"
               )}
             >
               <item.icon className={cn("w-5 h-5", isActive ? "text-sidebar-primary" : "text-sidebar-foreground/70")} />
@@ -86,11 +86,11 @@ export function DashboardSidebar() {
             {careTeam.map((member) => (
               <div
                 key={member.name}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-background transition-all group border border-transparent hover:border-sidebar-border hover:shadow-sm"
+                className="flex items-center justify-between p-2 rounded-xl hover:bg-sidebar-accent transition-all group border border-transparent hover:border-sidebar-border hover:shadow-none"
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground shrink-0 border border-sidebar-border bg-background">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground shrink-0 border border-sidebar-border bg-sidebar-accent">
                       {member.name.split(" ").slice(-1)[0][0]}
                     </div>
                     {member.isOnline && (

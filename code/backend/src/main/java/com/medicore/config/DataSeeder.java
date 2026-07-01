@@ -46,8 +46,11 @@ public class DataSeeder implements CommandLineRunner {
 
         // 3. Tạo index chống đặt trùng lịch
         try {
-            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_appointments_doctor_date_time " +
-                    "ON public.appointments (doctor_id, appointment_date, time_slot)");
+            jdbcTemplate.execute("DROP INDEX IF EXISTS public.uk_appointments_doctor_date_time");
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_appointments_doctor_date_time_active " +
+                    "ON public.appointments (doctor_id, appointment_date, time_slot) WHERE status <> 'CANCELLED'");
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_appointments_patient_active " +
+                    "ON public.appointments (patient_id) WHERE status <> 'CANCELLED'");
             jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_doctor_schedules_doctor_date " +
                     "ON public.doctor_schedules (doctor_id, work_date)");
             jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_doctor_schedules_doctor_date_time " +

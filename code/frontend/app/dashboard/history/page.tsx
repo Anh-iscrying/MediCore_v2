@@ -1,7 +1,5 @@
 // No icons needed
 
-const cardShadow = { boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }
-
 const visits = [
   {
     date: "18 Th06 2026",
@@ -31,45 +29,45 @@ const visits = [
 
 export default function MedicalHistoryPage() {
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8">
+    <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 lg:col-span-2" style={cardShadow}>
-          <div className="flex items-center gap-3 rounded-md border border-[#e6dfd8] bg-[#faf9f5] px-4 py-3 text-[#6c6a64]">
+        <article className="rounded-xl border border-border bg-card p-6 lg:col-span-2">
+          <div className="flex items-center gap-3 rounded-md border border-[#0e0f0c] bg-card px-4 py-3 text-muted-foreground">
             <span className="text-sm font-semibold">Tìm kiếm đợt khám, chẩn đoán, bác sĩ... (Chỉ mô phỏng)</span>
           </div>
         </article>
 
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
-          <h2 className="text-xl font-serif font-medium text-foreground">{visits.length} đợt khám bệnh</h2>
-          <p className="mt-2 text-sm text-[#6c6a64]">Hồ sơ bệnh án được đồng bộ từ dữ liệu của bệnh viện.</p>
+        <article className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-xl font-sans font-black text-foreground">{visits.length} đợt khám bệnh</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Hồ sơ bệnh án được đồng bộ từ dữ liệu của bệnh viện.</p>
         </article>
       </section>
 
       <section className="space-y-4">
         {visits.map((visit, index) => (
-          <article key={`${visit.date}-${visit.doctor}`} className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
+          <article key={`${visit.date}-${visit.doctor}`} className="rounded-xl border border-border bg-card p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="flex items-start gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#6c6a64]">{visit.date}</p>
-                  <h2 className="mt-2 text-2xl font-serif font-medium text-foreground">{visit.diagnosis}</h2>
-                  <p className="mt-1 text-sm text-[#6c6a64]">{visit.doctor} • Khoa {visit.specialty}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{visit.date}</p>
+                  <h2 className="mt-2 text-2xl font-sans font-black text-foreground tracking-tight">{visit.diagnosis}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{visit.doctor} • Khoa {visit.specialty}</p>
                 </div>
               </div>
-              <button className="w-full rounded-md border border-[#e6dfd8] bg-[#faf9f5] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#141413] hover:bg-[#efe9de] hover:border-white md:w-auto cursor-pointer transition-colors">
+              <button className="w-full rounded-xl border border-[#0e0f0c] bg-card px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background md:w-auto cursor-pointer transition-colors">
                 Chi tiết đợt khám
               </button>
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-lg border border-[#e6dfd8] bg-[#faf9f5] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Hướng dẫn điều trị</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#3d3d3a]">{visit.treatment}</p>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hướng dẫn điều trị</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{visit.treatment}</p>
               </div>
-              <div className="rounded-lg border border-[#e6dfd8] bg-[#faf9f5] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Ghi chú & Tái khám</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#3d3d3a]">{visit.note}</p>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ghi chú & Tái khám</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{visit.note}</p>
               </div>
             </div>
           </article>
