@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/base/theme-provider"
+import { AuthProvider } from "@/components/auth/auth-provider"
 import "@/styles/globals.css"
 
 const inter = Inter({
@@ -11,9 +12,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "HealthCare Hospital — Expert Medical Care",
+  title: "Medicore Hospital — Chăm sóc y tế chuyên nghiệp",
   description:
-    "Experience compassionate healthcare from experienced specialists. Advanced medical treatments, AI-powered consultation, and personalized care plans.",
+    "Trải nghiệm dịch vụ chăm sóc sức khỏe tận tâm từ các bác sĩ chuyên khoa giàu kinh nghiệm. Điều trị y tế tiên tiến, tư vấn ứng dụng AI và kế hoạch chăm sóc cá nhân hóa.",
   generator: "v0.app",
   icons: {
     icon: [
@@ -40,10 +41,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
         <Analytics />
       </body>

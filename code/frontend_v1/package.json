@@ -2,11 +2,11 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+"scripts": {
     "build": "next build",
-    "dev": "set -a; [ -f .env ] && . ./.env; [ -f .env.local ] && . ./.env.local; set +a; next dev -p $PORT",
+    "dev": "next dev -p 3000",
     "lint": "eslint .",
-    "start": "set -a; [ -f .env ] && . ./.env; [ -f .env.local ] && . ./.env.local; set +a; next start -p $PORT"
+    "start": "next start -p 3000"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -66,6 +66,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv-cli": "^11.0.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",

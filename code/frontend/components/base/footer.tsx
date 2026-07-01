@@ -3,15 +3,16 @@ import Link from "next/link"
 const footerLinks = {
   specialties: [
     { label: "Tim mạch", href: "#specialties" },
-    { label: "Neurology", href: "#specialties" },
-    { label: "Orthopedics", href: "#specialties" },
-    { label: "Respiratory Care", href: "#specialties" },
+    { label: "Nội khoa", href: "#specialties" },
+    { label: "Ngoại khoa", href: "#specialties" },
+    { label: "Da liễu", href: "#specialties" },
+    { label: "Tai mũi họng", href: "#specialties" },
+    { label: "Nhi khoa", href: "#specialties" },
   ],
   company: [
-    { label: "About Us", href: "#mission" },
-    { label: "Our Services", href: "#products" },
-    { label: "Careers", href: "#" },
-    { label: "Contact Us", href: "#" },
+    { label: "Thông tin về chúng tôi", href: "#mission" },
+    { label: "Dịch vụ của chúng tôi", href: "#products" },
+    { label: "Thông tin liên hệ", href: "#" },
   ],
   patient: [
     { label: "Đặt lịch hẹn", href: "/auth/signup" },
@@ -91,7 +92,7 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-muted-foreground/60">© 2025 Medicore Hospital. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground/60">© 2025 Medicore Hospital. Đã đăng ký bản quyền.</p>
           <div className="flex gap-6 text-xs text-muted-foreground/60">
             <Link href="#" className="hover:text-foreground transition-colors">
               Chính sách bảo mật

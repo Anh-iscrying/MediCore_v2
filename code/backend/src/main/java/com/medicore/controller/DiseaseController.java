@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/diseases")
 @RequiredArgsConstructor
-public class DiseaseController { // Khoan, đây là copy paste nhầm tên class, phải đổi thành DiseaseController
+public class DiseaseController {
 
     private final DiseaseService diseaseService;
 

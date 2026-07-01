@@ -7,22 +7,22 @@ import { ScrollBlurText } from "@/components/base/scroll-blur-text"
 
 const products = [
   {
-    name: "Vitality Suite",
-    description: "Personalized longevity and preventive medicine program designed to optimize your health span, energy, and cellular vitality.",
+    name: "Gói Sức Sống",
+    description: "Chương trình y học dự phòng và kéo dài tuổi khỏe được cá nhân hóa nhằm tối ưu sức khỏe, năng lượng và sức sống tế bào.",
     image: "/images/product-vitality.png",
-    tag: "Wellness & Longevity",
+    tag: "Sức khỏe & tuổi thọ",
   },
   {
-    name: "Serenity Mental Care",
-    description: "Immersive mental health support, mindfulness integration, and professional psychiatric counseling to restore inner peace.",
+    name: "Chăm Sóc Tinh Thần Serenity",
+    description: "Hỗ trợ sức khỏe tinh thần chuyên sâu, tích hợp chánh niệm và tư vấn tâm thần chuyên nghiệp để khôi phục sự bình an nội tại.",
     image: "/images/product-serenity.png",
-    tag: "Mental Well-being",
+    tag: "Sức khỏe tinh thần",
   },
   {
-    name: "Equilibrium Rehab",
-    description: "Advanced movement science, posture correction, and state-of-the-art physical rehab program to restore your body's balance.",
+    name: "Phục Hồi Cân Bằng",
+    description: "Chương trình phục hồi chức năng hiện đại, chỉnh tư thế và ứng dụng khoa học vận động tiên tiến để khôi phục sự cân bằng cơ thể.",
     image: "/images/product-equilibrium.png",
-    tag: "Physical Rehabilitation",
+    tag: "Phục hồi thể chất",
   },
 ]
 
@@ -53,14 +53,14 @@ export function ProductSection() {
         {/* Section Header */}
         <div className="text-center mb-16 lg:mb-20">
           <p className="reveal opacity-0 text-sm uppercase tracking-[0.2em] text-primary font-bold mb-4">
-            PROGRAMS & SERVICES
+            CHƯƠNG TRÌNH & DỊCH VỤ
           </p>
           <ScrollBlurText
-            text="Health Optimization Suites"
+            text="Gói tối ưu sức khỏe"
             className="font-sans text-4xl text-foreground text-balance mb-6 md:text-6xl font-bold tracking-tight"
           />
           <p className="reveal opacity-0 animation-delay-400 text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Explore our specialized health optimization suites and digital therapeutic services designed for your modern lifestyle.
+Khám phá các gói tối ưu sức khỏe chuyên biệt và dịch vụ trị liệu số được thiết kế phù hợp với lối sống hiện đại của bạn.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export function ProductSection() {
                     variant="default"
                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold tracking-widest uppercase text-[11px] rounded-full py-4 transition-all duration-200"
                   >
-                    Discover Program
+                    Khám phá chương trình
                     <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </div>

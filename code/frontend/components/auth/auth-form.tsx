@@ -5,12 +5,20 @@ import Link from "next/link"
 import { Button } from "@/components/base/ui/button"
 import { Mail, Lock, User, ArrowRight } from "lucide-react"
 
-interface AuthFormProps {
-  type: "login" | "signup"
-  onSubmit?: (data: Record<string, string>) => void
+export type AuthFormData = {
+  email: string
+  password: string
+  name: string
+  confirmPassword: string
 }
 
-export function AuthForm({ type, onSubmit }: AuthFormProps) {
+interface AuthFormProps {
+  type: "login" | "signup"
+  error?: string
+  onSubmit?: (data: AuthFormData) => Promise<void> | void
+}
+
+export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -70,9 +78,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      onSubmit?.(formData)
+      await onSubmit?.(formData)
     } finally {
       setIsLoading(false)
     }
@@ -196,10 +202,16 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           {/* Forgot Password - Login only */}
           {type === "login" && (
             <div className="flex justify-end pt-1">
-              <Link href="#" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium">
+              <Link href="/auth/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium font-bold">
                 Quên mật khẩu?
               </Link>
             </div>
+          )}
+
+          {error && (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+              {error}
+            </p>
           )}
 
           {/* Submit Button - Pill shaped */}

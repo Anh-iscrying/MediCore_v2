@@ -72,7 +72,7 @@ export function Header() {
           <button
             className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
             onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle menu"
+            aria-label="Mở hoặc đóng menu"
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>

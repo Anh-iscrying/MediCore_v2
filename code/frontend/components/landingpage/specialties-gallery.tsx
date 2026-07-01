@@ -26,15 +26,16 @@ export interface SpecialtiesGalleryProps {
 }
 
 const SpecialtiesGallery = ({
-  subtitle = "MEDICAL EXPERTISE",
-  title = "World-Class Specialties",
-  description = "Comprehensive healthcare services delivered by experienced specialists using advanced medical technology.",
+  subtitle = "CHUYÊN MÔN Y TẾ",
+  title = "Các chuyên khoa hàng đầu",
+  description = "Dịch vụ chăm sóc sức khỏe toàn diện được cung cấp bởi các chuyên gia giàu kinh nghiệm, ứng dụng công nghệ y tế tiên tiến.",
   items,
 }: SpecialtiesGalleryProps) => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
 
   useEffect(() => {
     if (!carouselApi) return
@@ -45,8 +46,13 @@ const SpecialtiesGallery = ({
       setCurrentSlide(carouselApi.selectedScrollSnap())
     }
 
+    setScrollSnaps(carouselApi.scrollSnapList())
     updateSelection()
     carouselApi.on("select", updateSelection)
+    carouselApi.on("reInit", () => {
+      setScrollSnaps(carouselApi.scrollSnapList())
+      updateSelection()
+    })
 
     return () => {
       carouselApi.off("select", updateSelection)
@@ -101,18 +107,19 @@ const SpecialtiesGallery = ({
           </CarouselContent>
         </Carousel>
 
-        <div className="mt-8 flex justify-center gap-2">
-          {items.map((_, index) => (
-            <button
-              key={index}
-              className={`h-2 rounded-full transition-all duration-200 ${
-                currentSlide === index ? "w-5 bg-primary" : "w-2 bg-primary/20 hover:bg-primary/40"
-              }`}
-              onClick={() => carouselApi?.scrollTo(index)}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+        {scrollSnaps.length > 1 && (
+          <div className="mt-8 flex justify-center gap-2">
+            {scrollSnaps.map((_, index) => (
+              <button
+                key={index}
+                className={`h-2 rounded-full transition-all duration-200 ${currentSlide === index ? "w-5 bg-primary" : "w-2 bg-primary/20 hover:bg-primary/40"
+                  }`}
+                onClick={() => carouselApi?.scrollTo(index)}
+                aria-label={`Đi tới slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )
