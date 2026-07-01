@@ -12,12 +12,7 @@ type BackendResponse<T> = {
 type Specialty = {
   id: number
   name: string
-}
-
-type Doctor = {
-  id: number
-  specialty_id?: number
-  doctor_schedules?: unknown[]
+  doctorCount?: number
 }
 
 function getAuthHeaders(request: NextRequest) {
@@ -58,35 +53,18 @@ async function parseBackendResponse<T>(response: Response): Promise<T> {
 
 export async function GET(request: NextRequest) {
   try {
-    const requestedDate = request.nextUrl.searchParams.get("date")
-    const requestedSpecialtyId = request.nextUrl.searchParams.get("specialtyId")
-
-    if (!requestedDate) {
-      return NextResponse.json({ error: "Missing date" }, { status: 400 })
-    }
-
-    const headers = getAuthHeaders(request)
-    const specialtyIds = requestedSpecialtyId
-      ? [Number(requestedSpecialtyId)]
-      : (await parseBackendResponse<Specialty[]>(
-          await fetch(`${BACKEND_API_BASE_URL}/specialties`, { headers, cache: "no-store" })
-        )).map(specialty => specialty.id)
-
-    const doctorsBySpecialty = await Promise.all(
-      specialtyIds.map(async specialtyId =>
-        parseBackendResponse<Doctor[]>(
-          await fetch(
-            `${BACKEND_API_BASE_URL}/doctors/specialty/${encodeURIComponent(String(specialtyId))}/available?date=${encodeURIComponent(requestedDate)}`,
-            { headers, cache: "no-store" }
-          )
-        )
-      )
+    const specialties = await parseBackendResponse<Specialty[]>(
+      await fetch(`${BACKEND_API_BASE_URL}/specialties`, {
+        method: "GET",
+        headers: getAuthHeaders(request),
+        cache: "no-store",
+      })
     )
 
-    return NextResponse.json(doctorsBySpecialty.flat())
+    return NextResponse.json(specialties ?? [])
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch doctors" },
+      { error: error instanceof Error ? error.message : "Failed to fetch specialties" },
       { status: 500 }
     )
   }

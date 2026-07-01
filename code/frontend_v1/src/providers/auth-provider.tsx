@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Chưa đăng nhập: Chỉ cho phép ở các trang login/register, ngược lại chuyển hướng về login
     if (!token || !user) {
       if (!isAuthRoute) {
-        router.replace("/login")
+        router.replace("/login?error=required")
       }
       return
     }
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Role không thuộc hệ thống nhân sự: Xoá phiên và quay về đăng nhập
     if (!isStaffRole(user.role)) {
       clearAuth()
-      router.replace("/login")
+      router.replace("/login?error=forbidden")
       return
     }
 

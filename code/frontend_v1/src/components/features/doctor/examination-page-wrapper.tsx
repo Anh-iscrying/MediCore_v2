@@ -6,16 +6,32 @@ import { useData } from "@/providers/data-provider"
 
 interface ExaminationPageWrapperProps {
   patientId: string
+  appointmentId?: string
 }
 
-export function ExaminationPageWrapper({ patientId }: ExaminationPageWrapperProps) {
-  const { patients, ensurePatientsLoaded } = useData()
+export function ExaminationPageWrapper({ patientId, appointmentId }: ExaminationPageWrapperProps) {
+  const { patients, appointments, ensurePatientsLoaded, ensureAppointmentsLoaded } = useData()
 
   useEffect(() => {
     ensurePatientsLoaded()
-  }, [ensurePatientsLoaded])
+    ensureAppointmentsLoaded()
+  }, [ensurePatientsLoaded, ensureAppointmentsLoaded])
 
   const patient = patients.find((p) => p.id === patientId)
+  const today = new Date().toISOString().split("T")[0]
+  const appointment = appointmentId
+    ? appointments.find((a) => a.id === appointmentId)
+    : appointments.find(
+        (a) =>
+          (a.patientId === patientId || (patient?.patientCode && a.patientCode === patient.patientCode)) &&
+          a.appointmentDate === today &&
+          a.status === "IN_PROGRESS"
+      ) ?? appointments.find(
+        (a) =>
+          (a.patientId === patientId || (patient?.patientCode && a.patientCode === patient.patientCode)) &&
+          a.appointmentDate === today &&
+          (a.status === "WAITING" || a.status === "PENDING")
+      )
 
   // Fallback to a mock patient if not found (for demo purposes)
   const displayPatient = patient || {
@@ -31,5 +47,5 @@ export function ExaminationPageWrapper({ patientId }: ExaminationPageWrapperProp
     createdAt: new Date().toISOString(),
   }
 
-  return <ExaminationPage patient={displayPatient} />
+  return <ExaminationPage patient={displayPatient} appointment={appointment} />
 }

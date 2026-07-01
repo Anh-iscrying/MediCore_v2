@@ -73,7 +73,6 @@ interface Message {
     time: string;
 }
 
-const cardShadow = { boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }
 
 export function VercelV0Chat() {
     const [value, setValue] = useState("");
@@ -183,10 +182,10 @@ export function VercelV0Chat() {
                 ? "justify-between max-w-4xl min-h-0" 
                 : "justify-center items-center max-w-2xl space-y-8 py-12 md:py-24"
         )}>
-            {/* 1. Welcome Title (Centered Mode Only) - EDITORIAL SERIF */}
+            {/* 1. Welcome Title (Centered Mode Only) */}
             {!hasMessages && (
                 <div className="flex flex-col items-center space-y-2 text-center w-full animate-in fade-in duration-300">
-                    <h1 className="text-3xl md:text-4xl font-serif font-normal text-[#141413] tracking-tight">
+                    <h1 className="text-3xl md:text-4xl font-sans font-black text-foreground tracking-tight">
                         Hôm nay bạn cần tư vấn sức khỏe gì?
                     </h1>
                 </div>
@@ -206,7 +205,7 @@ export function VercelV0Chat() {
                                 )}
                             >
                                 {isAI && (
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border bg-[#cc785c]/10 text-[#cc785c] border-[#cc785c]/20">
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border bg-primary/10 text-[#0e0f0c] border-primary/20">
                                         <span>AI</span>
                                     </div>
                                 )}
@@ -216,20 +215,20 @@ export function VercelV0Chat() {
                                 )}>
                                     <div
                                         className={cn(
-                                            "text-sm leading-relaxed px-4 py-2.5 rounded-2xl border",
+                                            "text-sm leading-relaxed px-4 py-2.5 rounded-2xl border font-medium",
                                             isAI
-                                                ? "bg-[#efe9de] border-[#e6dfd8] text-[#141413]"
-                                                : "bg-[#cc785c] border-[#cc785c] text-white"
+                                                ? "bg-card border-border text-foreground"
+                                                : "bg-primary border-primary text-primary-foreground font-semibold"
                                         )}
                                     >
                                         {msg.text}
                                     </div>
-                                    <span className="text-[9px] text-[#6c6a64] px-1">
+                                    <span className="text-[9px] text-muted-foreground px-1">
                                         {msg.time}
                                     </span>
                                 </div>
                                 {!isAI && (
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border bg-[#efe9de] text-[#141413] border-[#e6dfd8]">
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border bg-card text-foreground border-border">
                                         <span>U</span>
                                     </div>
                                 )}
@@ -239,13 +238,13 @@ export function VercelV0Chat() {
 
                     {isTyping && (
                         <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-[#cc785c]/10 text-[#cc785c] border border-[#cc785c]/20 flex items-center justify-center text-xs font-bold shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 text-[#0e0f0c] border border-primary/20 flex items-center justify-center text-xs font-bold shrink-0">
                                 <span>AI</span>
                             </div>
-                            <div className="bg-[#efe9de] border border-[#e6dfd8] px-4 py-3 rounded-2xl flex items-center gap-1.5 shadow-xs">
-                                <span className="w-1.5 h-1.5 bg-[#cc785c] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                                <span className="w-1.5 h-1.5 bg-[#cc785c] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                                <span className="w-1.5 h-1.5 bg-[#cc785c] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            <div className="bg-card border border-border px-4 py-3 rounded-2xl flex items-center gap-1.5 shadow-none">
+                                <span className="w-1.5 h-1.5 bg-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-1.5 h-1.5 bg-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-1.5 h-1.5 bg-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                             </div>
                         </div>
                     )}
@@ -253,9 +252,9 @@ export function VercelV0Chat() {
                 </div>
             )}
 
-            {/* 3. Main Chat Input Block (Claude Light Card style) */}
+            {/* 3. Main Chat Input Block (Wise converter style outline input) */}
             <div className="w-full space-y-4 shrink-0">
-                <div className="relative bg-[#faf9f5] rounded-xl border border-[#e6dfd8] shadow-sm p-1">
+                <div className="relative bg-card rounded-xl border border-[#0e0f0c] p-1">
                     <div className="overflow-y-auto">
                         <Textarea
                             ref={textareaRef}
@@ -271,9 +270,9 @@ export function VercelV0Chat() {
                                 "resize-none",
                                 "bg-transparent",
                                 "border-none",
-                                "text-[#141413] text-base",
+                                "text-foreground text-base",
                                 "focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0",
-                                "placeholder:text-[#6c6a64] placeholder:text-base",
+                                "placeholder:text-muted-foreground placeholder:text-base",
                                 "min-h-[56px]"
                             )}
                             style={{
@@ -286,7 +285,7 @@ export function VercelV0Chat() {
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                className="p-2 hover:bg-[#efe9de] rounded-full transition-colors flex items-center justify-center cursor-pointer text-[#6c6a64] hover:text-[#141413]"
+                                className="p-2 hover:bg-background rounded-full transition-colors flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground"
                                 title="Đính kèm tệp"
                             >
                                 <PlusIcon className="w-5 h-5" />
@@ -295,7 +294,7 @@ export function VercelV0Chat() {
                         <div className="flex items-center gap-3">
                             <button
                                 type="button"
-                                className="p-2 hover:bg-[#efe9de] rounded-full transition-colors flex items-center justify-center cursor-pointer text-[#6c6a64] hover:text-[#141413]"
+                                className="p-2 hover:bg-background rounded-full transition-colors flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground"
                                 title="Sử dụng giọng nói"
                             >
                                 <Mic className="w-5 h-5" />
@@ -306,15 +305,15 @@ export function VercelV0Chat() {
                                 className={cn(
                                     "p-2 rounded-full transition-all flex items-center justify-center cursor-pointer",
                                     value.trim()
-                                        ? "bg-[#cc785c] text-white hover:bg-[#a9583e]"
-                                        : "bg-[#efe9de] text-[#6c6a64]/40"
+                                        ? "bg-primary text-primary-foreground hover:bg-[#cdffad]"
+                                        : "bg-background text-muted-foreground/40"
                                 )}
                                 disabled={!value.trim()}
                             >
                                 <ArrowUpIcon
                                     className={cn(
                                         "w-5 h-5",
-                                        value.trim() ? "text-white font-bold" : "text-[#6c6a64]/40"
+                                        value.trim() ? "text-[#0e0f0c] font-bold" : "text-muted-foreground/40"
                                     )}
                                 />
                                 <span className="sr-only">Gửi</span>
@@ -323,7 +322,7 @@ export function VercelV0Chat() {
                     </div>
                 </div>
 
-                {/* 4. Suggestion Buttons (Light Cream Rounded-full Chips) */}
+                {/* 4. Suggestion Buttons (Light Sage Rounded-full Chips) */}
                 {!hasMessages && (
                     <div className="flex flex-wrap items-center justify-center gap-2 w-full animate-in fade-in duration-300">
                         {actionButtonsData.map((btn, index) => (
@@ -331,7 +330,7 @@ export function VercelV0Chat() {
                                 key={index}
                                 type="button"
                                 onClick={() => handleActionClick(btn.label, btn.text)}
-                                className="flex items-center gap-2 text-xs px-4 py-2 bg-[#efe9de] hover:bg-[#e6dfd8] rounded-full border border-[#e6dfd8] text-[#3d3d3a] hover:text-[#141413] transition-all duration-200 cursor-pointer shadow-sm"
+                                className="flex items-center gap-2 text-xs px-4 py-2 bg-card hover:bg-background rounded-full border border-border text-foreground transition-all duration-200 cursor-pointer shadow-none"
                             >
                                 <span>{btn.label}</span>
                             </button>

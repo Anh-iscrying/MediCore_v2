@@ -15,21 +15,23 @@ import {
   SelectValue,
 } from "@/components/base/ui/select"
 import { useData } from "@/providers/data-provider"
-import type { Patient } from "@/types/medical"
+import type { Appointment, Patient } from "@/types/medical"
 
 interface ExaminationPageProps {
   patient: Patient
+  appointment?: Appointment | null
 }
 
-export function ExaminationPage({ patient }: ExaminationPageProps) {
+export function ExaminationPage({ patient, appointment }: ExaminationPageProps) {
   const router = useRouter()
   const { 
     icdCodes, 
     medicines, 
     addExaminationRecord, 
-    addPrescription, 
-    updatePatient, 
-    examinationRecords, 
+    addPrescription,
+    updateAppointment,
+    updatePatient,
+    examinationRecords,
     prescriptions,
     ensureMedicinesLoaded,
     ensureIcdLoaded
@@ -85,52 +87,66 @@ export function ExaminationPage({ patient }: ExaminationPageProps) {
     setPrescriptionItems((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSaveExamination = () => {
+  const handleSaveExamination = async () => {
     if (!icdCode || !mainDiagnosis || !symptoms || !physicalExam || !treatment) {
       alert("Vui lòng điền đầy đủ các trường bắt buộc")
       return
     }
 
     const today = new Date().toISOString().split("T")[0]
+    const appointmentRecordId = appointment?.id ?? ""
+    const doctorId = appointment?.doctorId ?? "dr1"
 
-    // Save examination record
-    addExaminationRecord({
-      appointmentId: "",
-      patientId: patient.id,
-      doctorId: "dr1",
-      examinationDate: today,
-      icdCode,
-      mainDiagnosis: selectedIcd?.name || mainDiagnosis,
-      symptoms,
-      physicalExamination: physicalExam,
-      testResults: testResults || undefined,
-      treatment,
-      followUpDate: followUpDate || undefined,
-      notes: examinationNotes,
-      createdAt: today,
-    })
-
-    // Save prescription if there are items
-    if (prescriptionItems.length > 0) {
-      addPrescription({
-        appointmentId: "",
+    try {
+      // Save examination record
+      addExaminationRecord({
+        appointmentId: appointmentRecordId,
         patientId: patient.id,
-        doctorId: "dr1",
-        prescriptionDate: today,
-        items: prescriptionItems,
-        notes: prescriptionNotes,
-        status: "issued",
+        doctorId,
+        examinationDate: today,
+        icdCode,
+        mainDiagnosis: selectedIcd?.name || mainDiagnosis,
+        symptoms,
+        physicalExamination: physicalExam,
+        testResults: testResults || undefined,
+        treatment,
+        followUpDate: followUpDate || undefined,
+        notes: examinationNotes,
+        createdAt: today,
       })
+
+      // Save prescription if there are items
+      if (prescriptionItems.length > 0) {
+        addPrescription({
+          appointmentId: appointmentRecordId,
+          patientId: patient.id,
+          doctorId,
+          prescriptionDate: today,
+          items: prescriptionItems,
+          notes: prescriptionNotes,
+          status: "issued",
+        })
+      }
+
+      if (appointment) {
+        await updateAppointment(appointment.id, {
+          ...appointment,
+          status: "DONE",
+        })
+      }
+
+      // Update patient status
+      await updatePatient(patient.id, {
+        ...patient,
+        status: "completed",
+      })
+
+      alert("Lưu khám bệnh thành công")
+      router.push("/doctor/waiting-patients")
+    } catch (error) {
+      console.error("Không thể lưu khám bệnh", error)
+      alert("Không thể lưu khám bệnh. Vui lòng thử lại.")
     }
-
-    // Update patient status
-    updatePatient(patient.id, {
-      ...patient,
-      status: "completed",
-    })
-
-    alert("Lưu khám bệnh thành công")
-    router.push("/doctor/waiting-patients")
   }
 
   const calculateAge = () => {

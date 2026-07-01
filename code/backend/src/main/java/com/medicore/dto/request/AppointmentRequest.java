@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AppointmentRequest {
-    @NotBlank(message = "Mã bệnh nhân hoặc ID không được để trống")
     private String patientId;
 
     @NotNull(message = "Bác sĩ không được để trống")
