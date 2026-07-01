@@ -23,13 +23,13 @@ interface ExaminationPageProps {
 
 export function ExaminationPage({ patient }: ExaminationPageProps) {
   const router = useRouter()
-  const { 
-    icdCodes, 
-    medicines, 
-    addExaminationRecord, 
-    addPrescription, 
-    updatePatient, 
-    examinationRecords, 
+  const {
+    icdCodes,
+    medicines,
+    addExaminationRecord,
+    addPrescription,
+    updatePatient,
+    examinationRecords,
     prescriptions,
     ensureMedicinesLoaded,
     ensureIcdLoaded
@@ -246,449 +246,611 @@ export function ExaminationPage({ patient }: ExaminationPageProps) {
         </Button>
       </div>
 
-      {/* Patient Administrative Info & Clinical Alerts (Header Banner) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Patient Admin Details Card */}
-        <div className="lg:col-span-2 p-5 rounded-xl border border-border/80 bg-card flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-border/40">
-              <User className="w-4 h-4 text-primary" />
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Thông tin hành chính bệnh nhân</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2.5 gap-x-6 text-sm">
-              <div className="flex justify-between border-b border-dashed border-border/30 pb-1.5">
-                <span className="text-muted-foreground text-xs">Giới tính:</span>
-                <span className="font-semibold text-foreground">{patient.gender === "M" ? "Nam" : "Nữ"}</span>
-              </div>
-              <div className="flex justify-between border-b border-dashed border-border/30 pb-1.5">
-                <span className="text-muted-foreground text-xs">Số điện thoại:</span>
-                <span className="font-semibold text-foreground">{patient.phone}</span>
-              </div>
-              <div className="flex justify-between border-b border-dashed border-border/30 pb-1.5">
-                <span className="text-muted-foreground text-xs">Mã BHYT:</span>
-                <span className="font-semibold text-foreground">{patient.insuranceNumber || "Không có"}</span>
-              </div>
-              <div className="flex justify-between border-b border-dashed border-border/30 pb-1.5">
-                <span className="text-muted-foreground text-xs">Ngày sinh:</span>
-                <span className="font-semibold text-foreground">{new Date(patient.dateOfBirth).toLocaleDateString("vi-VN")}</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-3.5 pt-3.5 border-t border-border/60">
-            <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">Địa chỉ thường trú:</span>
-            <p className="text-xs text-foreground/80 mt-1 leading-relaxed">{patient.address}</p>
-          </div>
-        </div>
-
-        {/* Clinical Alerts Card */}
-        <div className="p-5 rounded-xl border border-border/80 bg-card flex flex-col shadow-sm">
-          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-border/40">
-            <AlertCircle className="w-4 h-4 text-destructive animate-pulse" />
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Cảnh báo lâm sàng</h3>
-            {alerts.length > 0 && (
-              <span className="bg-destructive/10 text-destructive text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-destructive/20">
-                {alerts.length}
-              </span>
-            )}
-          </div>
-          <div className="flex-1 overflow-auto space-y-2 max-h-[120px] pr-1">
-            {alerts.length > 0 ? (
-              alerts.map((alert, idx) => (
-                <div
-                  key={idx}
-                  className={`text-xs p-2.5 rounded-lg border flex items-start gap-2 ${
-                    alert.severity === "warning"
-                      ? "bg-destructive/5 border-destructive/20 text-foreground"
-                      : "bg-primary/5 border-primary/20 text-foreground"
-                  }`}
-                >
-                  <AlertCircle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${alert.severity === "warning" ? "text-destructive" : "text-primary"}`} />
-                  <div>
-                    <p className="font-semibold text-foreground text-[11px]">{alert.type}</p>
-                    <p className="text-muted-foreground text-[10px] mt-0.5 leading-tight">{alert.message}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-xs italic">
-                Không có cảnh báo y tế
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Examination Form Sections */}
-      <div className="space-y-6">
-        
-        {/* Card 1: Chẩn đoán & ICD-10 */}
-        <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Inputs */}
-            <div className="lg:col-span-8 space-y-4">
-              <h2 className="font-semibold text-base mb-1 text-foreground flex items-center gap-2">
-                Chẩn đoán y khoa
-              </h2>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Mã ICD-10 *</label>
-                <Select value={icdCode} onValueChange={setIcdCode}>
-                  <SelectTrigger className="w-full bg-card border-border/80">
-                    <SelectValue placeholder="Tìm và chọn mã ICD-10" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {icdCodes.map((code) => (
-                      <SelectItem key={code.id} value={code.id}>
-                        {code.code} - {code.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedIcd && (
-                  <p className="mt-2 text-xs text-primary font-medium">Tên chẩn đoán ICD: {selectedIcd.name}</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Chẩn đoán chính thức *</label>
-                <Input
-                  value={mainDiagnosis}
-                  onChange={(e) => setMainDiagnosis(e.target.value)}
-                  placeholder="Nhập chẩn đoán lâm sàng chính xác"
-                  className="w-full bg-card"
-                />
-              </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <Card className="rounded-xl border border-border/80 shadow-sm overflow-hidden">
+            {/*Thông tin bệnh nhân */}
+            {/* Section: Thông tin bệnh nhân */}
+            <div className="border-b border-border/70">
 
-            {/* Right: AI Context - Lịch sử chẩn đoán */}
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-border/60 pt-4 lg:pt-0 lg:pl-6 space-y-3 flex flex-col">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
-                <History className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tiền sử chẩn đoán ({patientRecords.length})</span>
+              {/* Header */}
+              <div className="bg-muted/30 px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">
+                    Thông tin khám bệnh
+                  </h2>
+                </div>
               </div>
-              <div className="flex-1 overflow-auto space-y-2 max-h-48 pr-1">
-                {patientRecords.length > 0 ? (
-                  patientRecords.slice(0, 3).map((record, idx) => (
-                    <div key={idx} className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-primary">{new Date(record.examinationDate).toLocaleDateString("vi-VN")}</span>
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase bg-card px-1.5 rounded">{record.icdCode}</span>
-                      </div>
-                      <p className="text-foreground font-medium leading-tight">{record.mainDiagnosis}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">Chưa có lịch sử chẩn đoán</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
 
-        {/* Card 2: Triệu chứng & Khám lâm sàng */}
-        <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Inputs */}
-            <div className="lg:col-span-8 space-y-4">
-              <h2 className="font-semibold text-base mb-1 text-foreground">Triệu chứng & Khám lâm sàng</h2>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Triệu chứng lâm sàng chính *</label>
-                <Textarea
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  placeholder="Mô tả cụ thể các triệu chứng bệnh nhân đang gặp phải..."
-                  rows={3}
-                  className="w-full bg-card"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Kết quả khám lâm sàng thể chất *</label>
-                <Textarea
-                  value={physicalExam}
-                  onChange={(e) => setPhysicalExam(e.target.value)}
-                  placeholder="Kết quả đo chỉ số sinh tồn (huyết áp, nhịp tim), khám thực thể..."
-                  rows={3}
-                  className="w-full bg-card"
-                />
-              </div>
-            </div>
+              {/* Content */}
+              <div className="p-6">
 
-            {/* Right: AI Context - Tiền sử triệu chứng */}
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-border/60 pt-4 lg:pt-0 lg:pl-6 space-y-3 flex flex-col">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tiền sử lâm sàng gần đây</span>
-              </div>
-              <div className="flex-1 overflow-auto space-y-2.5 max-h-64 pr-1">
-                {patientRecords.length > 0 ? (
-                  patientRecords.slice(0, 2).map((record, idx) => (
-                    <div key={idx} className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30 space-y-1">
-                      <p className="font-semibold text-primary">{new Date(record.examinationDate).toLocaleDateString("vi-VN")}</p>
-                      {record.symptoms && (
-                        <p className="text-muted-foreground text-[11px] leading-snug">
-                          <span className="font-medium text-foreground">Triệu chứng cũ:</span> {record.symptoms}
-                        </p>
-                      )}
-                      {record.physicalExamination && (
-                        <p className="text-muted-foreground text-[11px] leading-snug">
-                          <span className="font-medium text-foreground">Khám cũ:</span> {record.physicalExamination}
-                        </p>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">Chưa có lịch sử triệu chứng</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
 
-        {/* Card 3: Cận lâm sàng & Ghi chú */}
-        <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Inputs */}
-            <div className="lg:col-span-8 space-y-4">
-              <h2 className="font-semibold text-base mb-1 text-foreground">Cận lâm sàng & Ghi chú thêm</h2>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Kết quả xét nghiệm & Chẩn đoán hình ảnh</label>
-                <Textarea
-                  value={testResults}
-                  onChange={(e) => setTestResults(e.target.value)}
-                  placeholder="Điền kết quả xét nghiệm sinh hóa, huyết học, siêu âm, điện tim (nếu có)..."
-                  rows={2}
-                  className="w-full bg-card"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Ghi chú bổ sung</label>
-                <Textarea
-                  value={examinationNotes}
-                  onChange={(e) => setExaminationNotes(e.target.value)}
-                  placeholder="Các ghi chú hoặc nhắc nhở khác trong quá trình khám..."
-                  rows={2}
-                  className="w-full bg-card"
-                />
-              </div>
-            </div>
-
-            {/* Right: History of Test Results */}
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-border/60 pt-4 lg:pt-0 lg:pl-6 space-y-3 flex flex-col">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
-                <History className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Lịch sử xét nghiệm</span>
-              </div>
-              <div className="flex-1 overflow-auto space-y-2 max-h-48 pr-1">
-                {patientRecords.filter(r => r.testResults).length > 0 ? (
-                  patientRecords.filter(r => r.testResults).slice(0, 2).map((record, idx) => (
-                    <div key={idx} className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30">
-                      <p className="font-semibold text-primary mb-1">{new Date(record.examinationDate).toLocaleDateString("vi-VN")}</p>
-                      <p className="text-foreground leading-tight">{record.testResults}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">Không có dữ liệu xét nghiệm cũ</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 4: Điều trị & Ngày tái khám */}
-        <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Inputs */}
-            <div className="lg:col-span-8 space-y-4">
-              <h2 className="font-semibold text-base mb-1 text-foreground">Phác đồ điều trị & Tái khám</h2>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Chỉ định điều trị & Lời dặn của bác sĩ *</label>
-                <Textarea
-                  value={treatment}
-                  onChange={(e) => setTreatment(e.target.value)}
-                  placeholder="Nhập phương án điều trị, lời dặn dinh dưỡng, sinh hoạt, tập luyện..."
-                  rows={3}
-                  className="w-full bg-card"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Ngày hẹn tái khám</label>
-                <Input
-                  type="date"
-                  value={followUpDate}
-                  onChange={(e) => setFollowUpDate(e.target.value)}
-                  className="w-full bg-card"
-                />
-              </div>
-            </div>
-
-            {/* Right: AI Context - Gợi ý lâm sàng AI */}
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-border/60 pt-4 lg:pt-0 lg:pl-6 space-y-3 flex flex-col">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
-                <Lightbulb className="w-4 h-4 text-amber-500 animate-pulse" />
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Khuyến nghị điều trị AI</span>
-              </div>
-              <div className="flex-1 overflow-auto space-y-2.5 max-h-56 pr-1">
-                {recommendations.length > 0 ? (
-                  recommendations.map((rec, idx) => (
-                    <div
-                      key={idx}
-                      className="flex gap-2 text-xs p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-foreground hover:bg-amber-500/10 transition-colors cursor-pointer select-none"
-                      onClick={() => {
-                        setTreatment(prev => prev ? `${prev}\n• ${rec}` : `• ${rec}`)
-                      }}
-                      title="Click để chèn nhanh vào lời dặn bác sĩ"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-muted-foreground text-[11px] leading-tight">
-                          {rec}
-                        </p>
-                        <span className="text-[9px] text-primary font-bold hover:underline block">Chèn nhanh vào đơn</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">Không có gợi ý điều trị</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 5: Kê đơn thuốc */}
-        <Card className="p-5 border border-primary/20 shadow-sm rounded-xl bg-primary/5">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Inputs */}
-            <div className="lg:col-span-8 space-y-4">
-              <h3 className="font-semibold text-base text-foreground mb-1">Đơn thuốc chỉ định</h3>
-
-              {/* Add Medicine Form */}
-              <div className="space-y-3 p-4 bg-card rounded-xl border border-border/80">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Tên thuốc</label>
-                    <Select value={selectedMedicineId} onValueChange={setSelectedMedicineId}>
-                      <SelectTrigger className="w-full bg-card border-border/85">
-                        <SelectValue placeholder="Chọn thuốc từ danh mục" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {medicines.map((med) => (
-                          <SelectItem key={med.id} value={med.id}>
-                            {med.name} ({med.unit})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex justify-between border-b border-dashed border-border/30 pb-2">
+                    <span className="text-muted-foreground">Họ và tên</span>
+                    <span className="font-semibold">{patient.name}</span>
                   </div>
+
+                  <div className="flex justify-between border-b border-dashed border-border/30 pb-2">
+                    <span className="text-muted-foreground">Giới tính</span>
+                    <span className="font-semibold">
+                      {patient.gender === "M" ? "Nam" : "Nữ"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between border-b border-dashed border-border/30 pb-2">
+                    <span className="text-muted-foreground">Số điện thoại</span>
+                    <span className="font-semibold">{patient.phone}</span>
+                  </div>
+
+                  <div className="flex justify-between border-b border-dashed border-border/30 pb-2">
+                    <span className="text-muted-foreground">Mã bệnh nhân</span>
+                    <span className="font-semibold">{patient.id}</span>
+                  </div>
+
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-border/60">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Địa chỉ
+                  </span>
+
+                  <p className="mt-1 font-medium">
+                    {patient.address}
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Card 1: Triệu chứng & Khám lâm sàng */}
+            <div className="border-b border-border/70">
+              {/* Header */}
+              <div className="bg-muted/30 px-6 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Triệu chứng & Khám lâm sàng
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Triệu chứng lâm sàng chính *
+                  </label>
+                  <Textarea
+                    value={symptoms}
+                    onChange={(e) => setSymptoms(e.target.value)}
+                    placeholder="Mô tả cụ thể các triệu chứng bệnh nhân đang gặp phải..."
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Kết quả khám lâm sàng thể chất *
+                  </label>
+                  <Textarea
+                    value={physicalExam}
+                    onChange={(e) => setPhysicalExam(e.target.value)}
+                    placeholder="Kết quả đo chỉ số sinh tồn (huyết áp, nhịp tim), khám thực thể..."
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Cận lâm sàng & Ghi chú */}
+            <div className="border-b border-border/70">
+              {/* Header */}
+              <div className="bg-muted/30 px-6 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Cận lâm sàng & Ghi chú
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Kết quả xét nghiệm & Chẩn đoán hình ảnh
+                  </label>
+                  <Textarea
+                    value={testResults}
+                    onChange={(e) => setTestResults(e.target.value)}
+                    placeholder="Điền kết quả xét nghiệm sinh hóa, huyết học, siêu âm, điện tim (nếu có)..."
+                    rows={3}
+                    className="w-full bg-card"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Ghi chú bổ sung
+                  </label>
+                  <Textarea
+                    value={examinationNotes}
+                    onChange={(e) => setExaminationNotes(e.target.value)}
+                    placeholder="Các ghi chú hoặc nhắc nhở khác trong quá trình khám..."
+                    rows={3}
+                    className="w-full bg-card"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Card 3: Chẩn đoán */}
+            <div className="border-b border-border/70">
+              {/* Header */}
+              <div className="bg-muted/30 px-6 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Chẩn đoán
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Mã ICD-10 *
+                  </label>
+
+                  <Select value={icdCode} onValueChange={setIcdCode}>
+                    <SelectTrigger className="w-full bg-card border-border/80">
+                      <SelectValue placeholder="Tìm và chọn mã ICD-10" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {icdCodes.map((code) => (
+                        <SelectItem key={code.id} value={code.id}>
+                          {code.code} - {code.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {selectedIcd && (
+                    <p className="mt-2 text-xs text-primary font-medium">
+                      Tên chẩn đoán ICD: {selectedIcd.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Chẩn đoán chính thức *
+                  </label>
+
+                  <Input
+                    value={mainDiagnosis}
+                    onChange={(e) => setMainDiagnosis(e.target.value)}
+                    placeholder="Nhập chẩn đoán lâm sàng chính xác"
+                    className="w-full bg-card"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Card 4: Điều trị */}
+            <div className="border-b border-border/70">
+              {/* Header */}
+              <div className="bg-muted/30 px-6 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Điều trị & Tái khám
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Chỉ định điều trị & Lời dặn của bác sĩ *
+                  </label>
+
+                  <Textarea
+                    value={treatment}
+                    onChange={(e) => setTreatment(e.target.value)}
+                    placeholder="Nhập phương án điều trị, lời dặn dinh dưỡng, sinh hoạt, tập luyện..."
+                    rows={4}
+                    className="w-full bg-card"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Ngày hẹn tái khám
+                  </label>
+
+                  <Input
+                    type="date"
+                    value={followUpDate}
+                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    className="w-full bg-card"
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Card 5: Đơn thuốc */}
+            <div>
+              {/* Header */}
+              <div className="bg-primary/5 px-6 py-4">
+                <h2 className="text-base font-semibold text-primary">
+                  Đơn thuốc chỉ định
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+
+                {/* Add Medicine */}
+                <div className="space-y-4 rounded-xl border border-border/80 bg-card p-5">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-2">
+                        Tên thuốc
+                      </label>
+
+                      <Select
+                        value={selectedMedicineId}
+                        onValueChange={setSelectedMedicineId}
+                      >
+                        <SelectTrigger className="w-full bg-card">
+                          <SelectValue placeholder="Chọn thuốc" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {medicines.map((med) => (
+                            <SelectItem key={med.id} value={med.id}>
+                              {med.name} ({med.unit})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-2">
+                        Số lượng
+                      </label>
+
+                      <Input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        placeholder="Nhập số lượng"
+                      />
+                    </div>
+
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Số lượng</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-2">
+                      Liều dùng
+                    </label>
+
                     <Input
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      placeholder="Số lượng kê"
-                      className="w-full bg-card"
+                      value={dosage}
+                      onChange={(e) => setDosage(e.target.value)}
+                      placeholder="Ví dụ: 1 viên x 2 lần/ngày"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Liều dùng (Tần suất & Cách uống)</label>
-                  <Input
-                    value={dosage}
-                    onChange={(e) => setDosage(e.target.value)}
-                    placeholder="Ví dụ: 1 viên x 2 lần/ngày, uống sau ăn sáng - tối"
-                    className="w-full bg-card"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Lưu ý khi dùng</label>
-                  <Input
-                    value={medicineNotes}
-                    onChange={(e) => setMedicineNotes(e.target.value)}
-                    placeholder="Ví dụ: Kiêng rượu bia khi dùng thuốc"
-                    className="w-full bg-card"
-                  />
-                </div>
-                <Button onClick={handleAddMedicine} className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-semibold">
-                  Thêm vào đơn thuốc
-                </Button>
-              </div>
 
-              {/* Prescription Items List */}
-              {prescriptionItems.length > 0 && (
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Thuốc đã kê</h4>
-                  {prescriptionItems.map((item, index) => (
-                    <div key={index} className="p-3 bg-card rounded-xl border border-border flex justify-between items-center transition-all hover:border-primary/20">
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">{item.medicineName}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Số lượng: <span className="font-medium text-foreground">{item.quantity} {item.unit}</span> • Liều dùng: <span className="font-medium text-foreground">{item.dosage}</span>
-                        </p>
-                        {item.notes && <p className="text-xs text-muted-foreground italic mt-0.5">Lưu ý: {item.notes}</p>}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMedicine(index)}
-                        className="text-destructive hover:bg-destructive/5 font-semibold text-xs rounded-lg px-2.5"
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-2">
+                      Lưu ý
+                    </label>
+
+                    <Input
+                      value={medicineNotes}
+                      onChange={(e) => setMedicineNotes(e.target.value)}
+                      placeholder="Lưu ý khi dùng thuốc"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleAddMedicine}
+                    className="w-full"
+                  >
+                    Thêm vào đơn thuốc
+                  </Button>
+
+                </div>
+
+                {/* Danh sách thuốc */}
+                {prescriptionItems.length > 0 && (
+                  <div className="space-y-3">
+
+                    <h4 className="text-sm font-semibold">
+                      Thuốc đã kê
+                    </h4>
+
+                    {prescriptionItems.map((item, index) => (
+                      <div
+                        key={index}
+                        className="rounded-lg border border-border p-4 flex justify-between items-center"
                       >
-                        Xóa
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        <div>
+                          <p className="font-medium">
+                            {item.medicineName}
+                          </p>
 
-              {/* General Prescription Notes */}
-              <div className="pt-2">
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Hướng dẫn chung của đơn thuốc</label>
-                <Textarea
-                  value={prescriptionNotes}
-                  onChange={(e) => setPrescriptionNotes(e.target.value)}
-                  placeholder="Ghi chú chung cho cả đơn thuốc (nếu có)..."
-                  rows={2}
-                  className="w-full bg-card"
-                />
-              </div>
-            </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.quantity} {item.unit} • {item.dosage}
+                          </p>
 
-            {/* Right: Prescription AI helper */}
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-primary/20 pt-4 lg:pt-0 lg:pl-6 space-y-3 flex flex-col">
-              <div className="flex items-center gap-2 pb-2 border-b border-primary/20">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-primary uppercase tracking-wider">Lịch sử kê đơn</span>
-              </div>
-              <div className="flex-1 overflow-auto space-y-3 max-h-[380px] pr-1">
-                {patientRecords.length > 0 ? (
-                  patientRecords.map((record, idx) => {
-                    const pRecord = prescriptions.find(p => p.patientId === patient.id && p.prescriptionDate === record.examinationDate)
-                    if (!pRecord || pRecord.items.length === 0) return null
-                    return (
-                      <div key={idx} className="text-xs p-3 rounded-lg bg-card border border-border/80 space-y-1.5">
-                        <div className="flex justify-between items-center mb-1 pb-1 border-b border-border/40">
-                          <span className="font-semibold text-primary">{new Date(record.examinationDate).toLocaleDateString("vi-VN")}</span>
-                          <span className="text-[10px] text-muted-foreground italic">Trước đó</span>
+                          {item.notes && (
+                            <p className="text-xs italic mt-1">
+                              {item.notes}
+                            </p>
+                          )}
                         </div>
-                        <div className="space-y-2">
-                          {pRecord.items.map((item, iIndex) => (
-                            <div key={iIndex} className="text-[11px] leading-snug">
-                              <span className="font-medium text-foreground">{item.medicineName}</span> - {item.quantity} {item.unit} ({item.dosage})
-                            </div>
-                          ))}
-                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMedicine(index)}
+                        >
+                          Xóa
+                        </Button>
                       </div>
-                    )
-                  })
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">Chưa có đơn thuốc nào trước đó</p>
+                    ))}
+
+                  </div>
                 )}
+
+                {/* Ghi chú đơn thuốc */}
+                <div>
+
+                  <label className="block text-xs font-medium text-muted-foreground mb-2">
+                    Hướng dẫn chung
+                  </label>
+
+                  <Textarea
+                    value={prescriptionNotes}
+                    onChange={(e) => setPrescriptionNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Ghi chú cho đơn thuốc..."
+                  />
+
+                </div>
+
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
+        <div className="lg:col-span-4 space-y-6">
+          {/* Right: Tiền sử chẩn đoán */}
+          <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
 
+            <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+              <History className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Tiền sử chẩn đoán ({patientRecords.length})
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-auto space-y-2 max-h-48 pr-1 mt-3">
+              {patientRecords.length > 0 ? (
+                patientRecords.slice(0, 3).map((record, idx) => (
+                  <div
+                    key={idx}
+                    className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30"
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-primary">
+                        {new Date(record.examinationDate).toLocaleDateString("vi-VN")}
+                      </span>
+
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase bg-card px-1.5 rounded">
+                        {record.icdCode}
+                      </span>
+                    </div>
+
+                    <p className="text-foreground font-medium leading-tight">
+                      {record.mainDiagnosis}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  Chưa có lịch sử chẩn đoán
+                </p>
+              )}
+            </div>
+          </Card>
+          {/* Right: Tiền sử lâm sàng gần đây */}
+          <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
+
+            <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Tiền sử lâm sàng gần đây
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-auto space-y-2.5 max-h-64 pr-1 mt-3">
+              {patientRecords.length > 0 ? (
+                patientRecords.slice(0, 2).map((record, idx) => (
+                  <div
+                    key={idx}
+                    className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30 space-y-1"
+                  >
+                    <p className="font-semibold text-primary">
+                      {new Date(record.examinationDate).toLocaleDateString("vi-VN")}
+                    </p>
+
+                    {record.symptoms && (
+                      <p className="text-muted-foreground text-[11px] leading-snug">
+                        <span className="font-medium text-foreground">
+                          Triệu chứng cũ:
+                        </span>{" "}
+                        {record.symptoms}
+                      </p>
+                    )}
+
+                    {record.physicalExamination && (
+                      <p className="text-muted-foreground text-[11px] leading-snug">
+                        <span className="font-medium text-foreground">
+                          Khám cũ:
+                        </span>{" "}
+                        {record.physicalExamination}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  Chưa có lịch sử triệu chứng
+                </p>
+              )}
+            </div>
+          </Card>
+          <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
+
+            <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+              <History className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Lịch sử xét nghiệm
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-auto space-y-2 max-h-48 pr-1 mt-3">
+              {patientRecords.filter(r => r.testResults).length > 0 ? (
+                patientRecords
+                  .filter(r => r.testResults)
+                  .slice(0, 2)
+                  .map((record, idx) => (
+                    <div
+                      key={idx}
+                      className="text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30"
+                    >
+                      <p className="font-semibold text-primary mb-1">
+                        {new Date(record.examinationDate).toLocaleDateString("vi-VN")}
+                      </p>
+
+                      <p className="text-foreground leading-tight">
+                        {record.testResults}
+                      </p>
+                    </div>
+                  ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  Không có dữ liệu xét nghiệm cũ
+                </p>
+              )}
+            </div>
+          </Card>
+          {/* Right: AI Context - Gợi ý lâm sàng AI */}
+          <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
+
+            <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+              <Lightbulb className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Khuyến nghị điều trị AI
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-auto space-y-2.5 max-h-56 pr-1 mt-3">
+              {recommendations.length > 0 ? (
+                recommendations.map((rec, idx) => (
+                  <div
+                    key={idx}
+                    className="flex gap-2 text-xs p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-foreground hover:bg-amber-500/10 transition-colors cursor-pointer select-none"
+                    onClick={() => {
+                      setTreatment((prev) =>
+                        prev ? `${prev}\n• ${rec}` : `• ${rec}`
+                      );
+                    }}
+                    title="Click để chèn nhanh vào lời dặn bác sĩ"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-[11px] leading-tight">
+                        {rec}
+                      </p>
+
+                      <span className="text-[9px] text-primary font-bold hover:underline block">
+                        Chèn nhanh vào đơn
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  Không có gợi ý điều trị
+                </p>
+              )}
+            </div>
+          </Card>
+          {/* Right: Lịch sử kê đơn */}
+          <Card className="p-5 border border-border/80 shadow-sm rounded-xl">
+
+            <div className="flex items-center gap-2 pb-2 border-b border-primary/20">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                Lịch sử kê đơn
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-auto space-y-3 max-h-[380px] pr-1 mt-3">
+              {patientRecords.length > 0 ? (
+                patientRecords.map((record, idx) => {
+                  const pRecord = prescriptions.find(
+                    (p) =>
+                      p.patientId === patient.id &&
+                      p.prescriptionDate === record.examinationDate
+                  );
+
+                  if (!pRecord || pRecord.items.length === 0) return null;
+
+                  return (
+                    <div
+                      key={idx}
+                      className="text-xs p-3 rounded-lg bg-card border border-border/80 space-y-1.5"
+                    >
+                      <div className="flex justify-between items-center mb-1 pb-1 border-b border-border/40">
+                        <span className="font-semibold text-primary">
+                          {new Date(record.examinationDate).toLocaleDateString("vi-VN")}
+                        </span>
+
+                        <span className="text-[10px] text-muted-foreground italic">
+                          Trước đó
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {pRecord.items.map((item, iIndex) => (
+                          <div
+                            key={iIndex}
+                            className="text-[11px] leading-snug"
+                          >
+                            <span className="font-medium text-foreground">
+                              {item.medicineName}
+                            </span>{" "}
+                            - {item.quantity} {item.unit} ({item.dosage})
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  Chưa có đơn thuốc nào trước đó
+                </p>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+    </div >
   )
 }
