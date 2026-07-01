@@ -7,9 +7,11 @@ import com.medicore.dto.request.AppointmentRequest;
 import com.medicore.dto.response.AppointmentResponse;
 import com.medicore.entity.clinical.Appointment;
 import com.medicore.entity.clinical.DoctorSchedule;
+import com.medicore.entity.user.AuthCredentials;
 import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient;
 import com.medicore.repository.AppointmentRepository;
+import com.medicore.repository.AuthCredentialsRepository;
 import com.medicore.repository.DoctorRepository;
 import com.medicore.repository.DoctorScheduleRepository;
 import com.medicore.repository.PatientRepository;
@@ -25,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,8 +38,14 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final DoctorScheduleRepository doctorScheduleRepository;
+    private final AuthCredentialsRepository authCredentialsRepository;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final List<AppointmentStatus> ACTIVE_STATUSES = List.of(
+            AppointmentStatus.WAITING,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.IN_PROGRESS
+    );
     private static final LocalTime MORNING_START = LocalTime.of(8, 0);
     private static final LocalTime MORNING_END = LocalTime.of(12, 0);
     private static final LocalTime AFTERNOON_START = LocalTime.of(13, 30);
@@ -46,6 +55,15 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAllAppointments() {
         return appointmentRepository.findAllWithRelations().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getCurrentPatientAppointments(String email) {
+        Patient patient = findCurrentPatient(email);
+        return appointmentRepository.findByPatientPatientCode(patient.getPatientCode()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -72,10 +90,29 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<AppointmentResponse> getWaitingAppointmentsByDoctor(Integer doctorId, LocalDate appointmentDate) {
+        if (!doctorRepository.existsById(doctorId)) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+        return appointmentRepository.findByDoctorIdAndAppointmentDateAndStatusIn(doctorId, appointmentDate, ACTIVE_STATUSES).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AppointmentResponse getAppointmentById(Integer id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
         return mapToResponse(appointment);
+    }
+
+    @Override
+    @Transactional
+    public AppointmentResponse createCurrentPatientAppointment(AppointmentRequest request, String email) {
+        Patient patient = findCurrentPatient(email);
+        request.setPatientId(patient.getPatientCode());
+        return createAppointment(request);
     }
 
     @Override
@@ -125,8 +162,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
         boolean cancelling = status == AppointmentStatus.CANCELLED;
+        boolean statusOnlyUpdate = Objects.equals(appointment.getPatient().getPatientCode(), patient.getPatientCode())
+                && Objects.equals(appointment.getDoctor().getId(), doctor.getId())
+                && Objects.equals(appointment.getAppointmentDate(), appDate)
+                && Objects.equals(appointment.getTimeSlot(), request.getTimeSlot())
+                && Objects.equals(appointment.getSymptomsInitial(), request.getSymptomsInitial());
 
-        if (!cancelling) {
+        if (!cancelling && !statusOnlyUpdate) {
             validatePatientHasNoOtherActiveAppointment(patient.getPatientCode(), appointment.getId());
             validateRequiredSymptoms(request.getSymptomsInitial());
             validateAppointmentAvailability(doctor.getId(), appDate, request.getTimeSlot(), appointment.getId());
@@ -150,6 +192,22 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional
+    public AppointmentResponse cancelCurrentPatientAppointment(Integer id, String email) {
+        Patient patient = findCurrentPatient(email);
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
+        if (appointment.getPatient() == null || !patient.getPatientCode().equals(appointment.getPatient().getPatientCode())) {
+            throw new CustomBusinessException(ErrorCodes.FORBIDDEN);
+        }
+
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointment.setUpdatedAt(LocalDateTime.now());
+        return mapToResponse(appointmentRepository.save(appointment));
+    }
+
+    @Override
+    @Transactional
     public void deleteAppointment(Integer id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
@@ -158,8 +216,8 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private void validatePatientHasNoOtherActiveAppointment(String patientCode, Integer currentAppointmentId) {
         boolean exists = currentAppointmentId == null
-                ? appointmentRepository.existsByPatientPatientCodeAndStatusNot(patientCode, AppointmentStatus.CANCELLED)
-                : appointmentRepository.existsByPatientPatientCodeAndStatusNotAndIdNot(patientCode, AppointmentStatus.CANCELLED, currentAppointmentId);
+                ? appointmentRepository.existsByPatientPatientCodeAndStatusIn(patientCode, ACTIVE_STATUSES)
+                : appointmentRepository.existsByPatientPatientCodeAndStatusInAndIdNot(patientCode, ACTIVE_STATUSES, currentAppointmentId);
         if (exists) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Bệnh nhân chỉ được đặt một lịch khám đang hoạt động");
         }
@@ -190,7 +248,7 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ hẹn không nằm trong ca trực của bác sĩ");
         }
 
-        boolean isBooked = appointmentRepository.findByDoctorIdAndAppointmentDateAndStatusNot(doctorId, appDate, AppointmentStatus.CANCELLED).stream()
+        boolean isBooked = appointmentRepository.findByDoctorIdAndAppointmentDateAndStatusIn(doctorId, appDate, ACTIVE_STATUSES).stream()
                 .filter(appointment -> currentAppointmentId == null || !appointment.getId().equals(currentAppointmentId))
                 .anyMatch(appointment -> overlaps(appointmentRange, appointment.getTimeSlot()));
 
@@ -308,6 +366,15 @@ public class AppointmentServiceImpl implements AppointmentService {
         return String.format("%02d:%02d", Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
     }
 
+    private Patient findCurrentPatient(String email) {
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+        if (credentials.getPatient() == null) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+        return credentials.getPatient();
+    }
+
     private Patient findPatientByIdOrCode(String patientIdOrCode) {
         try {
             Integer id = Integer.parseInt(patientIdOrCode);
@@ -351,6 +418,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .id(appointment.getId())
                 .patientName(appointment.getPatient() != null ? appointment.getPatient().getFullName() : null)
                 .patientId(appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : null)
+                .patientDbId(appointment.getPatient() != null ? appointment.getPatient().getId() : null)
+                .patientDateOfBirth(appointment.getPatient() != null && appointment.getPatient().getDob() != null
+                        ? appointment.getPatient().getDob().format(DATE_FORMATTER) : null)
+                .patientGender(appointment.getPatient() != null && appointment.getPatient().getGender() != null
+                        ? (appointment.getPatient().getGender().name().equals("FEMALE") ? "F" : "M") : null)
+                .patientPhone(appointment.getPatient() != null ? appointment.getPatient().getPhone() : null)
+                .patientAddress(appointment.getPatient() != null ? appointment.getPatient().getAddress() : null)
                 .doctorId(appointment.getDoctor() != null ? appointment.getDoctor().getId() : null)
                 .doctorName(appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null)
                 .specialtyId(appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null

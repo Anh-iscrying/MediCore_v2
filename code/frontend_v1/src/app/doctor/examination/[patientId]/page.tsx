@@ -3,7 +3,20 @@
 import { use } from "react"
 import { ExaminationPageWrapper } from "@/components/features/doctor/examination-page-wrapper"
 
-export default function ExaminationRoute({ params }: { params: Promise<{ patientId: string }> }) {
+export default function ExaminationRoute({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ patientId: string }>
+  searchParams: Promise<{ appointmentId?: string }>
+}) {
   const resolvedParams = use(params)
-  return <ExaminationPageWrapper patientId={resolvedParams.patientId} />
+  const resolvedSearchParams = use(searchParams)
+
+  return (
+    <ExaminationPageWrapper
+      patientId={resolvedParams.patientId}
+      appointmentId={resolvedSearchParams.appointmentId}
+    />
+  )
 }

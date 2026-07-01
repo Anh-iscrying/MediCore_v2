@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/providers/theme-provider"
 import { DataProvider } from "@/providers/data-provider"
 import { AuthProvider } from "@/providers/auth-provider"
+import { Toaster } from "@/components/base/ui/toaster"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -45,6 +46,7 @@ export default function RootLayout({
           <AuthProvider>
             <DataProvider>{children}</DataProvider>
           </AuthProvider>
+          <Toaster />
         </ThemeProvider>
         <Analytics />
       </body>

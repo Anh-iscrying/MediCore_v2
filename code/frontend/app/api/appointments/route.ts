@@ -81,15 +81,11 @@ async function getCurrentPatientCode(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const patientCode = await getCurrentPatientCode(request)
-    const response = await fetch(
-      `${BACKEND_API_BASE_URL}/appointments/patient/${encodeURIComponent(patientCode)}`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(request),
-        cache: "no-store",
-      }
-    )
+    const response = await fetch(`${BACKEND_API_BASE_URL}/appointments/me`, {
+      method: "GET",
+      headers: getAuthHeaders(request),
+      cache: "no-store",
+    })
 
     const appointments = await parseBackendResponse<BackendAppointment[]>(response)
     return NextResponse.json(appointments ?? [])
@@ -153,6 +149,17 @@ export async function PUT(request: NextRequest) {
     }
 
     const headers = getAuthHeaders(request)
+
+    if (status === "CANCELLED") {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/appointments/${encodeURIComponent(String(id))}/cancel`, {
+        method: "PUT",
+        headers,
+      })
+
+      const appointment = await parseBackendResponse<BackendAppointment>(response)
+      return NextResponse.json(appointment)
+    }
+
     const currentAppointment = await parseBackendResponse<BackendAppointment>(
       await fetch(`${BACKEND_API_BASE_URL}/appointments/${encodeURIComponent(String(id))}`, {
         method: "GET",

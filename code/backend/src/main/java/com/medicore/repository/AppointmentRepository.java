@@ -4,6 +4,7 @@ import com.medicore.common.constants.AppointmentStatus;
 import com.medicore.entity.clinical.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -15,9 +16,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     List<Appointment> findByDoctorId(Integer doctorId);
     List<Appointment> findByDoctorIdAndAppointmentDate(Integer doctorId, LocalDate appointmentDate);
     List<Appointment> findByDoctorIdAndAppointmentDateAndStatusNot(Integer doctorId, LocalDate appointmentDate, AppointmentStatus status);
+    @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty WHERE d.id = :doctorId AND a.appointmentDate = :appointmentDate AND a.status IN :statuses ORDER BY a.timeSlot ASC")
+    List<Appointment> findByDoctorIdAndAppointmentDateAndStatusIn(
+            @Param("doctorId") Integer doctorId,
+            @Param("appointmentDate") LocalDate appointmentDate,
+            @Param("statuses") List<AppointmentStatus> statuses);
     boolean existsByDoctorIdAndAppointmentDate(Integer doctorId, LocalDate appointmentDate);
-    boolean existsByPatientPatientCodeAndStatusNot(String patientCode, AppointmentStatus status);
-    boolean existsByPatientPatientCodeAndStatusNotAndIdNot(String patientCode, AppointmentStatus status, Integer id);
+    boolean existsByPatientPatientCodeAndStatusIn(String patientCode, List<AppointmentStatus> statuses);
+    boolean existsByPatientPatientCodeAndStatusInAndIdNot(String patientCode, List<AppointmentStatus> statuses, Integer id);
 
     @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty")
     List<Appointment> findAllWithRelations();

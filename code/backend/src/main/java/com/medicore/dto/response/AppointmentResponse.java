@@ -13,6 +13,11 @@ public class AppointmentResponse {
     private Integer id;
     private String patientName;
     private String patientId;
+    private Integer patientDbId;
+    private String patientDateOfBirth;
+    private String patientGender;
+    private String patientPhone;
+    private String patientAddress;
     private Integer doctorId;
     private String doctorName;
     private Integer specialtyId;
