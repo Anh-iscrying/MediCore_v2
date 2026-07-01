@@ -1,4 +1,4 @@
 package com.medicore.common.constants;
 public enum AppointmentStatus {
-    WAITING, IN_PROGRESS, DONE, CANCELLED
+    WAITING, CONFIRMED, IN_PROGRESS, DONE, CANCELLED
 }
