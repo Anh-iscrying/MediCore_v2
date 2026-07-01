@@ -9,7 +9,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth()
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && (!user || user.role !== "PATIENT")) {
       router.replace("/auth/login")
     }
   }, [isLoading, router, user])
@@ -22,7 +22,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) {
+  if (!user || user.role !== "PATIENT") {
     return null
   }
 

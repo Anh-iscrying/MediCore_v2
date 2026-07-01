@@ -9,14 +9,10 @@ import com.medicore.config.JwtTokenProvider;
 import com.medicore.dto.request.LoginRequest;
 import com.medicore.dto.request.RegisterRequest;
 import com.medicore.dto.response.LoginResponse;
-import com.medicore.entity.catalog.Specialty;
 import com.medicore.entity.user.AuthCredentials;
-import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient; // Đảm bảo đã có Entity này
 import com.medicore.repository.AuthCredentialsRepository;
-import com.medicore.repository.DoctorRepository;
 import com.medicore.repository.PatientRepository; // Bạn cần tạo file này
-import com.medicore.repository.SpecialtyRepository;
 import com.medicore.service.IdGeneratorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,9 +36,7 @@ import java.time.format.DateTimeFormatter;
 public class AuthController {
 
     private final AuthCredentialsRepository authCredentialsRepository;
-    private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository; // Thêm Repository này
-    private final SpecialtyRepository specialtyRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final IdGeneratorService idGeneratorService;
@@ -113,102 +107,52 @@ public class AuthController {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
         }
 
-        // 2. Xác định role
+        // 2. Public register chỉ tạo tài khoản bệnh nhân
         UserRole targetRole = UserRole.PATIENT;
-
-        try {
-            if (request.getRole() != null) {
-                targetRole = UserRole.valueOf(request.getRole().toUpperCase());
-            }
-        } catch (IllegalArgumentException e) {
-            targetRole = UserRole.PATIENT;
-        }
-
-        AuthCredentials credentials;
-        Integer businessId;
-        String businessCode;
+        String businessCode = idGeneratorService.generatePatientCode();
         String displayName = request.getName();
 
-        if (targetRole == UserRole.DOCTOR) {
-
-            // ===== ĐĂNG KÝ BÁC SĨ =====
-
-            Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
-                    .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
-
-            businessCode = idGeneratorService.generateDoctorCode();
-
-            Doctor doctor = Doctor.builder()
-                    .specialty(specialty)
-                    .doctorCode(businessCode)
-                    .doctorName(request.getName())
-                    .phone(request.getPhone())
-                    .degree(request.getTitle())
-                    .experienceYears(request.getExperience())
-                    .isActive(true)
-                    .build();
-
-            doctor.setCreatedAt(LocalDateTime.now());
-            doctor.setUpdatedAt(LocalDateTime.now());
-
-            doctor = doctorRepository.save(doctor);
-            businessId = doctor.getId();
-
-            credentials = AuthCredentials.builder()
-                    .email(request.getEmail())
-                    .passwordHash(passwordEncoder.encode(request.getPassword()))
-                    .role(UserRole.DOCTOR)
-                    .doctor(doctor)
-                    .build();
-
-        } else {
-
-            // ===== ĐĂNG KÝ BỆNH NHÂN =====
-
-            businessCode = idGeneratorService.generatePatientCode();
-
-            LocalDate dob = null;
-            if (request.getDob() != null) {
-                dob = LocalDate.parse(
-                        request.getDob(),
-                        DateTimeFormatter.ISO_DATE
-                );
-            }
-
-            GenderType targetGender = GenderType.MALE;
-
-            if (request.getGender() != null) {
-                try {
-                    targetGender = GenderType.valueOf(
-                            request.getGender().toUpperCase()
-                    );
-                } catch (IllegalArgumentException e) {
-                    targetGender = GenderType.MALE;
-                }
-            }
-
-            Patient patient = Patient.builder()
-                    .patientCode(businessCode)
-                    .fullName(request.getName())
-                    .dob(dob)
-                    .gender(targetGender)
-                    .phone(request.getPhone())
-                    .address(request.getAddress())
-                    .build();
-
-            patient.setCreatedAt(LocalDateTime.now());
-            patient.setUpdatedAt(LocalDateTime.now());
-
-            patient = patientRepository.save(patient);
-            businessId = patient.getId();
-
-            credentials = AuthCredentials.builder()
-                    .email(request.getEmail())
-                    .passwordHash(passwordEncoder.encode(request.getPassword()))
-                    .role(UserRole.PATIENT)
-                    .patient(patient)
-                    .build();
+        LocalDate dob = null;
+        if (request.getDob() != null) {
+            dob = LocalDate.parse(
+                    request.getDob(),
+                    DateTimeFormatter.ISO_DATE
+            );
         }
+
+        GenderType targetGender = GenderType.MALE;
+
+        if (request.getGender() != null) {
+            try {
+                targetGender = GenderType.valueOf(
+                        request.getGender().toUpperCase()
+                );
+            } catch (IllegalArgumentException e) {
+                targetGender = GenderType.MALE;
+            }
+        }
+
+        Patient patient = Patient.builder()
+                .patientCode(businessCode)
+                .fullName(request.getName())
+                .dob(dob)
+                .gender(targetGender)
+                .phone(request.getPhone())
+                .address(request.getAddress())
+                .build();
+
+        patient.setCreatedAt(LocalDateTime.now());
+        patient.setUpdatedAt(LocalDateTime.now());
+
+        patient = patientRepository.save(patient);
+        Integer businessId = patient.getId();
+
+        AuthCredentials credentials = AuthCredentials.builder()
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(UserRole.PATIENT)
+                .patient(patient)
+                .build();
 
         // 3. Lưu thông tin đăng nhập
         authCredentialsRepository.save(credentials);

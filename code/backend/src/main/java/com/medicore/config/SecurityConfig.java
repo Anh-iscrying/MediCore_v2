@@ -38,14 +38,18 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/api/v1/ws/**").permitAll()
-                
-                // API Quản lý bác sĩ/chuyên khoa: Chỉ ADMIN
-                .requestMatchers("/api/v1/doctors/**", "/api/v1/specialties/**").hasRole("ADMIN")
-                
+                .requestMatchers("/ws/**").permitAll()
+
                 // API Hàng chờ/Hồ sơ bệnh án: Chỉ ADMIN hoặc DOCTOR mới được xem danh sách tổng
-                .requestMatchers("/api/v1/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
-                
+                .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
+
+                // API quản trị bác sĩ/chuyên khoa: Chỉ ADMIN được sửa dữ liệu quản trị
+                .requestMatchers(HttpMethod.POST, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/doctors/profile").hasRole("DOCTOR")
+                .requestMatchers(HttpMethod.PUT, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+
                 // Các API khác mới dùng authenticated()
                 .anyRequest().authenticated()
         )
