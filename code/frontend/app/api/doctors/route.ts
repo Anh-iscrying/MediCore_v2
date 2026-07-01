@@ -17,6 +17,8 @@ type Specialty = {
 type Doctor = {
   id: number
   specialty_id?: number
+  avatar_url?: string
+  avatar?: string
   doctor_schedules?: unknown[]
 }
 

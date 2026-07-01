@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -24,6 +25,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     boolean existsByDoctorIdAndAppointmentDate(Integer doctorId, LocalDate appointmentDate);
     boolean existsByPatientPatientCodeAndStatusIn(String patientCode, List<AppointmentStatus> statuses);
     boolean existsByPatientPatientCodeAndStatusInAndIdNot(String patientCode, List<AppointmentStatus> statuses, Integer id);
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.patient.patientCode = :patientCode AND a.createdAt >= :startOfDay AND a.createdAt < :startOfNextDay")
+    long countAppointmentsCreatedToday(
+            @Param("patientCode") String patientCode,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("startOfNextDay") LocalDateTime startOfNextDay);
 
     @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty")
     List<Appointment> findAllWithRelations();

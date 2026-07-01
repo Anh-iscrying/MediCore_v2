@@ -156,6 +156,8 @@ public class DoctorController {
         response.put("degree", doctor.getDegree());
         response.put("experience_years", doctor.getExperienceYears());
         response.put("bio", doctor.getBio());
+        response.put("avatar_url", doctor.getAvatarUrl());
+        response.put("avatar", doctor.getAvatarUrl());
         response.put("avatarColor", "bg-[#111111] border border-[#1f1f1f] text-white");
         response.put("doctor_schedules", schedules);
         response.put("availableSlots", schedules.stream().map(schedule -> schedule.get("time_slot")).distinct().collect(Collectors.toList()));
