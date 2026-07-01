@@ -295,6 +295,11 @@ export interface AppointmentResponse {
   id: number
   patientName: string
   patientId: string
+  patientDbId?: number
+  patientDateOfBirth?: string
+  patientGender?: Patient["gender"]
+  patientPhone?: string
+  patientAddress?: string
   doctorId: number
   doctorName?: string
   specialtyId?: number

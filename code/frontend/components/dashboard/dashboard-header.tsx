@@ -70,7 +70,7 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-40 flex h-16 select-none items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-3">
         <div>
-          <p className="text-lg font-serif font-medium text-foreground tracking-tight">{headerInfo.title}</p>
+          <p className="text-lg font-sans font-black text-foreground tracking-tight">{headerInfo.title}</p>
           <p className="hidden text-xs text-muted-foreground sm:block">{headerInfo.subtitle}</p>
         </div>
       </div>
@@ -98,8 +98,7 @@ export function DashboardHeader() {
 
           {showDropdown && (
             <div
-              className="absolute right-0 mt-2 w-52 rounded-md border border-border bg-card p-1 text-xs font-bold text-card-foreground shadow-2xl z-50"
-              style={{ boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }}
+              className="absolute right-0 mt-2 w-52 rounded-xl border border-border bg-card p-1 text-xs font-bold text-card-foreground z-50"
             >
               <Link
                 href="/dashboard/profile"

@@ -4,8 +4,6 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { apiFetch } from "@/lib/api"
 
-const cardShadow = { boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }
-
 type PatientProfile = {
   id: number
   name: string
@@ -56,7 +54,7 @@ export default function PatientProfilePage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1400px] p-4 md:p-8">
-        <div className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 text-sm font-semibold text-[#6c6a64]" style={cardShadow}>
+        <div className="rounded-xl border border-border bg-card p-6 text-sm font-semibold text-muted-foreground">
           Đang tải hồ sơ bệnh nhân...
         </div>
       </div>
@@ -66,7 +64,7 @@ export default function PatientProfilePage() {
   if (error || !profile) {
     return (
       <div className="mx-auto max-w-[1400px] p-4 md:p-8">
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-sm font-semibold text-destructive" style={cardShadow}>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-sm font-semibold text-destructive">
           {error || "Không tìm thấy hồ sơ bệnh nhân"}
         </div>
       </div>
@@ -88,26 +86,26 @@ export default function PatientProfilePage() {
   ]
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8">
+    <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <article className="rounded-lg border border-[#cc785c] bg-[#cc785c] p-6 text-white" style={cardShadow}>
-          <h2 className="text-2xl font-serif font-medium">Hồ sơ bệnh nhân</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/95">Thông tin lấy từ tài khoản đã xác thực và hồ sơ bệnh nhân trong hệ thống.</p>
-          <button className="mt-5 rounded-md bg-[#faf9f5] border border-[#faf9f5] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#cc785c] hover:bg-[#efe9de] transition-colors cursor-pointer">
+        <article className="rounded-xl border border-foreground bg-foreground p-6 text-[#9fe870]">
+          <h2 className="text-2xl font-sans font-black text-[#9fe870]">Hồ sơ bệnh nhân</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[#e8ebe6]">Thông tin lấy từ tài khoản đã xác thực và hồ sơ bệnh nhân trong hệ thống.</p>
+          <button className="mt-5 rounded-xl bg-primary border border-primary px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-[#cdffad] transition-colors cursor-pointer">
             Chỉnh sửa hồ sơ
           </button>
         </article>
 
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 lg:col-span-2" style={cardShadow}>
+        <article className="rounded-xl border border-border bg-card p-6 lg:col-span-2">
           <div className="mb-5">
-            <h2 className="text-xl font-serif font-medium text-foreground">Thông tin định danh</h2>
-            <p className="text-sm text-[#6c6a64] mt-0.5">Thông tin đăng ký cơ bản của bệnh nhân.</p>
+            <h2 className="text-xl font-sans font-black text-foreground">Thông tin định danh</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Thông tin đăng ký cơ bản của bệnh nhân.</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {profileFields.map((field) => (
-              <div key={field.label} className="rounded-lg border border-[#e6dfd8] bg-[#faf9f5] p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#6c6a64]">{field.label}</p>
-                <p className="mt-1 text-sm font-bold text-foreground">{field.value}</p>
+              <div key={field.label} className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{field.label}</p>
+                <p className="mt-1 text-sm font-black text-foreground">{field.value}</p>
               </div>
             ))}
           </div>
@@ -115,46 +113,46 @@ export default function PatientProfilePage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
+        <article className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5">
-            <h2 className="text-xl font-serif font-medium text-foreground">Thông tin liên hệ</h2>
+            <h2 className="text-xl font-sans font-black text-foreground">Thông tin liên hệ</h2>
           </div>
           <div className="space-y-3">
             {contactFields.map((field) => (
-              <div key={field.label} className="flex items-start justify-between gap-4 border-b border-[#e6dfd8] pb-3 last:border-0 last:pb-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#6c6a64]">{field.label}</span>
+              <div key={field.label} className="flex items-start justify-between gap-4 border-b border-border pb-3 last:border-0 last:pb-0">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{field.label}</span>
                 <span className="text-right text-sm font-semibold text-foreground">{field.value}</span>
               </div>
             ))}
           </div>
         </article>
 
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
+        <article className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5">
-            <h2 className="text-xl font-serif font-medium text-foreground">Trạng thái hồ sơ</h2>
+            <h2 className="text-xl font-sans font-black text-foreground">Trạng thái hồ sơ</h2>
           </div>
-          <div className="rounded-lg border border-[#e6dfd8] bg-[#faf9f5] p-4">
+          <div className="rounded-xl border border-border bg-background p-4">
             <p className="text-sm font-bold text-foreground">{displayValue(profile.status)}</p>
-            <p className="mt-1 text-sm text-[#6c6a64]">Ngày tạo: {displayValue(profile.createdAt)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ngày tạo: {displayValue(profile.createdAt)}</p>
           </div>
         </article>
       </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
+        <article className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5">
-            <h2 className="text-xl font-serif font-medium text-foreground">Bệnh nền & Tiền sử bệnh án</h2>
+            <h2 className="text-xl font-sans font-black text-foreground">Bệnh nền & Tiền sử bệnh án</h2>
           </div>
-          <div className="rounded-md border border-[#e6dfd8] bg-[#faf9f5] p-3 text-sm font-semibold text-[#3d3d3a]">
+          <div className="rounded-xl border border-border bg-background p-3 text-sm font-semibold text-muted-foreground">
             Chưa có dữ liệu bệnh án.
           </div>
         </article>
 
-        <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6" style={cardShadow}>
+        <article className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5">
-            <h2 className="text-xl font-serif font-medium text-foreground">Dị ứng thuốc đã biết</h2>
+            <h2 className="text-xl font-sans font-black text-foreground">Dị ứng thuốc đã biết</h2>
           </div>
-          <div className="rounded-md border border-[#e6dfd8] bg-[#faf9f5] p-3 text-sm font-semibold text-[#3d3d3a]">
+          <div className="rounded-xl border border-border bg-background p-3 text-sm font-semibold text-muted-foreground">
             Chưa có dữ liệu dị ứng thuốc.
           </div>
         </article>

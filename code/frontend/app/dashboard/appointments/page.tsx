@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BookingSuccessToast } from "@/components/dashboard/booking-success-toast"
 
-const cardShadow = { boxShadow: "0px 2px 4px rgba(0,0,0,0.2), 0px 8px 16px -4px rgba(0,0,0,0.4)" }
 
 interface DoctorSchedule {
   id: number
@@ -26,29 +25,127 @@ interface Doctor {
   experience_years: number
   bio: string
   avatarColor: string
+  avatar_url?: string
   doctor_schedules: DoctorSchedule[]
   availableSlots: string[]
   Achievements: string[]
 }
 
-const specialties = ["Tim mạch", "Vật lý trị liệu", "Đa khoa"]
-const timeSlots = ["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"]
+interface Appointment {
+  id: number | string
+  doctor?: string
+  doctorName?: string
+  doctorId?: number
+  specialty?: string
+  specialtyId?: number
+  date?: string
+  appointmentDate?: string
+  time?: string
+  timeSlot?: string
+  status?: string
+  symptoms?: string
+  symptomsInitial?: string
+}
+
+interface Specialty {
+  id: number
+  name: string
+  doctorCount?: number
+}
+
+function getTodayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function addDaysIso(dateIso: string, days: number) {
+  const date = new Date(`${dateIso}T00:00:00`)
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function formatDateLabel(dateIso?: string) {
+  if (!dateIso) return ""
+  return new Date(`${dateIso}T00:00:00`).toLocaleDateString("vi-VN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  })
+}
+
+function isActiveAppointmentStatus(status?: string) {
+  return !!status && status !== "CANCELLED"
+}
+
+function isSlotBookable(dateIso: string, slot: string) {
+  if (!dateIso || !slot) return false
+  const now = new Date()
+  const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
+  const [year, month, day] = dateIso.split("-").map(Number)
+  const [hour, minute] = startTimeStr.split(":").map(Number)
+  
+  const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
+  
+  const twoHoursInMs = 2 * 60 * 60 * 1000
+  return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
+}
+
+function isAppointmentCancellable(appointment: Appointment) {
+  const dateIso = appointment.appointmentDate
+  const slot = appointment.timeSlot
+  if (!dateIso || !slot) return false
+  
+  const now = new Date()
+  const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
+  const [year, month, day] = dateIso.split("-").map(Number)
+  const [hour, minute] = startTimeStr.split(":").map(Number)
+  
+  const appointmentDate = new Date(year, month - 1, day, hour, minute, 0, 0)
+  
+  const twoHoursInMs = 2 * 60 * 60 * 1000
+  return (appointmentDate.getTime() - now.getTime()) >= twoHoursInMs
+}
+
+async function readApiError(response: Response, fallback: string) {
+  try {
+    const payload = await response.json()
+    return payload?.error || payload?.message || fallback
+  } catch {
+    return fallback
+  }
+}
 
 export default function AppointmentsPage() {
   const [bookingFlow, setBookingFlow] = useState<"time" | "appointments">("time")
-  const [selectedSpecialty, setSelectedSpecialty] = useState("Tim mạch")
-  
+  const [specialties, setSpecialties] = useState<Specialty[]>([])
+  const [selectedSpecialty, setSelectedSpecialty] = useState("")
+
   const [doctors, setDoctors] = useState<Doctor[]>([])
+  const todayIso = getTodayIso()
+  const maxDateIso = addDaysIso(todayIso, 30)
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState("09:00")
-  const [selectedDate, setSelectedDate] = useState("2026-06-28")
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState("")
+  const [selectedDate, setSelectedDate] = useState(todayIso)
   const [symptoms, setSymptoms] = useState("")
-  const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
-  const [cancelSuccess, setCancelSuccess] = useState<string | null>(null)
-  const [appointmentToCancel, setAppointmentToCancel] = useState<any | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success")
+  const [toastTitle, setToastTitle] = useState<string | undefined>(undefined)
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null)
+
+  const triggerToast = (message: string, variant: "success" | "danger" = "success", title?: string) => {
+    setToastTitle(title)
+    setToastVariant(variant)
+    setToastMessage(message)
+  }
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [toastMessage])
 
   // Booked appointments list
-  const [appointments, setAppointments] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Parse URL search params safely on client mount
@@ -64,52 +161,167 @@ export default function AppointmentsPage() {
 
       const pendingBookingSuccess = window.sessionStorage.getItem("bookingSuccess")
       if (pendingBookingSuccess) {
-        setBookingSuccess(pendingBookingSuccess)
+        triggerToast(pendingBookingSuccess, "success", "Đặt lịch thành công")
         window.sessionStorage.removeItem("bookingSuccess")
-
-        setTimeout(() => {
-          setBookingSuccess(null)
-        }, 3000)
       }
     }
   }, [])
 
-  // Fetch doctors and appointments on mount
+  const hasRestoredRef = useRef(false)
+
+  // Load saved choices from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedSpecialty = window.sessionStorage.getItem("booking_specialty")
+      const savedDate = window.sessionStorage.getItem("booking_date")
+      const savedTimeSlot = window.sessionStorage.getItem("booking_timeSlot")
+      const savedSymptoms = window.sessionStorage.getItem("booking_symptoms")
+
+      if (savedSpecialty) setSelectedSpecialty(savedSpecialty)
+      if (savedDate) setSelectedDate(savedDate)
+      if (savedTimeSlot) setSelectedTimeSlot(savedTimeSlot)
+      if (savedSymptoms) setSymptoms(savedSymptoms)
+
+      hasRestoredRef.current = true
+    }
+  }, [])
+
+  // Sync state changes to sessionStorage once restoration is complete
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    window.sessionStorage.setItem("booking_specialty", selectedSpecialty)
+  }, [selectedSpecialty])
+
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    window.sessionStorage.setItem("booking_date", selectedDate)
+  }, [selectedDate])
+
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    window.sessionStorage.setItem("booking_timeSlot", selectedTimeSlot)
+  }, [selectedTimeSlot])
+
+  useEffect(() => {
+    if (!hasRestoredRef.current) return
+    window.sessionStorage.setItem("booking_symptoms", symptoms)
+  }, [symptoms])
+
+  // Fetch doctors for a given date and refresh is_booked state
+  const loadDoctors = useCallback(async (date: string, activeSpecialty?: string) => {
+    try {
+      const docsRes = await fetch(`/api/doctors?date=${encodeURIComponent(date)}`)
+      if (!docsRes.ok) throw new Error(await readApiError(docsRes, "Không thể tải danh sách bác sĩ"))
+      const docsData: Doctor[] = await docsRes.json()
+      setDoctors(docsData)
+
+      // Re-select a valid slot from the refreshed doctor list
+      const specialty = activeSpecialty || selectedSpecialty
+      const docsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === specialty)
+      const docsWithSlot = docsForSpecialty.filter((doc: Doctor) =>
+        doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && s.time_slot === selectedTimeSlot)
+      )
+      if (docsWithSlot.length > 0) {
+        setSelectedDoctor(docsWithSlot[0])
+      } else {
+        // Previously selected slot may now be booked — reset to first available
+        const docWithAnySlot = docsForSpecialty.find((doc: Doctor) =>
+          doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked)
+        )
+        if (docWithAnySlot) {
+          const firstSlot = docWithAnySlot.doctor_schedules.find(s => s.work_date === date && !s.is_booked)?.time_slot ?? ""
+          setSelectedDoctor(docWithAnySlot)
+          setSelectedTimeSlot(firstSlot)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to reload doctors:", err)
+    }
+  }, [selectedSpecialty, selectedTimeSlot])
+
+  // Fetch doctors and appointments on mount/date change
   useEffect(() => {
     async function initData() {
       try {
-        const [docsRes, appsRes] = await Promise.all([
-          fetch("/api/doctors"),
+        const [specialtiesRes, docsRes, appsRes] = await Promise.all([
+          fetch("/api/specialties"),
+          fetch(`/api/doctors?date=${encodeURIComponent(selectedDate)}`),
           fetch("/api/appointments")
         ])
+
+        if (!specialtiesRes.ok) throw new Error(await readApiError(specialtiesRes, "Không thể tải danh sách chuyên khoa"))
+        if (!docsRes.ok) throw new Error(await readApiError(docsRes, "Không thể tải danh sách bác sĩ"))
+        if (!appsRes.ok) throw new Error(await readApiError(appsRes, "Không thể tải lịch hẹn"))
+
+        const specialtiesData = await specialtiesRes.json()
         const docsData = await docsRes.json()
         const appsData = await appsRes.json()
+        const savedSpecialty = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_specialty") : null
+        const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
 
+        const activeSpecialty = savedSpecialty || selectedSpecialty || specialtiesData[0]?.name || ""
+        const currentSlot = savedTimeSlot || selectedTimeSlot
+
+        setSpecialties(specialtiesData)
         setDoctors(docsData)
         setAppointments(appsData)
+        if (activeSpecialty) {
+          setSelectedSpecialty(activeSpecialty)
+        }
 
-        // Set initial selected doctor
-        const initialDocsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === "Tim mạch")
-        if (initialDocsForSpecialty.length > 0) {
-          setSelectedDoctor(initialDocsForSpecialty[0])
+        const initialDocsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === activeSpecialty)
+        const availableDocs = initialDocsForSpecialty.filter((doc: Doctor) => getAvailableSlots(doc, selectedDate).includes(currentSlot))
+        if (availableDocs.length > 0) {
+          setSelectedDoctor(availableDocs[0])
+          if (currentSlot) {
+            setSelectedTimeSlot(currentSlot)
+          }
+        } else if (initialDocsForSpecialty.length > 0) {
+          const docWithSchedule = initialDocsForSpecialty.find((doc: Doctor) => getAvailableSlots(doc, selectedDate).length > 0)
+          if (docWithSchedule) {
+            setSelectedDoctor(docWithSchedule)
+            setSelectedTimeSlot(getAvailableSlots(docWithSchedule, selectedDate)[0])
+          } else {
+            setSelectedDoctor(initialDocsForSpecialty[0])
+            setSelectedTimeSlot("")
+          }
         }
       } catch (err) {
         console.error("Failed to load dashboard data:", err)
+        triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải dữ liệu.", "danger", "Lỗi dữ liệu")
       } finally {
         setIsLoading(false)
       }
     }
     initData()
-  }, [])
+  }, [selectedDate])
+
+  const getAllSlots = (doctor: Doctor, workDate = selectedDate) =>
+    doctor.doctor_schedules
+      .filter(schedule => schedule.work_date === workDate)
+      .map(schedule => schedule.time_slot)
 
   const getAvailableSlots = (doctor: Doctor, workDate = selectedDate) =>
     doctor.doctor_schedules
-      .filter(schedule => schedule.work_date === workDate && !schedule.is_booked)
+      .filter(schedule => schedule.work_date === workDate && !schedule.is_booked && isSlotBookable(workDate, schedule.time_slot))
       .map(schedule => schedule.time_slot)
 
+  const getSelectedScheduleTimeSlot = (doctor: Doctor) =>
+    doctor.doctor_schedules.find(
+      schedule =>
+        schedule.work_date === selectedDate &&
+        !schedule.is_booked &&
+        schedule.time_slot === selectedTimeSlot
+    )?.time_slot ?? selectedTimeSlot
+
+  const specialtyDoctors = doctors.filter(doc => doc.specialty === selectedSpecialty)
+  const availableTimeSlots = Array.from(
+    new Set(specialtyDoctors.flatMap(doc => getAllSlots(doc)))
+  ).sort()
+
   // Filter doctors based on specialty, selected date and doctor_schedules
-  const filteredDoctors = doctors.filter(
-    doc => doc.specialty === selectedSpecialty && getAvailableSlots(doc).includes(selectedTimeSlot)
+  const filteredDoctors = specialtyDoctors.filter(
+    doc => getAvailableSlots(doc).includes(selectedTimeSlot)
   )
 
   // Handle flow switch
@@ -120,7 +332,7 @@ export default function AppointmentsPage() {
   // Handle specialty change
   const handleSpecialtyChange = (spec: string) => {
     setSelectedSpecialty(spec)
-    
+
     const docs = doctors.filter(doc => doc.specialty === spec)
     const availableDocs = docs.filter(doc => getAvailableSlots(doc).includes(selectedTimeSlot))
     if (availableDocs.length > 0) {
@@ -137,7 +349,7 @@ export default function AppointmentsPage() {
   // Handle time slot change
   const handleTimeSlotChange = (slot: string) => {
     setSelectedTimeSlot(slot)
-    
+
     const availableDocs = doctors.filter(doc => doc.specialty === selectedSpecialty && getAvailableSlots(doc).includes(slot))
     if (availableDocs.length > 0) {
       const isCurrentDocAvailable = availableDocs.some(d => d.id === selectedDoctor?.id)
@@ -152,41 +364,50 @@ export default function AppointmentsPage() {
     const targetDoc = doctorToBook || selectedDoctor
     if (!targetDoc) return
 
-    const formattedDate = new Date(selectedDate).toLocaleDateString("vi-VN", {
-      weekday: "short",
-      day: "2-digit",
-      month: "2-digit"
-    })
-    
+    if (appointments.some(app => isActiveAppointmentStatus(app.status))) {
+      triggerToast("Bạn chỉ có thể đặt một lịch khám đang hoạt động. Vui lòng hủy lịch hiện tại trước khi đặt lịch mới.", "danger", "Không thể đặt lịch")
+      return
+    }
+
+    const trimmedSymptoms = symptoms.trim()
+    if (!trimmedSymptoms) {
+      triggerToast("Vui lòng nhập triệu chứng ban đầu trước khi đặt lịch.", "danger", "Khai báo triệu chứng")
+      return
+    }
+
     try {
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          doctor: targetDoc.doctor_name,
-          specialty: selectedSpecialty,
-          date: formattedDate,
-          time: `${selectedTimeSlot} ${Number(selectedTimeSlot.split(":")[0]) < 12 ? "AM" : "PM"}`,
-          symptoms
+          doctorId: targetDoc.id,
+          appointmentDate: selectedDate,
+          timeSlot: getSelectedScheduleTimeSlot(targetDoc),
+          symptomsInitial: trimmedSymptoms
         })
       })
-      if (!res.ok) throw new Error("Booking failed")
-      
+      if (!res.ok) throw new Error(await readApiError(res, "Đặt lịch thất bại"))
+
       const newApp = await res.json()
       setAppointments(prev => [newApp, ...prev])
 
-      setBookingSuccess(
-        `Đăng ký lịch hẹn thành công với ${targetDoc.doctor_name}`
+      triggerToast(
+        `Đăng ký lịch hẹn thành công với ${targetDoc.doctor_name}`,
+        "success",
+        "Đặt lịch thành công"
       )
 
-      setTimeout(() => {
-        setBookingSuccess(null)
-      }, 3000)
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("booking_timeSlot")
+        window.sessionStorage.removeItem("booking_symptoms")
+      }
+      setSymptoms("")
+      setSelectedTimeSlot("")
 
       setBookingFlow("appointments")
     } catch (err) {
       console.error("Booking error:", err)
-      alert("Đã xảy ra lỗi khi đặt lịch.")
+      triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi đặt lịch.", "danger", "Đặt lịch thất bại")
     }
   }
 
@@ -195,7 +416,7 @@ export default function AppointmentsPage() {
 
     try {
       const res = await fetch("/api/appointments", {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: appointmentToCancel.id,
@@ -203,7 +424,7 @@ export default function AppointmentsPage() {
         }),
       })
 
-      if (!res.ok) throw new Error("Failed to cancel appointment")
+      if (!res.ok) throw new Error(await readApiError(res, "Failed to cancel appointment"))
 
       setAppointments((prev) =>
         prev.map((app) =>
@@ -213,54 +434,76 @@ export default function AppointmentsPage() {
         )
       )
 
-      setAppointmentToCancel(null)
-      setCancelSuccess("Hủy lịch thành công")
+      // Re-fetch doctors so the cancelled slot's is_booked resets to false
+      await loadDoctors(selectedDate)
 
-      setTimeout(() => {
-        setCancelSuccess(null)
-      }, 3000)
+      setAppointmentToCancel(null)
+      triggerToast("Hủy lịch thành công", "danger", "Hủy lịch thành công")
     } catch (err) {
       console.error("Cancel error:", err)
-      alert("Lỗi khi hủy lịch hẹn.")
+      triggerToast(err instanceof Error ? err.message : "Lỗi khi hủy lịch hẹn.", "danger", "Hủy lịch thất bại")
     }
   }
 
-  if (isLoading || !selectedDoctor) {
+  const getAppointmentDoctor = (appointment: Appointment) => {
+    if (appointment.doctorName) return appointment.doctorName
+    if (appointment.doctor) return appointment.doctor
+    const doc = doctors.find(d => d.id === appointment.doctorId)
+    if (doc) {
+      return doc.degree ? `${doc.degree} ${doc.doctor_name}` : doc.doctor_name
+    }
+    return "Bác sĩ"
+  }
+
+  const getAppointmentSpecialty = (appointment: Appointment) =>
+    appointment.specialty || specialties.find(specialty => specialty.id === appointment.specialtyId)?.name || ""
+
+  const getAppointmentDate = (appointment: Appointment) =>
+    appointment.date || formatDateLabel(appointment.appointmentDate)
+
+  const getAppointmentTime = (appointment: Appointment) =>
+    appointment.time || appointment.timeSlot || ""
+
+  const isWaitingStatus = (status?: string) => status === "PENDING" || status === "WAITING"
+  const isConfirmedStatus = (status?: string) => status === "CONFIRMED"
+  const isInProgressStatus = (status?: string) => status === "IN_PROGRESS"
+  const isCompletedStatus = (status?: string) => status === "COMPLETED" || status === "DONE"
+
+  if (isLoading) {
     return (
       <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none flex flex-col items-center justify-center min-h-[500px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white" />
-        <p className="text-[#a0a0a0] text-sm font-semibold mt-4">Đang tải thông tin từ hệ thống...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-foreground" />
+        <p className="text-muted-foreground text-sm font-semibold mt-4">Đang tải thông tin từ hệ thống...</p>
       </div>
     )
   }
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
-      <BookingSuccessToast message={bookingSuccess} />
-      <BookingSuccessToast message={cancelSuccess} title="Hủy lịch thành công" variant="danger" />
+      <BookingSuccessToast message={toastMessage} title={toastTitle} variant={toastVariant} />
 
       {appointmentToCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-sm rounded-xl border border-[#e6dfd8] bg-[#efe9de] p-6 shadow-xl">
-            <h3 className="text-base font-serif font-medium text-[#141413] tracking-tight">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0e0f0c]/30 px-4">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-none">
+            <h3 className="text-base font-sans font-black text-foreground tracking-tight">
               Bạn có chắc chắn muốn hủy lịch không?
             </h3>
-            <p className="mt-2 text-xs text-[#6c6a64]">
-              Lịch hẹn với {appointmentToCancel.doctor} vào {appointmentToCancel.date} • {appointmentToCancel.time}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Lịch hẹn với {getAppointmentDoctor(appointmentToCancel)} vào {getAppointmentDate(appointmentToCancel)} • {getAppointmentTime(appointmentToCancel)}
             </p>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setAppointmentToCancel(null)}
-                className="rounded-md border border-[#e6dfd8] bg-[#faf9f5] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#3d3d3a] hover:bg-[#efe9de] transition-colors"
+                className="rounded-xl border border-[#0e0f0c] bg-card px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors"
               >
                 Không
               </button>
               <button
                 type="button"
                 onClick={handleCancelAppointment}
-                className="rounded-md border border-[#c64545] bg-[#c64545] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#a83232] transition-colors"
+                className="rounded-xl border border-destructive bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:bg-destructive/80 transition-colors"
               >
                 Có
               </button>
@@ -271,14 +514,14 @@ export default function AppointmentsPage() {
 
       {/* Flow Switcher (Tabs) */}
       <div className="flex justify-center sm:justify-start">
-        <div className="bg-[#efe9de] p-1 rounded-md flex gap-1 border border-[#e6dfd8] shadow-sm">
+        <div className="bg-[#e8ebe6] p-1 rounded-xl flex gap-1 border border-border shadow-none">
           <button
             onClick={() => handleFlowChange("time")}
             className={cn(
-              "rounded-md px-6 py-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer border",
+              "rounded-xl px-6 py-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer border",
               bookingFlow === "time"
-                ? "bg-[#faf9f5] text-[#141413] border-[#e6dfd8] shadow-xs"
-                : "border-transparent text-[#6c6a64] hover:text-[#141413]"
+                ? "bg-card text-foreground border-border"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             Theo Thời gian
@@ -286,10 +529,10 @@ export default function AppointmentsPage() {
           <button
             onClick={() => handleFlowChange("appointments")}
             className={cn(
-              "rounded-md px-6 py-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer border",
+              "rounded-xl px-6 py-2 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer border",
               bookingFlow === "appointments"
-                ? "bg-[#faf9f5] text-[#141413] border-[#e6dfd8] shadow-xs"
-                : "border-transparent text-[#6c6a64] hover:text-[#141413]"
+                ? "bg-card text-foreground border-border"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
             Lịch hẹn của bạn
@@ -301,57 +544,62 @@ export default function AppointmentsPage() {
       {bookingFlow === "time" && (
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Flow B - Left Column: Time & Specialty Filters */}
-          <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 shadow-sm lg:col-span-1 flex flex-col justify-between lg:h-[670px]" style={cardShadow}>
+          <article className="rounded-xl border border-border bg-card p-6 lg:col-span-1 flex flex-col justify-between lg:h-[670px]">
             <div>
               <div className="mb-6">
                 <div>
-                  <h2 className="text-base font-serif font-medium text-foreground tracking-tight">Bộ lọc thời gian</h2>
-                  <p className="text-[11px] text-[#6c6a64] font-medium mt-0.5">Chọn ngày, giờ khám để tìm bác sĩ</p>
+                  <h2 className="text-base font-sans font-black text-foreground tracking-tight">Bộ lọc thời gian</h2>
+                  <p className="text-[11px] text-muted-foreground font-medium mt-0.5">Chọn ngày, giờ khám để tìm bác sĩ</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 {/* Specialty Select */}
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Chuyên khoa khám</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Chuyên khoa khám</label>
                   <select
                     value={selectedSpecialty}
                     onChange={(e) => handleSpecialtyChange(e.target.value)}
-                    className="w-full rounded-md border border-[#e6dfd8] bg-[#faf9f5] text-[#141413] px-4 py-2.5 text-xs font-bold outline-none focus:border-[#cc785c] transition-colors cursor-pointer"
+                    className="w-full rounded-md border border-[#0e0f0c] bg-card text-[#0e0f0c] px-4 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors cursor-pointer"
                   >
                     {specialties.map(spec => (
-                      <option key={spec} value={spec}>Khoa {spec}</option>
+                      <option key={spec.id} value={spec.name}>Khoa {spec.name}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Date Input */}
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Ngày hẹn khám</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Ngày hẹn khám</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min="2026-06-25"
-                    className="w-full rounded-md border border-[#e6dfd8] bg-[#faf9f5] text-[#141413] px-4 py-2.5 text-xs font-bold outline-none focus:border-[#cc785c] transition-colors cursor-pointer"
+                    min={todayIso}
+                    max={maxDateIso}
+                    className="w-full rounded-md border border-[#0e0f0c] bg-card text-[#0e0f0c] px-4 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors cursor-pointer"
                   />
                 </div>
 
                 {/* Time Slots Buttons */}
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Chọn ca khám mong muốn</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Chọn ca khám mong muốn</label>
                   <div className="max-h-[150px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-3 gap-2">
-                    {timeSlots.map((slot) => {
+                    {availableTimeSlots.map((slot) => {
                       const isActive = selectedTimeSlot === slot
+                      const isAvailable = specialtyDoctors.some(doc => getAvailableSlots(doc).includes(slot))
                       return (
                         <button
                           key={slot}
+                          disabled={!isAvailable}
                           onClick={() => handleTimeSlotChange(slot)}
                           className={cn(
-                            "rounded-md py-2 text-center text-xs font-bold uppercase tracking-wider transition-all cursor-pointer bg-[#faf9f5]",
+                            "rounded-md py-2 text-center text-xs font-bold uppercase tracking-wider transition-all bg-card",
                             isActive
-                              ? "bg-[#cc785c] text-white border-[#cc785c] shadow-xs"
-                              : "border border-[#e6dfd8] text-[#6c6a64] hover:border-[#cc785c] hover:text-[#cc785c]"
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : isAvailable
+                                ? "border border-[#0e0f0c] text-[#0e0f0c] hover:border-primary hover:text-primary cursor-pointer"
+                                : "border border-border/50 text-muted-foreground/50 cursor-not-allowed line-through bg-transparent"
                           )}
                         >
                           {slot}
@@ -363,38 +611,39 @@ export default function AppointmentsPage() {
 
                 {/* Symptoms Input */}
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6c6a64]">Khai báo triệu chứng</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Khai báo triệu chứng</label>
                   <textarea
                     value={symptoms}
                     onChange={(e) => setSymptoms(e.target.value)}
                     placeholder="Ghi rõ các triệu chứng..."
-                    className="w-full h-20 rounded-md border border-[#e6dfd8] bg-[#faf9f5] text-[#141413] px-4 py-2.5 text-xs font-medium outline-none focus:border-[#cc785c] resize-none transition-colors"
+                    required
+                    className="w-full h-20 rounded-md border border-[#0e0f0c] bg-card text-[#0e0f0c] px-4 py-2.5 text-xs font-medium outline-none focus:border-primary resize-none transition-colors"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-[#e6dfd8]">
-              <div className="rounded-md bg-[#f5f0e8] p-3 text-[11px] text-[#6c6a64] leading-relaxed border border-[#e6dfd8]">
+            <div className="mt-6 pt-4 border-t border-border">
+              <div className="rounded-md bg-secondary p-3 text-[11px] text-muted-foreground leading-relaxed border border-border">
                 <span>Chọn bác sĩ ở cột bên phải để đặt lịch khám nhanh hoặc xem chi tiết chuyên môn.</span>
               </div>
             </div>
           </article>
 
           {/* Flow B - Right Column: Available Doctors Grid */}
-          <article className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 shadow-sm lg:col-span-2 flex flex-col justify-between lg:h-[670px]" style={cardShadow}>
+          <article className="rounded-xl border border-border bg-card p-6 lg:col-span-2 flex flex-col justify-between lg:h-[670px]">
             <div className="flex flex-col h-full overflow-hidden">
               <div className="mb-5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-base font-serif font-medium text-foreground tracking-tight">Danh sách bác sĩ</h2>
+                  <h2 className="text-base font-sans font-black text-foreground tracking-tight">Danh sách bác sĩ</h2>
                 </div>
-                <span className="text-[11px] font-bold text-[#141413] bg-[#faf9f5] px-3 py-1 rounded-md border border-[#e6dfd8]">
+                <span className="text-[11px] font-bold text-[#0e0f0c] bg-secondary px-3 py-1 rounded-xl border border-border">
                   Lịch hẹn: {selectedTimeSlot} • {selectedDate}
                 </span>
               </div>
 
-              <p className="text-xs text-[#6c6a64] mb-5 shrink-0">
-                Các bác sĩ chuyên khoa <strong className="text-[#141413]">Khoa {selectedSpecialty}</strong> có lịch trống vào lúc <strong className="text-[#141413]">{selectedTimeSlot}</strong> ngày <strong className="text-[#141413]">{selectedDate}</strong>:
+              <p className="text-xs text-muted-foreground mb-5 shrink-0">
+                Các bác sĩ chuyên khoa <strong className="text-foreground">Khoa {selectedSpecialty}</strong> có lịch trống vào lúc <strong className="text-foreground">{selectedTimeSlot}</strong> ngày <strong className="text-foreground">{selectedDate}</strong>:
               </p>
 
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide flex flex-col gap-4 pb-2">
@@ -403,33 +652,41 @@ export default function AppointmentsPage() {
                     return (
                       <div
                         key={doc.id}
-                        className="p-5 rounded-lg border border-[#e6dfd8] bg-[#faf9f5] hover:border-[#cc785c]/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left group shrink-0 shadow-xs"
+                        className="p-5 rounded-xl border border-border bg-background hover:border-primary transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left group shrink-0"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-[#141413] shrink-0 border border-[#e6dfd8] bg-[#f5f0e8]">
-                            {doc.doctor_name.split(" ").slice(-1)[0][0]}
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-foreground shrink-0 border border-border bg-card">
+                            {doc.avatar_url ? (
+                              <img
+                                src={doc.avatar_url}
+                                alt={doc.doctor_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              doc.doctor_name.split(" ").slice(-1)[0][0]
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-serif font-medium text-[#141413] tracking-tight">{doc.doctor_name}</h4>
-                              <span className="text-[10px] text-[#cc785c] bg-[#cc785c]/10 px-2 py-0.5 rounded-full font-bold border border-[#cc785c]/20">
+                              <h4 className="text-sm font-sans font-black text-foreground tracking-tight">{doc.doctor_name}</h4>
+                              <span className="text-[10px] text-[#054d28] bg-[#e2f6d5] px-2 py-0.5 rounded-full font-bold border border-[#2ead4b]/20">
                                 {doc.specialty}
                               </span>
                             </div>
-                            <p className="text-xs text-[#6c6a64] mt-1">{doc.degree} - {doc.experience_years} năm kinh nghiệm</p>
+                            <p className="text-xs text-muted-foreground mt-1">{doc.degree} - {doc.experience_years} năm kinh nghiệm</p>
                           </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-2.5 shrink-0 w-full sm:w-auto">
                           <Link
                             href={`/dashboard/doctors/${doc.id}`}
-                            className="rounded-md border border-[#e6dfd8] text-[#3d3d3a] hover:bg-[#efe9de] hover:text-[#141413] px-5 py-2.5 text-center text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer bg-[#faf9f5]"
+                            className="rounded-xl border border-[#0e0f0c] text-[#0e0f0c] hover:bg-background px-5 py-2.5 text-center text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer bg-card"
                           >
                             Xem chi tiết
                           </Link>
                           <button
                             onClick={() => handleBook(doc)}
-                            className="rounded-md bg-[#cc785c] hover:bg-[#a9583e] px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-colors cursor-pointer border border-[#cc785c]"
+                            className="rounded-xl bg-primary hover:bg-[#cdffad] px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors cursor-pointer border border-primary"
                           >
                             Đặt lịch nhanh
                           </button>
@@ -438,53 +695,61 @@ export default function AppointmentsPage() {
                     )
                   })
                 ) : (
-                  <div className="text-center py-12 text-xs text-[#6c6a64] font-medium">
+                  <div className="text-center py-12 text-xs text-muted-foreground font-medium">
                     Không có bác sĩ nào trống lịch vào khung giờ này. Vui lòng chọn ca khám hoặc ngày khám khác.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-[#e6dfd8] shrink-0">
-              <div className="rounded-md bg-[#f5f0e8] p-3 text-[11px] text-[#6c6a64] leading-relaxed border border-[#e6dfd8]">
-                <span>Quy định: Hủy lịch tối thiểu 2 giờ trước giờ hẹn khám.</span>
+            <div className="mt-5 pt-4 border-t border-border shrink-0">
+              <div className="rounded-md bg-secondary p-3 text-[11px] text-muted-foreground leading-relaxed border border-border">
+                <span>Quy định: Hủy lịch tối thiểu 2 giờ và Đặt lịch trước tối thiểu 2 giờ trước giờ hẹn khám. Bạn chỉ có thể đặt lịch tối đa 3 lần trong một ngày.</span>
               </div>
             </div>
           </article>
         </section>
       )}
 
-      {bookingFlow === "appointments" && (
-        <section className="rounded-lg border border-[#e6dfd8] bg-[#efe9de] p-6 shadow-sm flex flex-col justify-between lg:h-[680px] overflow-hidden" style={cardShadow}>
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="mb-5 shrink-0">
-              <h2 className="text-lg font-serif font-medium text-foreground tracking-tight">Danh sách lịch hẹn khám của bạn</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide flex flex-col gap-3 pb-2">
-              {appointments.length > 0 ? (
-                appointments.map((appointment, idx) => (
-                  <div key={`${appointment.doctor}-${appointment.date}-${idx}`} className="rounded-lg border border-[#e6dfd8] bg-[#faf9f5] p-4 shrink-0 shadow-xs">
+      {bookingFlow === "appointments" && (() => {
+        const sortedAppointments = [...appointments].sort((a, b) => {
+          return Number(b.id) - Number(a.id)
+        })
+
+        return (
+          <section className="rounded-xl border border-border bg-card p-6 shadow-none flex flex-col justify-between lg:h-[680px] overflow-hidden">
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="mb-5 shrink-0">
+                <h2 className="text-lg font-sans font-black text-foreground tracking-tight">Danh sách lịch hẹn khám của bạn</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide flex flex-col gap-3 pb-2">
+                {sortedAppointments.length > 0 ? (
+                  sortedAppointments.map((appointment, idx) => (
+                    <div key={`${appointment.id}-${idx}`} className="rounded-xl border border-border bg-background p-4 shrink-0">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                       <div className="flex items-start gap-3">
                         <div>
-                          <p className="text-sm font-serif font-medium text-[#141413] tracking-tight">{appointment.doctor}</p>
-                          <p className="mt-1 text-xs text-[#6c6a64]">Khoa {appointment.specialty} • {appointment.date} • {appointment.time}</p>
+                          <p className="text-sm font-sans font-black text-foreground tracking-tight">{getAppointmentDoctor(appointment)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Khoa {getAppointmentSpecialty(appointment)} • {getAppointmentDate(appointment)} • {getAppointmentTime(appointment)}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={cn(
                           "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                          appointment.status === "CONFIRMED" ? "bg-[#5db872]/10 text-[#5db872] border-[#5db872]/20" :
-                          appointment.status === "PENDING" ? "bg-[#e8a55a]/10 text-[#e8a55a] border-[#e8a55a]/20" :
-                          "bg-[#efe9de] text-[#8e8b82] border-[#e6dfd8]"
+                          isConfirmedStatus(appointment.status) ? "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20" :
+                            isInProgressStatus(appointment.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
+                              isWaitingStatus(appointment.status) ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                "bg-secondary text-muted-foreground border-border"
                         )}>
-                          {appointment.status === "CONFIRMED" ? "ĐÃ XÁC NHẬN" :
-                           appointment.status === "PENDING" ? "ĐANG CHỜ" : "ĐÃ HỦY"}
+                          {isConfirmedStatus(appointment.status) ? "ĐÃ XÁC NHẬN" :
+                            isInProgressStatus(appointment.status) ? "ĐANG KHÁM" :
+                              isWaitingStatus(appointment.status) ? "ĐANG CHỜ" :
+                                isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
                         </span>
-                        {appointment.status !== "CANCELLED" && (
+                        {appointment.status !== "CANCELLED" && !isCompletedStatus(appointment.status) && isAppointmentCancellable(appointment) && (
                           <button
                             onClick={() => setAppointmentToCancel(appointment)}
-                            className="rounded-md border border-[#e6dfd8] bg-[#faf9f5] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c64545] hover:bg-[#efe9de] transition-colors"
+                            className="rounded-xl border border-border bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c64545] hover:bg-background transition-colors"
                           >
                             Hủy lịch
                           </button>
@@ -494,14 +759,15 @@ export default function AppointmentsPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12 text-xs text-[#a0a0a0] font-medium">
+                <div className="text-center py-12 text-xs text-muted-foreground font-medium">
                   Bạn chưa có lịch hẹn khám nào được đăng ký.
                 </div>
               )}
             </div>
           </div>
-        </section>
-      )}
+          </section>
+        )
+      })()}
     </div>
   )
 }
