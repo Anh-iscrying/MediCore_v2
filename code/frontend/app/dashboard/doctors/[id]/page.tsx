@@ -25,6 +25,7 @@ interface Doctor {
   experience_years: number
   bio: string
   avatarColor: string
+  avatar_url?: string
   doctor_schedules: DoctorSchedule[]
   availableSlots: string[]
   Achievements?: string[]
@@ -61,6 +62,19 @@ function isActiveAppointmentStatus(status?: string) {
   return !!status && status !== "CANCELLED"
 }
 
+function isSlotBookable(dateIso: string, slot: string) {
+  if (!dateIso || !slot) return false
+  const now = new Date()
+  const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
+  const [year, month, day] = dateIso.split("-").map(Number)
+  const [hour, minute] = startTimeStr.split(":").map(Number)
+  
+  const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
+  
+  const twoHoursInMs = 2 * 60 * 60 * 1000
+  return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
+}
+
 async function readApiError(response: Response, fallback: string) {
   try {
     const payload = await response.json()
@@ -80,7 +94,8 @@ function normalizeDoctorPayload(doctor: BackendDoctor): Doctor {
     degree: doctor.title ?? "Chưa cập nhật",
     experience_years: doctor.experience ?? 0,
     bio: doctor.bio ?? "Chưa cập nhật tiểu sử bác sĩ.",
-    avatarColor: doctor.avatar ?? "bg-[#111111] border border-[#1f1f1f] text-white",
+    avatarColor: "bg-[#111111] border border-[#1f1f1f] text-white",
+    avatar_url: doctor.avatar,
     doctor_schedules: [],
     availableSlots: [],
   }
@@ -177,13 +192,15 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
         // Restore saved slot if available, otherwise fallback to first available
         const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
         const isSavedSlotAvailable = savedTimeSlot && mergedDoctor.doctor_schedules.some(
-          schedule => !schedule.is_booked && schedule.time_slot === savedTimeSlot
+          schedule => !schedule.is_booked && schedule.time_slot === savedTimeSlot && isSlotBookable(selectedDate, savedTimeSlot)
         )
 
         if (isSavedSlotAvailable) {
           setSelectedTimeSlot(savedTimeSlot)
         } else {
-          const firstAvailableSlot = mergedDoctor.doctor_schedules.find(schedule => !schedule.is_booked)?.time_slot
+          const firstAvailableSlot = mergedDoctor.doctor_schedules.find(
+            schedule => !schedule.is_booked && isSlotBookable(selectedDate, schedule.time_slot)
+          )?.time_slot
           setSelectedTimeSlot(firstAvailableSlot ?? "")
         }
       } catch (err) {
@@ -297,8 +314,16 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
         {/* Left Column: Doctor Detailed Information */}
         <article className="rounded-xl border border-border bg-card p-8 lg:col-span-2 space-y-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-border">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-foreground shrink-0 border border-border bg-card shadow-none">
-              {doctor.doctor_name.split(" ").slice(-1)[0][0]}
+            <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-3xl font-bold text-foreground shrink-0 border border-border bg-card shadow-none">
+              {doctor.avatar_url ? (
+                <img
+                  src={doctor.avatar_url}
+                  alt={doctor.doctor_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                doctor.doctor_name.split(" ").slice(-1)[0][0]
+              )}
             </div>
             <div className="text-center sm:text-left space-y-2">
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#054d28] bg-[#e2f6d5] px-3 py-1 rounded-full border border-[#2ead4b]/20">
@@ -376,7 +401,7 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
                 <div className="max-h-[150px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-3 gap-2">
                   {availableTimeSlots.length > 0 ? availableTimeSlots.map((slot) => {
                     const isActive = selectedTimeSlot === slot
-                    const isAvailable = doctor.doctor_schedules.some(
+                    const isAvailable = isSlotBookable(selectedDate, slot) && doctor.doctor_schedules.some(
                       schedule =>
                         schedule.work_date === selectedDate &&
                         !schedule.is_booked &&

@@ -25,6 +25,7 @@ interface Doctor {
   experience_years: number
   bio: string
   avatarColor: string
+  avatar_url?: string
   doctor_schedules: DoctorSchedule[]
   availableSlots: string[]
   Achievements: string[]
@@ -73,6 +74,35 @@ function formatDateLabel(dateIso?: string) {
 
 function isActiveAppointmentStatus(status?: string) {
   return !!status && status !== "CANCELLED"
+}
+
+function isSlotBookable(dateIso: string, slot: string) {
+  if (!dateIso || !slot) return false
+  const now = new Date()
+  const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
+  const [year, month, day] = dateIso.split("-").map(Number)
+  const [hour, minute] = startTimeStr.split(":").map(Number)
+  
+  const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
+  
+  const twoHoursInMs = 2 * 60 * 60 * 1000
+  return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
+}
+
+function isAppointmentCancellable(appointment: Appointment) {
+  const dateIso = appointment.appointmentDate
+  const slot = appointment.timeSlot
+  if (!dateIso || !slot) return false
+  
+  const now = new Date()
+  const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
+  const [year, month, day] = dateIso.split("-").map(Number)
+  const [hour, minute] = startTimeStr.split(":").map(Number)
+  
+  const appointmentDate = new Date(year, month - 1, day, hour, minute, 0, 0)
+  
+  const twoHoursInMs = 2 * 60 * 60 * 1000
+  return (appointmentDate.getTime() - now.getTime()) >= twoHoursInMs
 }
 
 async function readApiError(response: Response, fallback: string) {
@@ -273,7 +303,7 @@ export default function AppointmentsPage() {
 
   const getAvailableSlots = (doctor: Doctor, workDate = selectedDate) =>
     doctor.doctor_schedules
-      .filter(schedule => schedule.work_date === workDate && !schedule.is_booked)
+      .filter(schedule => schedule.work_date === workDate && !schedule.is_booked && isSlotBookable(workDate, schedule.time_slot))
       .map(schedule => schedule.time_slot)
 
   const getSelectedScheduleTimeSlot = (doctor: Doctor) =>
@@ -415,8 +445,15 @@ export default function AppointmentsPage() {
     }
   }
 
-  const getAppointmentDoctor = (appointment: Appointment) =>
-    appointment.doctorName || appointment.doctor || doctors.find(doc => doc.id === appointment.doctorId)?.doctor_name || "Bác sĩ"
+  const getAppointmentDoctor = (appointment: Appointment) => {
+    if (appointment.doctorName) return appointment.doctorName
+    if (appointment.doctor) return appointment.doctor
+    const doc = doctors.find(d => d.id === appointment.doctorId)
+    if (doc) {
+      return doc.degree ? `${doc.degree} ${doc.doctor_name}` : doc.doctor_name
+    }
+    return "Bác sĩ"
+  }
 
   const getAppointmentSpecialty = (appointment: Appointment) =>
     appointment.specialty || specialties.find(specialty => specialty.id === appointment.specialtyId)?.name || ""
@@ -618,8 +655,16 @@ export default function AppointmentsPage() {
                         className="p-5 rounded-xl border border-border bg-background hover:border-primary transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left group shrink-0"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-foreground shrink-0 border border-border bg-card">
-                            {doc.doctor_name.split(" ").slice(-1)[0][0]}
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold text-foreground shrink-0 border border-border bg-card">
+                            {doc.avatar_url ? (
+                              <img
+                                src={doc.avatar_url}
+                                alt={doc.doctor_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              doc.doctor_name.split(" ").slice(-1)[0][0]
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -659,7 +704,7 @@ export default function AppointmentsPage() {
 
             <div className="mt-5 pt-4 border-t border-border shrink-0">
               <div className="rounded-md bg-secondary p-3 text-[11px] text-muted-foreground leading-relaxed border border-border">
-                <span>Quy định: Hủy lịch tối thiểu 2 giờ trước giờ hẹn khám.</span>
+                <span>Quy định: Hủy lịch tối thiểu 2 giờ và Đặt lịch trước tối thiểu 2 giờ trước giờ hẹn khám. Bạn chỉ có thể đặt lịch tối đa 3 lần trong một ngày.</span>
               </div>
             </div>
           </article>
@@ -701,7 +746,7 @@ export default function AppointmentsPage() {
                               isWaitingStatus(appointment.status) ? "ĐANG CHỜ" :
                                 isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
                         </span>
-                        {appointment.status !== "CANCELLED" && !isCompletedStatus(appointment.status) && (
+                        {appointment.status !== "CANCELLED" && !isCompletedStatus(appointment.status) && isAppointmentCancellable(appointment) && (
                           <button
                             onClick={() => setAppointmentToCancel(appointment)}
                             className="rounded-xl border border-border bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c64545] hover:bg-background transition-colors"
