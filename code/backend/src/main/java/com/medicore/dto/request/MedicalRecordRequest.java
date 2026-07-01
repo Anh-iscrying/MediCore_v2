@@ -23,5 +23,6 @@ public class MedicalRecordRequest {
         private Integer medicineId;
         private Integer quantity;
         private String dosageInstruction;
+        private Boolean isFromTemplate;
     }
 }

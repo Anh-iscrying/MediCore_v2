@@ -2,6 +2,7 @@ package com.medicore.service.impl;
 
 import com.medicore.common.constants.AppointmentStatus; // Import Enum chuẩn
 import com.medicore.dto.request.MedicalRecordRequest;
+import com.medicore.entity.catalog.Disease;
 import com.medicore.entity.clinical.*;
 import com.medicore.repository.*;
 import com.medicore.service.IdGeneratorService;
@@ -23,6 +24,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private final PrescriptionDetailRepository prescriptionDetailRepository;
     private final MedicineRepository medicineRepository; // Cần cái này để tìm thuốc
     private final IdGeneratorService idGeneratorService;
+    private final DiseaseRepository diseaseRepository;
 
     @Override
     @Transactional
@@ -34,6 +36,34 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         // 2. Tạo mã hồ sơ (MC-15)
         String emrCode = idGeneratorService.generateEmrCode();
 
+        final String[] finalCodeArr = { null };
+
+                if (request.getDiagnoses() != null && !request.getDiagnoses().isEmpty()) {
+                        // Tìm cái nào là Primary
+                        for (var diag : request.getDiagnoses()) {
+                        if (Boolean.TRUE.equals(diag.getIsPrimary())) {
+                                finalCodeArr[0] = diag.getIcd10Code();
+                                break;
+                        }
+                        }
+                        // Nếu không thấy cái nào Primary, lấy cái đầu tiên
+                        if (finalCodeArr[0] == null) {
+                        finalCodeArr[0] = request.getDiagnoses().get(0).getIcd10Code();
+                        }
+                }
+
+                // 2. Gán vào một biến String bình thường để Java không báo lỗi nữa
+                String primaryCode = finalCodeArr[0];
+
+                // 3. Tìm thực thể Disease (Dùng biến primaryCode mới này)
+                Disease primaryDisease = null;
+                if (primaryCode != null) {
+                        // Tạo biến tempFinalCode để dùng trong orElseThrow nếu cần
+                        final String tempFinalCode = primaryCode; 
+                        primaryDisease = diseaseRepository.findById(tempFinalCode)
+                                .orElseThrow(() -> new RuntimeException("Mã bệnh không tồn tại: " + tempFinalCode));
+                }
+
         // 3. Lưu MedicalRecord (Sửa lỗi OffsetDateTime)
         MedicalRecord record = MedicalRecord.builder()
                 .emrCode(emrCode)
@@ -43,6 +73,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .clinicalNote(request.getClinicalNote())
                 .historySummary(request.getHistorySummary())
                 .careAdvice(request.getCareAdvice())
+                .diagnosisIcd10(primaryDisease)
                 .createdAt(OffsetDateTime.now()) // Sửa ở đây
                 .build();
         record = recordRepository.save(record);
@@ -66,6 +97,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                         .medicine(medicine) // Gán cả object Medicine vào
                         .quantity(mReq.getQuantity())
                         .dosageInstruction(mReq.getDosageInstruction())
+                        .isFromTemplate(mReq.getIsFromTemplate())
                         .build();
                 prescriptionDetailRepository.save(detail);
             }
