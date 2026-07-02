@@ -5,6 +5,9 @@ import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.Map;
 
 import java.time.OffsetDateTime;
 
@@ -49,4 +52,8 @@ public class MedicalRecord {
 
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
+
+    @JdbcTypeCode(SqlTypes.JSON) // THÊM DÒNG NÀY: Ép kiểu sang JSON khi lưu DB
+    @Column(name = "additional_data")
+    private Map<String, Object> additionalData;
 }

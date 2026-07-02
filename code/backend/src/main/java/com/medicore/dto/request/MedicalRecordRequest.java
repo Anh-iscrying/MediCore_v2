@@ -2,6 +2,7 @@ package com.medicore.dto.request;
 
 import lombok.Data;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class MedicalRecordRequest {
@@ -11,6 +12,7 @@ public class MedicalRecordRequest {
     private String careAdvice;
     private List<DiagnosisItem> diagnoses;
     private List<MedicineItem> medicines;
+    private Map<String, Object> specialtyData; 
 
     @Data
     public static class DiagnosisItem {

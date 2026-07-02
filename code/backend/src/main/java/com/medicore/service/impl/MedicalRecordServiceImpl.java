@@ -10,10 +10,13 @@ import com.medicore.service.MedicalRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.OffsetDateTime; // Dùng OffsetDateTime thay vì LocalDateTime
 import java.util.ArrayList;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MedicalRecordServiceImpl implements MedicalRecordService {
@@ -25,6 +28,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private final MedicineRepository medicineRepository; // Cần cái này để tìm thuốc
     private final IdGeneratorService idGeneratorService;
     private final DiseaseRepository diseaseRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -74,6 +78,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .historySummary(request.getHistorySummary())
                 .careAdvice(request.getCareAdvice())
                 .diagnosisIcd10(primaryDisease)
+                .additionalData(request.getSpecialtyData())
                 .createdAt(OffsetDateTime.now()) // Sửa ở đây
                 .build();
         record = recordRepository.save(record);
