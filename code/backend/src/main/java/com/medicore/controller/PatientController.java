@@ -4,6 +4,7 @@ import com.medicore.common.base.ApiResponse;
 import com.medicore.common.constants.ErrorCodes;
 import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.PatientRequest;
+import com.medicore.dto.request.PatientUpdateRequest;
 import com.medicore.dto.response.PatientResponse;
 import com.medicore.service.PatientService;
 import jakarta.validation.Valid;
@@ -40,6 +41,18 @@ public class PatientController {
 
         PatientResponse patient = patientService.getCurrentPatient(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(patient));
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<ApiResponse<PatientResponse>> updateCurrentPatient(@Valid @RequestBody PatientUpdateRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new CustomBusinessException(ErrorCodes.UNAUTHORIZED);
+        }
+
+        PatientResponse patient = patientService.updateCurrentPatient(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin thành công", patient));
     }
 
     @GetMapping("/{id}")

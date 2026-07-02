@@ -28,7 +28,7 @@ interface Doctor {
   avatar_url?: string
   doctor_schedules: DoctorSchedule[]
   availableSlots: string[]
-  Achievements?: string[]
+  achievements?: string[]
 }
 
 interface BackendDoctor {
@@ -41,6 +41,8 @@ interface BackendDoctor {
   experience?: number
   avatar?: string
   doctorCode?: string
+  achievements?: string[]
+  Achievements?: string[]
 }
 
 interface Appointment {
@@ -68,9 +70,9 @@ function isSlotBookable(dateIso: string, slot: string) {
   const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
   const [year, month, day] = dateIso.split("-").map(Number)
   const [hour, minute] = startTimeStr.split(":").map(Number)
-  
+
   const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
-  
+
   const twoHoursInMs = 2 * 60 * 60 * 1000
   return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
 }
@@ -98,6 +100,7 @@ function normalizeDoctorPayload(doctor: BackendDoctor): Doctor {
     avatar_url: doctor.avatar,
     doctor_schedules: [],
     availableSlots: [],
+    achievements: doctor.achievements ?? doctor.Achievements ?? [],
   }
 }
 
@@ -350,25 +353,25 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
 
             <div>
               <h3 className="text-xs text-[#868685] uppercase font-bold tracking-widest mb-2">Thành tựu đạt được</h3>
-                <div className="bg-background rounded-xl border border-border p-4">
-                  {doctor.Achievements?.length ? (
-                    <ul className="space-y-3">
-                      {doctor.Achievements.map((item, index) => (
-                        <li key={index} className="flex items-center gap-4">
-                          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                            <span className="text-primary text-xs">⭐</span>
-                          </div>
+              <div className="bg-background rounded-xl border border-border p-4">
+                {doctor.achievements?.length ? (
+                  <ul className="space-y-3">
+                    {doctor.achievements.map((item, index) => (
+                      <li key={index} className="flex items-center gap-4">
+                        <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <span className="text-primary text-xs">⭐</span>
+                        </div>
 
-                          <span className="text-sm leading-6 text-foreground">
-                            {item}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm leading-6 text-foreground">Chưa cập nhật thành tựu.</p>
-                  )}
-                </div>
+                        <span className="text-sm leading-6 text-foreground">
+                          {item}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm leading-6 text-foreground">Chưa cập nhật thành tựu.</p>
+                )}
+              </div>
             </div>
           </div>
         </article>

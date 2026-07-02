@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useData } from "@/providers/data-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { Card } from "@/components/base/ui/card"
 import { Input } from "@/components/base/ui/input"
 import {
@@ -19,25 +20,73 @@ import { PatientRecordModal } from "./patient-record-modal"
 import type { Patient } from "@/types/medical"
 
 export function PatientRecordsContent() {
-  const { patients, examinationRecords } = useData()
+  const { user } = useAuth()
+  const { patients, appointments, ensureAppointmentsLoaded } = useData()
   const [query, setQuery] = useState("")
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
-  const filtered = patients.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase()) ||
-    p.phone.includes(query) ||
-    p.id.includes(query)
+  const completedStatuses = useMemo(() => new Set(["DONE", "COMPLETED"]), [])
+
+  const isGeneratedPatientEmail = (email?: string) =>
+    Boolean(email && /^pat-\d{4}-\d+@medicore\.com$/i.test(email))
+
+  useEffect(() => {
+    ensureAppointmentsLoaded()
+  }, [ensureAppointmentsLoaded])
+
+  const completedPatientKeys = useMemo(() => {
+    const doctorId = String(user?.doctorId ?? "")
+
+    return new Set(
+      appointments
+        .filter((appointment) =>
+          appointment.doctorId === doctorId && completedStatuses.has(appointment.status)
+        )
+        .flatMap((appointment) => [appointment.patientId, appointment.patientCode].filter(Boolean) as string[])
+    )
+  }, [appointments, completedStatuses, user?.doctorId])
+
+  const visiblePatients = useMemo(
+    () => patients.filter((patient) =>
+      completedPatientKeys.has(patient.id) ||
+      (patient.patientCode ? completedPatientKeys.has(patient.patientCode) : false)
+    ),
+    [patients, completedPatientKeys]
   )
 
-  const getRecordCount = (patientId: string) => {
-    return examinationRecords.filter((e) => e.patientId === patientId).length
+  const filtered = visiblePatients.filter((p) =>
+    p.name.toLowerCase().includes(query.toLowerCase()) ||
+    p.phone.includes(query) ||
+    p.id.includes(query) ||
+    (p.patientCode && p.patientCode.toLowerCase().includes(query.toLowerCase()))
+  )
+
+  const getCompletedAppointments = (patient: Patient) => {
+    const doctorId = String(user?.doctorId ?? "")
+
+    return appointments
+      .filter((appointment) =>
+        appointment.doctorId === doctorId &&
+        completedStatuses.has(appointment.status) &&
+        (
+          appointment.patientId === patient.id ||
+          appointment.patientCode === patient.patientCode ||
+          appointment.patientCode === patient.id
+        )
+      )
+      .sort((a, b) => {
+        const dateCompare = new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
+        if (dateCompare !== 0) return dateCompare
+        return (b.timeSlot ?? "").localeCompare(a.timeSlot ?? "")
+      })
   }
 
-  const getLastExamDate = (patientId: string) => {
-    const records = examinationRecords.filter((e) => e.patientId === patientId)
-    if (records.length === 0) return "—"
-    const sorted = [...records].sort((a, b) => new Date(b.examinationDate).getTime() - new Date(a.examinationDate).getTime())
-    return new Date(sorted[0].examinationDate).toLocaleDateString("vi-VN")
+  const getLastExamTime = (patient: Patient) => {
+    const latest = getCompletedAppointments(patient)[0]
+    if (!latest) return "—"
+
+    const examDate = new Date(latest.appointmentDate).toLocaleDateString("vi-VN")
+    return latest.timeSlot ? `${examDate} • ${latest.timeSlot}` : examDate
   }
 
   return (
@@ -63,15 +112,16 @@ export function PatientRecordsContent() {
                 <TableHead>Ngày sinh</TableHead>
                 <TableHead>Giới tính</TableHead>
                 <TableHead>Liên hệ</TableHead>
-                <TableHead className="text-center">Số hồ sơ</TableHead>
+                <TableHead className="text-center">Số lần khám</TableHead>
                 <TableHead>Khám gần nhất</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((patient) => {
-                const recordCount = getRecordCount(patient.id)
-                const lastExamDate = getLastExamDate(patient.id)
+                const completedAppointments = getCompletedAppointments(patient)
+                const visitCount = completedAppointments.length
+                const lastExamTime = getLastExamTime(patient)
                 return (
                   <TableRow key={patient.id} className="hover:bg-secondary/50">
                     <TableCell>
@@ -87,16 +137,18 @@ export function PatientRecordsContent() {
                       {patient.gender === "M" ? "Nam" : "Nữ"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      <div className="text-xs">{patient.phone}</div>
-                      <div className="text-xs">{patient.email}</div>
+                      <div className="text-xs">{patient.phone || "Chưa có SĐT"}</div>
+                      {patient.email && !isGeneratedPatientEmail(patient.email) && (
+                        <div className="text-xs">{patient.email}</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={recordCount > 0 ? "default" : "secondary"}>
-                        {recordCount} hồ sơ
+                      <Badge variant={visitCount > 0 ? "default" : "secondary"}>
+                        {visitCount} lần khám
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {lastExamDate}
+                      {lastExamTime}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end">

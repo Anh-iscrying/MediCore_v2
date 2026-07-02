@@ -4,9 +4,12 @@ import { useState } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
+import { useAuth } from "@/components/auth/auth-provider"
+import { AuthenticatedUserMenu } from "@/components/base/authenticated-user-menu"
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const { user, isLoading } = useAuth()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 p-6">
@@ -53,19 +56,27 @@ export function Header() {
             </Link>
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons or Authenticated User Menu */}
           <div className="hidden md:flex items-center gap-5">
-            <Link
-              href="/auth/login"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Đăng nhập
-            </Link>
-            <Link href="/auth/signup">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-[11px] rounded-full px-6 py-3 transition-all duration-200">
-                Đặt lịch hẹn
-              </Button>
-            </Link>
+            {isLoading ? (
+              <div className="h-9 w-28 animate-pulse rounded-full bg-muted" />
+            ) : user ? (
+              <AuthenticatedUserMenu />
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Đăng nhập
+                </Link>
+                <Link href="/auth/signup">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-[11px] rounded-full px-6 py-3 transition-all duration-200">
+                    Đặt lịch hẹn
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -117,19 +128,28 @@ export function Header() {
               Thông tin
             </Link>
             <div className="h-px bg-border my-2" />
-            <div className="flex flex-col gap-3">
-              <Link href="/auth/login" onClick={() => setIsOpen(false)} className="w-full text-center py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-                Đăng nhập
-              </Link>
-              <Link href="/auth/signup" onClick={() => setIsOpen(false)} className="w-full">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-widest text-[11px] rounded-full w-full py-4">
-                  Đặt lịch hẹn
-                </Button>
-              </Link>
-            </div>
+            {isLoading ? (
+              <div className="h-9 w-full animate-pulse rounded-full bg-muted" />
+            ) : user ? (
+              <div className="flex justify-center py-2">
+                <AuthenticatedUserMenu onNavigate={() => setIsOpen(false)} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <Link href="/auth/login" onClick={() => setIsOpen(false)} className="w-full text-center py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                  Đăng nhập
+                </Link>
+                <Link href="/auth/signup" onClick={() => setIsOpen(false)} className="w-full">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-widest text-[11px] rounded-full w-full py-4">
+                    Đặt lịch hẹn
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </nav>
     </header>
   )
 }
+

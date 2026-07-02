@@ -31,16 +31,18 @@ export default function AuthLayout({
 
   return (
     <main className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 py-8 bg-background">
-      {/* Subtle background gradient overlay */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden -z-10 opacity-20">
-        <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-background to-background" />
+      {/* Premium background mesh overlay */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[100px] dark:bg-primary/5" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/12 blur-[120px] dark:bg-primary/5" />
+        <div className="absolute top-[35%] left-[25%] w-[30%] h-[30%] rounded-full bg-primary/5 blur-[90px]" />
       </div>
 
       {/* Logo/Brand - Top (HealthCare -> Medicore) */}
       <div className="absolute top-6 left-6 z-50">
-        <Link href="/" className="flex items-center gap-2 group">
-          <span className="font-sans text-lg font-bold text-primary group-hover:text-primary/80 transition-colors">
-            Medicore
+        <Link href="/" className="flex items-center gap-1 group">
+          <span className="font-sans text-lg font-bold tracking-tight text-foreground group-hover:opacity-80 transition-opacity">
+            Medicore<span className="text-primary">.</span>
           </span>
         </Link>
       </div>
@@ -49,7 +51,7 @@ export default function AuthLayout({
       <div ref={sectionRef} className="w-full max-w-md mx-auto">
         {/* Header Text */}
         <div className="text-center mb-8 reveal opacity-0">
-          <h1 className="font-sans text-4xl md:text-5xl font-bold leading-tight text-foreground text-balance mb-3">
+          <h1 className="font-sans text-4xl md:text-5xl font-black leading-tight text-foreground tracking-tighter text-balance mb-3">
             Cổng thông tin bệnh nhân
           </h1>
         </div>
@@ -63,7 +65,7 @@ export default function AuthLayout({
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-secondary hover:text-foreground transition-colors text-xs font-medium underline underline-offset-4"
+            className="text-muted-foreground hover:text-foreground transition-colors text-xs font-semibold underline underline-offset-4"
           >
             ← Quay lại trang chủ
           </Link>

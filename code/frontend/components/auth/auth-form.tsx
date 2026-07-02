@@ -86,15 +86,13 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-card rounded-lg border border-border shadow-2xl shadow-black/50 p-8" style={{
-        boxShadow: 'rgba(0,0,0,0.5) 0px 8px 24px'
-      }}>
+      <div className="bg-card rounded-xl border border-border shadow-xl shadow-black/[0.04] dark:shadow-2xl dark:shadow-black/50 p-8 transition-all">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
+          <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
             {type === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
           </h1>
-          <p className="text-secondary text-sm leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {type === "login"
               ? "Đăng nhập để truy cập hồ sơ y tế và lịch hẹn của bạn."
               : "Hãy tham gia mạng lưới bệnh viện của chúng tôi để được chăm sóc sức khỏe cá nhân hóa."}
@@ -110,7 +108,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                 Họ và tên
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="text"
                   id="name"
@@ -118,10 +116,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Nguyễn Văn A"
-                  className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  style={{
-                    boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                  }}
+                  className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                 />
               </div>
               {errors.name && <p className="text-destructive text-xs mt-2">{errors.name}</p>}
@@ -134,7 +129,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
               Địa chỉ email
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
               <input
                 type="email"
                 id="email"
@@ -142,10 +137,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="your@email.com"
-                className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                style={{
-                  boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                }}
+                className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
               />
             </div>
             {errors.email && <p className="text-destructive text-xs mt-2">{errors.email}</p>}
@@ -157,7 +149,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
               Mật khẩu
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
               <input
                 type="password"
                 id="password"
@@ -165,10 +157,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                style={{
-                  boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                }}
+                className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
               />
             </div>
             {errors.password && <p className="text-destructive text-xs mt-2">{errors.password}</p>}
@@ -181,7 +170,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                 Nhập lại mật khẩu
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="password"
                   id="confirmPassword"
@@ -189,10 +178,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  style={{
-                    boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                  }}
+                  className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                 />
               </div>
               {errors.confirmPassword && <p className="text-destructive text-xs mt-2">{errors.confirmPassword}</p>}
@@ -202,7 +188,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
           {/* Forgot Password - Login only */}
           {type === "login" && (
             <div className="flex justify-end pt-1">
-              <Link href="/auth/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium font-bold">
+              <Link href="/auth/forgot-password" className="text-xs text-foreground hover:text-primary transition-colors font-bold underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary">
                 Quên mật khẩu?
               </Link>
             </div>
@@ -218,7 +204,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm group mt-6 transition-all"
+            className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm group mt-6 transition-all duration-200 cursor-pointer"
           >
             {isLoading ? (
               <span className="opacity-70">Đang xử lý...</span>
@@ -232,18 +218,18 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
         </form>
 
         {/* Footer Link */}
-        <div className="mt-6 pt-6 border-t border-border text-center text-xs text-secondary">
+        <div className="mt-6 pt-6 border-t border-border text-center text-xs text-muted-foreground">
           {type === "login" ? (
             <>
               Bạn chưa có tài khoản?{" "}
-              <Link href="/auth/signup" className="text-primary hover:text-primary/80 font-bold transition-colors">
+              <Link href="/auth/signup" className="text-foreground hover:text-primary font-black transition-colors underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary">
                 Đăng ký
               </Link>
             </>
           ) : (
             <>
               Bạn đã có tài khoản?{" "}
-              <Link href="/auth/login" className="text-primary hover:text-primary/80 font-bold transition-colors">
+              <Link href="/auth/login" className="text-foreground hover:text-primary font-black transition-colors underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary">
                 Đăng nhập
               </Link>
             </>
@@ -252,7 +238,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
       </div>
 
       {/* Additional Info */}
-      <div className="mt-6 text-center text-xs text-secondary space-y-2">
+      <div className="mt-6 text-center text-xs text-muted-foreground space-y-2">
         <p>Bằng cách tiếp tục, bạn đồng ý với Điều khoản dịch vụ của chúng tôi.</p>
         <p>Dữ liệu sức khỏe của bạn được bảo vệ và mã hóa.</p>
       </div>

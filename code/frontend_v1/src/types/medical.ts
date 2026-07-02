@@ -156,6 +156,7 @@ export interface DoctorRequest {
   password?: string
   status?: Doctor["status"]
   avatarUrl?: string
+  achievements?: string[]
 }
 
 export interface DoctorProfileRequest {
@@ -166,6 +167,7 @@ export interface DoctorProfileRequest {
   phone?: string
   experience?: number
   avatarUrl?: string
+  achievements?: string[]
 }
 
 export interface DoctorResponse {
@@ -181,6 +183,7 @@ export interface DoctorResponse {
   status?: Doctor["status"]
   avatar?: string
   doctorCode?: string
+  achievements?: string[]
 }
 
 export interface MedicineRequest {

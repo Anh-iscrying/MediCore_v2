@@ -35,17 +35,7 @@ import {
   specialtiesApi,
 } from "@/lib/api"
 import { useAuth } from "@/providers/auth-provider"
-import {
-  seedSpecialties,
-  seedDoctors,
-  seedMedicines,
-  seedIcdCodes,
-  seedSchedule,
-  seedAppointments,
-  seedPatients,
-  seedPrescriptions,
-  seedExaminationRecords,
-} from "@/data/mock/seed-data"
+// Mock data seeds removed for production backend connection
 
 interface DataContextValue {
   specialties: Specialty[]
@@ -280,15 +270,15 @@ const toPatientRequest = (p: Omit<Patient, "id">): PatientRequest => ({
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { token, user } = useAuth()
-  const [specialties, setSpecialties] = useState<Specialty[]>(seedSpecialties)
-  const [doctors, setDoctors] = useState<Doctor[]>(seedDoctors)
-  const [medicines, setMedicines] = useState<Medicine[]>(seedMedicines)
-  const [icdCodes, setIcdCodes] = useState<IcdCode[]>(seedIcdCodes)
-  const [schedule, setSchedule] = useState<ScheduleEntry[]>(seedSchedule)
-  const [appointments, setAppointments] = useState<Appointment[]>(seedAppointments)
-  const [patients, setPatients] = useState<Patient[]>(seedPatients)
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>(seedPrescriptions)
-  const [examinationRecords, setExaminationRecords] = useState<ExaminationRecord[]>(seedExaminationRecords)
+  const [specialties, setSpecialties] = useState<Specialty[]>([])
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [medicines, setMedicines] = useState<Medicine[]>([])
+  const [icdCodes, setIcdCodes] = useState<IcdCode[]>([])
+  const [schedule, setSchedule] = useState<ScheduleEntry[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [examinationRecords, setExaminationRecords] = useState<ExaminationRecord[]>([])
 
   // Track which datasets have been loaded from backend to avoid duplicate fetches
   const loadedRef = React.useRef<Record<string, boolean>>({})

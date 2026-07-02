@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,4 +24,5 @@ public class DoctorResponse {
     private String status;
     private String avatar;
     private String doctorCode;
+    private List<String> achievements;
 }
