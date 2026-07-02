@@ -15,9 +15,9 @@ const footerLinks = {
     { label: "Thông tin liên hệ", href: "#" },
   ],
   patient: [
-    { label: "Đặt lịch hẹn", href: "/auth/signup" },
-    { label: "Cổng thông tin bệnh nhân", href: "/auth/login" },
-    { label: "Tư vấn AI", href: "/auth/login" },
+    { label: "Đặt lịch hẹn", href: "/dashboard/appointments" },
+    { label: "Cổng thông tin bệnh nhân", href: "/dashboard" },
+    { label: "Tư vấn AI", href: "/dashboard/ai-assistant" },
   ],
 }
 

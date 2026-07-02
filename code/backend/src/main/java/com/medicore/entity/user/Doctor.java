@@ -10,10 +10,12 @@ import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 
-@Entity
-@Table(name = "doctors")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Entity @Table(name="doctors")
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Doctor extends BaseEntity {
 
@@ -43,7 +45,7 @@ public class Doctor extends BaseEntity {
     @Column(name = "experience_years")
     private Integer experienceYears;
 
-   @Builder.Default
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

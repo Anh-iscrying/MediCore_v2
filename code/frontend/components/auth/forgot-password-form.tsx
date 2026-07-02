@@ -99,17 +99,15 @@ export function ForgotPasswordForm() {
   return (
     <div className="w-full max-w-md">
 
-      <div className="bg-card rounded-lg border border-border shadow-2xl shadow-black/50 p-8" style={{
-        boxShadow: 'rgba(0,0,0,0.5) 0px 8px 24px'
-      }}>
+      <div className="bg-card rounded-xl border border-border shadow-xl shadow-black/[0.04] dark:shadow-2xl dark:shadow-black/50 p-8 transition-all">
         {/* STEP 1: ENTER EMAIL */}
         {step === "email" && (
           <>
             <div className="mb-8">
-              <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
                 Quên mật khẩu?
               </h1>
-              <p className="text-secondary text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Nhập email đã đăng ký. Chúng tôi sẽ gửi mã OTP để xác thực tài khoản của bạn.
               </p>
             </div>
@@ -120,7 +118,7 @@ export function ForgotPasswordForm() {
                   Địa chỉ email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                   <input
                     type="email"
                     id="email"
@@ -130,10 +128,7 @@ export function ForgotPasswordForm() {
                       if (errors.email) setErrors({})
                     }}
                     placeholder="your@email.com"
-                    className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    style={{
-                      boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                    }}
+                    className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                   />
                 </div>
                 {errors.email && <p className="text-destructive text-xs mt-2">{errors.email}</p>}
@@ -142,7 +137,7 @@ export function ForgotPasswordForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm group mt-6 transition-all"
+                className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm group mt-6 transition-all duration-200 cursor-pointer"
               >
                 {isLoading ? "Đang gửi..." : "Gửi mã OTP"}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
@@ -155,11 +150,11 @@ export function ForgotPasswordForm() {
         {step === "otp" && (
           <>
             <div className="mb-8">
-              <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
                 Xác thực OTP
               </h1>
-              <p className="text-secondary text-sm leading-relaxed">
-                Mã xác thực gồm 6 chữ số đã được gửi đến email <strong className="text-foreground">{email}</strong>.
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Mã xác thực gồm 6 chữ số đã được gửi đến email <strong className="text-foreground font-bold">{email}</strong>.
               </p>
             </div>
 
@@ -179,10 +174,7 @@ export function ForgotPasswordForm() {
                     }}
                     placeholder="000000"
                     maxLength={6}
-                    className="w-full py-3 text-center font-mono text-2xl tracking-[0.75em] bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    style={{
-                      boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                    }}
+                    className="w-full py-3 text-center font-mono text-2xl tracking-[0.75em] bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                   />
                 </div>
                 {errors.otp && <p className="text-destructive text-xs text-center mt-2">{errors.otp}</p>}
@@ -196,7 +188,7 @@ export function ForgotPasswordForm() {
                     setErrors({})
                     setShowMockNotification(true)
                   }}
-                  className="text-primary hover:underline font-semibold"
+                  className="text-foreground hover:text-primary transition-colors font-bold underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary cursor-pointer"
                 >
                   Gửi lại mã
                 </button>
@@ -207,7 +199,7 @@ export function ForgotPasswordForm() {
                     setErrors({})
                     setShowMockNotification(false)
                   }}
-                  className="text-secondary hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-foreground font-semibold transition-colors underline underline-offset-4 cursor-pointer"
                 >
                   Thay đổi email
                 </button>
@@ -216,7 +208,7 @@ export function ForgotPasswordForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm group mt-6 transition-all"
+                className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm group mt-6 transition-all duration-200 cursor-pointer"
               >
                 {isLoading ? "Đang xác minh..." : "Xác minh mã OTP"}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
@@ -229,10 +221,10 @@ export function ForgotPasswordForm() {
         {step === "reset" && (
           <>
             <div className="mb-8">
-              <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
                 Mật khẩu mới
               </h1>
-              <p className="text-secondary text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Tạo mật khẩu mới và bảo mật hơn cho tài khoản của bạn.
               </p>
             </div>
@@ -243,7 +235,7 @@ export function ForgotPasswordForm() {
                   Mật khẩu mới
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                   <input
                     type="password"
                     id="password"
@@ -253,10 +245,7 @@ export function ForgotPasswordForm() {
                       if (errors.password) setErrors((prev) => ({ ...prev, password: "" }))
                     }}
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    style={{
-                      boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                    }}
+                    className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                   />
                 </div>
                 {errors.password && <p className="text-destructive text-xs mt-2">{errors.password}</p>}
@@ -267,7 +256,7 @@ export function ForgotPasswordForm() {
                   Nhập lại mật khẩu
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                   <input
                     type="password"
                     id="confirmPassword"
@@ -277,10 +266,7 @@ export function ForgotPasswordForm() {
                       if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: "" }))
                     }}
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-3 bg-muted border border-border rounded-lg text-foreground placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    style={{
-                      boxShadow: 'rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset'
-                    }}
+                    className="w-full pl-12 pr-4 py-3 bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
                   />
                 </div>
                 {errors.confirmPassword && <p className="text-destructive text-xs mt-2">{errors.confirmPassword}</p>}
@@ -289,7 +275,7 @@ export function ForgotPasswordForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm group mt-6 transition-all"
+                className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm group mt-6 transition-all duration-200 cursor-pointer"
               >
                 {isLoading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
@@ -306,17 +292,17 @@ export function ForgotPasswordForm() {
             </div>
 
             <div className="mb-8">
-              <h1 className="font-sans text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
                 Đổi mật khẩu thành công
               </h1>
-              <p className="text-secondary text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Mật khẩu của bạn đã được thay đổi thành công. Hãy sử dụng mật khẩu mới để đăng nhập lại hệ thống.
               </p>
             </div>
 
             <Link href="/auth/login" className="block w-full">
               <Button
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-3 font-bold tracking-wider uppercase text-sm"
+                className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm cursor-pointer transition-all duration-200"
               >
                 Đăng nhập ngay
               </Button>
@@ -326,13 +312,13 @@ export function ForgotPasswordForm() {
 
         {/* Global Footer (only visible when not in success step) */}
         {step !== "success" && (
-          <div className="mt-6 pt-6 border-t border-border text-center text-xs text-secondary">
+          <div className="mt-6 pt-6 border-t border-border text-center text-xs text-muted-foreground">
             Quay lại{" "}
-            <Link href="/auth/login" className="text-primary hover:text-primary/80 font-bold transition-colors">
+            <Link href="/auth/login" className="text-foreground hover:text-primary font-black transition-colors underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary">
               Đăng nhập
             </Link>
             {" hoặc "}
-            <Link href="/auth/signup" className="text-primary hover:text-primary/80 font-bold transition-colors">
+            <Link href="/auth/signup" className="text-foreground hover:text-primary font-black transition-colors underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary">
               Đăng ký mới
             </Link>
           </div>
@@ -340,7 +326,7 @@ export function ForgotPasswordForm() {
       </div>
 
       {/* Additional Info */}
-      <div className="mt-6 text-center text-xs text-secondary space-y-2">
+      <div className="mt-6 text-center text-xs text-muted-foreground space-y-2">
         <p>Bằng cách tiếp tục, bạn đồng ý với Điều khoản dịch vụ của chúng tôi.</p>
         <p>Dữ liệu sức khỏe của bạn được bảo vệ và mã hóa.</p>
       </div>

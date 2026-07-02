@@ -4,6 +4,7 @@ import com.medicore.common.constants.ErrorCodes;
 import com.medicore.common.constants.GenderType;
 import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.PatientRequest;
+import com.medicore.dto.request.PatientUpdateRequest;
 import com.medicore.dto.response.PatientResponse;
 import com.medicore.entity.user.AuthCredentials;
 import com.medicore.entity.user.Patient;
@@ -75,11 +76,13 @@ public class PatientServiceImpl implements PatientService {
             dob = LocalDate.parse(request.getDateOfBirth(), DATE_FORMATTER);
         }
 
-        GenderType gender = GenderType.OTHER;
+        GenderType gender = null;
         if ("M".equalsIgnoreCase(request.getGender())) {
             gender = GenderType.MALE;
         } else if ("F".equalsIgnoreCase(request.getGender())) {
             gender = GenderType.FEMALE;
+        } else if ("O".equalsIgnoreCase(request.getGender())) {
+            gender = GenderType.OTHER;
         }
 
         Patient patient = Patient.builder()
@@ -109,11 +112,13 @@ public class PatientServiceImpl implements PatientService {
             dob = LocalDate.parse(request.getDateOfBirth(), DATE_FORMATTER);
         }
 
-        GenderType gender = GenderType.OTHER;
+        GenderType gender = null;
         if ("M".equalsIgnoreCase(request.getGender())) {
             gender = GenderType.MALE;
         } else if ("F".equalsIgnoreCase(request.getGender())) {
             gender = GenderType.FEMALE;
+        } else if ("O".equalsIgnoreCase(request.getGender())) {
+            gender = GenderType.OTHER;
         }
 
         patient.setFullName(request.getName());
@@ -129,6 +134,41 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional
+    public PatientResponse updateCurrentPatient(String email, PatientUpdateRequest request) {
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+        Patient patient = credentials.getPatient();
+        if (patient == null) {
+            throw new CustomBusinessException(ErrorCodes.NOT_FOUND);
+        }
+
+        LocalDate dob = null;
+        if (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank()) {
+            dob = LocalDate.parse(request.getDateOfBirth(), DATE_FORMATTER);
+        }
+
+        GenderType gender = null;
+        if ("M".equalsIgnoreCase(request.getGender())) {
+            gender = GenderType.MALE;
+        } else if ("F".equalsIgnoreCase(request.getGender())) {
+            gender = GenderType.FEMALE;
+        } else if ("O".equalsIgnoreCase(request.getGender())) {
+            gender = GenderType.OTHER;
+        }
+
+        patient.setFullName(request.getName());
+        patient.setDob(dob);
+        patient.setGender(gender);
+        patient.setPhone(request.getPhone());
+        patient.setAddress(request.getAddress());
+        patient.setUpdatedAt(LocalDateTime.now());
+
+        patient = patientRepository.save(patient);
+        return mapToResponse(patient, credentials.getEmail());
+    }
+
+    @Override
+    @Transactional
     public void deletePatient(Integer id) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
@@ -140,9 +180,15 @@ public class PatientServiceImpl implements PatientService {
     }
 
     private PatientResponse mapToResponse(Patient patient, String emailOverride) {
-        String genderStr = "M";
-        if (patient.getGender() == GenderType.FEMALE) {
-            genderStr = "F";
+        String genderStr = null;
+        if (patient.getGender() != null) {
+            if (patient.getGender() == GenderType.FEMALE) {
+                genderStr = "F";
+            } else if (patient.getGender() == GenderType.MALE) {
+                genderStr = "M";
+            } else if (patient.getGender() == GenderType.OTHER) {
+                genderStr = "O";
+            }
         }
 
         String dobStr = null;
