@@ -5,6 +5,10 @@ import com.medicore.entity.catalog.Specialty;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.List;
 
 @Entity
 @Table(name = "doctors")
@@ -45,4 +49,8 @@ public class Doctor extends BaseEntity {
 
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "achievements", columnDefinition = "text[]")
+    private List<String> achievements;
 }

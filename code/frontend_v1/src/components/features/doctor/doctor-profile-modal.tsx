@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
-import { X, User, Briefcase, GraduationCap, Phone, Stethoscope, FileText, Upload } from "lucide-react"
+import { X, User, Briefcase, GraduationCap, Phone, Stethoscope, FileText, Trophy, Upload } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/base/ui/avatar"
 import { doctorsApi, specialtiesApi } from "@/lib/api"
 import { AVATARS_BUCKET, getSupabaseClient } from "@/lib/supabase"
@@ -43,6 +43,7 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
   const [specialtyId, setSpecialtyId] = useState("")
   const [experience, setExperience] = useState("")
   const [bio, setBio] = useState("")
+  const [achievements, setAchievements] = useState("")
   const [specialties, setSpecialties] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -80,6 +81,7 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
         setDegree(doctorProfile.title ?? doctorProfile.degree ?? "")
         setSpecialtyId(doctorProfile.specialtyId ? String(doctorProfile.specialtyId) : "")
         setBio(doctorProfile.bio ?? "")
+        setAchievements(Array.isArray(doctorProfile.achievements) ? doctorProfile.achievements.join("\n") : "")
         setExperience(
           doctorProfile.experience !== undefined && doctorProfile.experience !== null
             ? String(doctorProfile.experience)
@@ -160,6 +162,11 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
       return
     }
 
+    const achievementItems = achievements
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
     const payload: DoctorProfileRequest = {
       name: name.trim(),
       specialtyId: Number(specialtyId),
@@ -168,6 +175,7 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
       phone: phone.trim() || undefined,
       experience: experience === "" ? undefined : Number(experience),
       avatarUrl: avatarUrl.trim() || undefined,
+      achievements: achievementItems,
     }
 
     setSaving(true)
@@ -326,6 +334,21 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
                     className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50"
                   />
                   <p className="mt-1 text-[11px] text-muted-foreground">Tối đa 2000 ký tự.</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <Trophy className="w-3.5 h-3.5" /> Thành tựu
+                  </label>
+                  <textarea
+                    value={achievements}
+                    onChange={(e) => setAchievements(e.target.value)}
+                    placeholder="Nhập mỗi thành tựu trên một dòng. Ví dụ:\nBác sĩ xuất sắc năm 2024\nThành viên Hội Tim mạch Việt Nam"
+                    rows={4}
+                    maxLength={2000}
+                    className="w-full border rounded-md p-2.5 text-sm bg-background focus:ring-2 focus:ring-primary/50"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">Mỗi dòng là một thành tựu. Tối đa 2000 ký tự.</p>
                 </div>
               </div>
             </>

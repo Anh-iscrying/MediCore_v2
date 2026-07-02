@@ -109,6 +109,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .bio(request.getBio())
                 .experienceYears(request.getExperience())
                 .avatarUrl(request.getAvatarUrl())
+                .achievements(normalizeAchievements(request.getAchievements()))
                 .build();
         
         doctor.setCreatedAt(LocalDateTime.now());
@@ -147,6 +148,7 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setBio(request.getBio());
         doctor.setExperienceYears(request.getExperience());
         doctor.setAvatarUrl(request.getAvatarUrl());
+        doctor.setAchievements(normalizeAchievements(request.getAchievements()));
         doctor.setUpdatedAt(LocalDateTime.now());
         doctor = doctorRepository.save(doctor);
 
@@ -228,10 +230,21 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setExperienceYears(request.getExperience());
         doctor.setSpecialty(specialty);
         doctor.setAvatarUrl(request.getAvatarUrl());
+        doctor.setAchievements(normalizeAchievements(request.getAchievements()));
         doctor.setUpdatedAt(LocalDateTime.now());
 
         doctor = doctorRepository.save(doctor);
         return mapToResponse(doctor);
+    }
+
+    private List<String> normalizeAchievements(List<String> achievements) {
+        if (achievements == null) {
+            return List.of();
+        }
+        return achievements.stream()
+                .filter(item -> item != null && !item.trim().isEmpty())
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 
     private DoctorResponse mapToResponse(Doctor doctor) {
@@ -254,6 +267,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .status("active")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
+                .achievements(doctor.getAchievements())
                 .build();
     }
 
@@ -276,6 +290,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .status("active")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
+                .achievements(doctor.getAchievements())
                 .build();
     }
 }
