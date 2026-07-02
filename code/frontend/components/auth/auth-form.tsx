@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/base/ui/button"
-import { Mail, Lock, User, ArrowRight } from "lucide-react"
+import { Mail, Lock, User, ArrowRight, KeyRound } from "lucide-react"
 
 export type AuthFormData = {
   email: string
@@ -16,9 +16,14 @@ interface AuthFormProps {
   type: "login" | "signup"
   error?: string
   onSubmit?: (data: AuthFormData) => Promise<void> | void
+  otpStep?: boolean
+  otpEmail?: string
+  onVerifyOtp?: (otp: string) => Promise<void> | void
+  onResendOtp?: () => Promise<void> | void
+  onBackToForm?: () => void
 }
 
-export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
+export function AuthForm({ type, error, onSubmit, otpStep = false, otpEmail, onVerifyOtp, onResendOtp, onBackToForm }: AuthFormProps) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -27,6 +32,7 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
+  const [otp, setOtp] = useState("")
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -82,6 +88,108 @@ export function AuthForm({ type, error, onSubmit }: AuthFormProps) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!/^\d{6}$/.test(otp)) {
+      setErrors({ otp: "Mã OTP phải gồm 6 chữ số" })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await onVerifyOtp?.(otp)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    setIsLoading(true)
+    try {
+      setOtp("")
+      setErrors({})
+      await onResendOtp?.()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (otpStep) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-card rounded-xl border border-border shadow-xl shadow-black/[0.04] dark:shadow-2xl dark:shadow-black/50 p-8 transition-all">
+          <div className="mb-8">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <h1 className="font-sans text-2xl lg:text-3xl font-black text-foreground tracking-tight mb-2">
+              Xác thực email
+            </h1>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Mã OTP gồm 6 chữ số đã được gửi đến <strong className="text-foreground font-bold">{otpEmail}</strong>.
+            </p>
+          </div>
+
+          <form onSubmit={handleOtpSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="signup-otp" className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wider text-center">
+                Nhập mã xác thực
+              </label>
+              <input
+                type="text"
+                id="signup-otp"
+                inputMode="numeric"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  if (errors.otp) setErrors({})
+                }}
+                placeholder="000000"
+                maxLength={6}
+                className="w-full py-3 text-center font-mono text-2xl tracking-[0.75em] bg-input border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground transition-all duration-150"
+              />
+              {errors.otp && <p className="text-destructive text-xs text-center mt-2">{errors.otp}</p>}
+            </div>
+
+            <div className="flex justify-between items-center text-xs">
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={isLoading}
+                className="text-foreground hover:text-primary transition-colors font-bold underline underline-offset-4 decoration-2 decoration-primary/40 hover:decoration-primary cursor-pointer disabled:opacity-60"
+              >
+                Gửi lại mã
+              </button>
+              <button
+                type="button"
+                onClick={onBackToForm}
+                disabled={isLoading}
+                className="text-muted-foreground hover:text-foreground font-semibold transition-colors underline underline-offset-4 cursor-pointer disabled:opacity-60"
+              >
+                Sửa thông tin
+              </button>
+            </div>
+
+            {error && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+                {error}
+              </p>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-primary text-foreground hover:bg-[#cdffad] active:scale-[0.98] rounded-xl py-3.5 font-bold tracking-wider uppercase text-sm group mt-6 transition-all duration-200 cursor-pointer"
+            >
+              {isLoading ? "Đang xác minh..." : "Xác minh OTP"}
+              {!isLoading && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+            </Button>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   return (

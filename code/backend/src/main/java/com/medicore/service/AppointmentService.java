@@ -16,6 +16,7 @@ public interface AppointmentService {
     AppointmentResponse createCurrentPatientAppointment(AppointmentRequest request, String email);
     AppointmentResponse createAppointment(AppointmentRequest request);
     AppointmentResponse updateAppointment(Integer id, AppointmentRequest request);
+    AppointmentResponse startExam(Integer id);
     AppointmentResponse cancelCurrentPatientAppointment(Integer id, String email);
     void deleteAppointment(Integer id);
 }

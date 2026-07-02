@@ -16,6 +16,7 @@ import com.medicore.repository.DoctorRepository;
 import com.medicore.repository.DoctorScheduleRepository;
 import com.medicore.repository.PatientRepository;
 import com.medicore.service.AppointmentService;
+import com.medicore.service.PatientNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final DoctorRepository doctorRepository;
     private final DoctorScheduleRepository doctorScheduleRepository;
     private final AuthCredentialsRepository authCredentialsRepository;
+    private final PatientNotificationService patientNotificationService;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final List<AppointmentStatus> ACTIVE_STATUSES = List.of(
@@ -177,6 +179,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
 
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
+        AppointmentStatus oldStatus = appointment.getStatus();
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
         boolean cancelling = status == AppointmentStatus.CANCELLED;
         boolean statusOnlyUpdate = Objects.equals(appointment.getPatient().getPatientCode(), patient.getPatientCode())
@@ -232,6 +235,20 @@ public class AppointmentServiceImpl implements AppointmentService {
         } catch (DataIntegrityViolationException e) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
         }
+        patientNotificationService.notifyExamStarted(appointment, oldStatus, status);
+        return mapToResponse(appointment);
+    }
+
+    @Override
+    @Transactional
+    public AppointmentResponse startExam(Integer id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        AppointmentStatus oldStatus = appointment.getStatus();
+        appointment.setStatus(AppointmentStatus.IN_PROGRESS);
+        appointment.setUpdatedAt(LocalDateTime.now());
+        appointment = appointmentRepository.save(appointment);
+        patientNotificationService.notifyExamStarted(appointment, oldStatus, AppointmentStatus.IN_PROGRESS);
         return mapToResponse(appointment);
     }
 
