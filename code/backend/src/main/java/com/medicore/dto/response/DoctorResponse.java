@@ -22,4 +22,5 @@ public class DoctorResponse {
     private String status;
     private String avatar;
     private String doctorCode;
+    private String[] achievements;
 }

@@ -120,15 +120,15 @@ public class AuthController {
             );
         }
 
-        GenderType targetGender = GenderType.MALE;
+        GenderType targetGender = null;
 
-        if (request.getGender() != null) {
+        if (request.getGender() != null && !request.getGender().isBlank()) {
             try {
                 targetGender = GenderType.valueOf(
                         request.getGender().toUpperCase()
                 );
             } catch (IllegalArgumentException e) {
-                targetGender = GenderType.MALE;
+                targetGender = null;
             }
         }
 

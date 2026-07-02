@@ -254,6 +254,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .status("active")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
+                .achievements(doctor.getAchievements())
                 .build();
     }
 
@@ -276,6 +277,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .status("active")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
+                .achievements(doctor.getAchievements())
                 .build();
     }
 }

@@ -88,7 +88,7 @@ export function HeroSection() {
             Trải nghiệm dịch vụ chăm sóc tận tâm từ các bác sĩ chuyên khoa giàu kinh nghiệm. Tư vấn ứng dụng AI và phác đồ điều trị cá nhân hóa cho hành trình chăm sóc sức khỏe của bạn.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/auth/signup">
+            <Link href="/dashboard/appointments">
               <Button
                 size="lg"
                 className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-xs rounded-full px-8 py-6 transition-all duration-200 shadow-lg shadow-black/10 group"

@@ -28,7 +28,7 @@ interface Doctor {
   avatar_url?: string
   doctor_schedules: DoctorSchedule[]
   availableSlots: string[]
-  Achievements: string[]
+  achievements?: string[]
 }
 
 interface Appointment {

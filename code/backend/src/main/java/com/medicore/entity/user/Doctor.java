@@ -5,6 +5,8 @@ import com.medicore.entity.catalog.Specialty;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "doctors")
@@ -39,10 +41,14 @@ public class Doctor extends BaseEntity {
     @Column(name = "experience_years")
     private Integer experienceYears;
 
-   @Builder.Default
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "achievements", columnDefinition = "text[]")
+    private String[] achievements;
 }
