@@ -134,6 +134,13 @@
 /* Smooth scroll and animation utilities */
 html {
   scroll-behavior: smooth;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 @keyframes fade-up {

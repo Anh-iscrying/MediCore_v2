@@ -70,10 +70,6 @@ export function WaitingPatientsList() {
 
   const handleCancelAppointment = async (appointment: Appointment | null) => {
     if (!appointment) return
-    if (appointment.status === "IN_PROGRESS") {
-      alert("Không thể hủy lịch hẹn khi bệnh nhân đang trong quá trình khám.")
-      return
-    }
     if (!confirm("Bạn có chắc muốn hủy lịch hẹn này?")) return
 
     try {
@@ -189,17 +185,15 @@ export function WaitingPatientsList() {
                     >
                       Hồ sơ
                     </Button>
-                    {appointment?.status !== "IN_PROGRESS" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive hover:text-destructive"
-                        disabled={!appointment}
-                        onClick={() => handleCancelAppointment(appointment)}
-                      >
-                        Hủy lịch hẹn
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:text-destructive"
+                      disabled={!appointment}
+                      onClick={() => handleCancelAppointment(appointment)}
+                    >
+                      Hủy lịch hẹn
+                    </Button>
                     <Button
                       size="sm"
                       onClick={() => handleStartExamination(patient, appointment)}

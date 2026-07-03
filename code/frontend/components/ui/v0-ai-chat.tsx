@@ -178,15 +178,15 @@ export function VercelV0Chat() {
     return (
         <div className={cn(
             "flex flex-col w-full mx-auto transition-all duration-300 ease-in-out select-none h-full",
-            hasMessages 
-                ? "justify-between max-w-4xl min-h-0" 
+            hasMessages
+                ? "justify-between max-w-4xl min-h-0"
                 : "justify-center items-center max-w-2xl space-y-8 py-12 md:py-24"
         )}>
             {/* 1. Welcome Title (Centered Mode Only) */}
             {!hasMessages && (
                 <div className="flex flex-col items-center space-y-2 text-center w-full animate-in fade-in duration-300">
                     <h1 className="text-3xl md:text-4xl font-sans font-black text-foreground tracking-tight">
-                        Hôm nay bạn cần tư vấn sức khỏe gì?
+                        hôm nay bạn cảm thấy thế nào?
                     </h1>
                 </div>
             )}

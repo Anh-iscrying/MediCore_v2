@@ -1,72 +1,60 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import Link from "next/link"
+import { ArrowRight, FileCheck2, Stethoscope } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
-import { ArrowRight } from "lucide-react"
+
+const principles = [
+  {
+    title: "Minh bạch & Bảo mật",
+    description: "Người bệnh luôn biết rõ cần chuẩn bị gì trước khi khám, đồng thời thông tin y tế cá nhân được bảo mật tuyệt đối.",
+    icon: FileCheck2,
+  },
+  {
+    title: "Bác sĩ quyết định điều trị",
+    description: "Công nghệ chỉ hỗ trợ tổ chức thông tin. Mọi quyết định chuyên môn và phương án điều trị luôn thuộc về bác sĩ.",
+    icon: Stethoscope,
+  },
+]
 
 export function MissionSection() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate-fade-up")
-          }
-        })
-      },
-      { threshold: 0.1 },
-    )
-
-    const elements = sectionRef.current?.querySelectorAll(".reveal")
-    elements?.forEach((el) => observer.observe(el))
-
-    return () => observer.disconnect()
-  }, [])
-
   return (
-    <section ref={sectionRef} id="mission" className="py-24 lg:py-32 px-6 bg-background border-t border-border">
-      <div className="relative max-w-7xl mx-auto rounded-lg overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0">
-          <img src="/images/hero-hospital.png" alt="Không gian bệnh viện hiện đại" className="w-full h-full object-cover" />
-          {/* Subtle dark overlay for text readability */}
-          <div className="absolute inset-0 bg-black/25 dark:bg-black/85" />
-        </div>
-
-        {/* Content with padding */}
-        <div className="relative px-6 lg:px-8 py-16 lg:py-24 z-10">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            {/* Empty column to push content to the right */}
-            <div className="order-2 lg:order-1"></div>
-
-            {/* Content */}
-            <div className="order-1 lg:order-2">
-              <p className="reveal opacity-0 text-xs md:text-sm uppercase tracking-[0.25em] text-primary font-bold mb-4">
-                Sứ mệnh của chúng tôi
+    <section id="mission" className="scroll-mt-24 border-t border-border bg-background px-6 py-20 lg:py-24">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[24px] bg-foreground text-background">
+        <div className="grid gap-10 p-6 lg:grid-cols-[0.9fr_1.1fr] lg:p-10 xl:p-12">
+          <div className="flex flex-col justify-between gap-10">
+            <div>
+              <p className="mb-5 max-w-max rounded-full bg-background/10 px-4 py-2 text-sm font-semibold text-primary ring-1 ring-background/15">
+                Sứ mệnh Medicore
               </p>
-              <h2 className="reveal opacity-0 animation-delay-200 font-sans text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-6">
-                Chăm sóc y tế tận tâm cho mọi người
+              <h2 className="text-4xl font-black tracking-[-0.04em] text-background md:text-5xl lg:text-6xl">
+                Y tế dễ tiếp cận, minh bạch và có trách nhiệm
               </h2>
-              <div className="reveal opacity-0 animation-delay-400 space-y-6 text-neutral-300 text-sm md:text-base leading-relaxed">
-                <p>
-                  Tại Medicore Hospital, chúng tôi tin rằng chăm sóc sức khỏe cần tận tâm, dễ tiếp cận và được hỗ trợ bởi khoa học tiên tiến. Đội ngũ bác sĩ chuyên khoa tận tụy của chúng tôi kết hợp chuyên môn y khoa với sự thấu hiểu để mang đến dịch vụ chăm sóc cá nhân hóa.
-                </p>
-                <p>
-                  Với tư vấn ứng dụng AI hoạt động 24/7 cùng các bác sĩ giàu kinh nghiệm ở nhiều chuyên khoa, chúng tôi cam kết đồng hành cùng hành trình chăm sóc sức khỏe của bạn ở mọi bước.
-                </p>
-              </div>
-              <div className="reveal opacity-0 animation-delay-600 mt-10">
-                <Button
-                  size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-[11px] rounded-full px-8 py-4.5 transition-all duration-200 group"
-                >
-                  Liên hệ với chúng tôi
-                  <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </div>
             </div>
+            <p className="max-w-xl text-base leading-8 text-background/70">
+              Medicore kết hợp quy trình khám rõ ràng, hồ sơ số và đội ngũ bác sĩ để người bệnh được chuẩn bị tốt hơn trước mỗi quyết định chăm sóc sức khỏe.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            {principles.map((principle) => {
+              const Icon = principle.icon
+              return (
+                <div key={principle.title} className="rounded-[24px] bg-background p-6 text-foreground">
+                  <div className="mb-5 flex size-12 items-center justify-center rounded-full bg-primary/30">
+                    <Icon className="size-5 stroke-[1.8]" />
+                  </div>
+                  <h3 className="text-2xl font-black tracking-tight">{principle.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-foreground/65">{principle.description}</p>
+                </div>
+              )
+            })}
+            <Button asChild className="h-12 rounded-[24px] bg-primary px-7 text-base font-semibold text-primary-foreground hover:bg-primary/90 sm:max-w-max">
+              <Link href="/dashboard/appointments">
+                Đặt lịch khám
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

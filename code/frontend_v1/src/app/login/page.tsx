@@ -7,13 +7,10 @@ import { Input } from "@/components/base/ui/input"
 import { Label } from "@/components/base/ui/label"
 import { Alert, AlertDescription } from "@/components/base/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { 
-  Stethoscope, 
-  Key, 
-  Mail, 
-  ShieldAlert, 
-  Activity,
-  Users,
+import {
+  Key,
+  Mail,
+  ShieldAlert,
   ChevronRight
 } from "lucide-react"
 
@@ -42,7 +39,7 @@ export default function LoginPage() {
           msg = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
           toastTitle = "Phiên đăng nhập hết hạn"
         }
-        
+
         setError(msg)
         toast({
           title: toastTitle,
@@ -66,8 +63,8 @@ export default function LoginPage() {
       await login(email, password)
     } catch (err: any) {
       const isPermissionError = err.message?.includes("quyền truy cập")
-      const msg = isPermissionError 
-        ? err.message 
+      const msg = isPermissionError
+        ? err.message
         : "Email hoặc mật khẩu không hợp lệ"
       setError(msg)
       toast({
@@ -84,10 +81,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-background overflow-hidden font-sans">
-      
+
       {/* LEFT SIDE: Form Đăng nhập */}
       <div className="flex w-full flex-col justify-between p-8 lg:w-[45%] xl:w-[40%] bg-white dark:bg-slate-900 border-r border-border/40 z-10">
-        
+
         {/* Header Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
@@ -155,8 +152,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all gap-2"
               disabled={loading}
             >
@@ -183,83 +180,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Visual Showcase (Premium Panel) */}
-      <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-primary via-emerald-800 to-slate-950 items-center justify-center p-12 overflow-hidden">
-        
-        {/* Abstract glowing patterns */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-[20%] right-[10%] h-[500px] w-[500px] rounded-full bg-emerald-400/10 blur-[130px] animate-float" />
-          <div className="absolute bottom-[10%] left-[20%] h-[400px] w-[400px] rounded-full bg-teal-400/15 blur-[100px]" />
-          
-          {/* Subtle grid background */}
-          <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]" />
-        </div>
-
-        <div className="max-w-xl space-y-10 text-white z-10">
-          
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold uppercase tracking-wider text-emerald-250">
-              <Activity className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-              MediCore Clinical System
-            </div>
-            <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight">
-              Quản lý bệnh án điện tử và điều phối thông minh.
-            </h1>
-            <p className="text-emerald-100/90 text-base leading-relaxed">
-              Giải pháp tích hợp công nghệ AI hỗ trợ chuẩn đoán, tối ưu hóa lịch trực, quản lý danh mục thuốc và tự động hóa hồ sơ bệnh án toàn diện.
-            </p>
-          </div>
-
-          {/* Interactive Mock Dashboard Preview */}
-          <div className="relative p-6 rounded-2xl bg-slate-900/80 border border-white/10 shadow-2xl backdrop-blur-md space-y-4 animate-float">
-            
-            {/* Window control dots */}
-            <div className="flex items-center gap-1.5 pb-2 border-b border-white/5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-              <span className="text-[10px] text-white/40 ml-2 font-mono">dashboard_live_preview.exe</span>
-            </div>
-
-            {/* Simulated UI Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Bệnh nhân hôm nay</span>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-extrabold">142</span>
-                  <span className="text-xs text-emerald-400 font-bold">+18%</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wide">Thời gian chờ TB</span>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-extrabold">8.5m</span>
-                  <span className="text-xs text-emerald-400 font-bold">-12%</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Patient Waitlist simulated bar */}
-            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold flex items-center gap-1.5 text-white/80">
-                  <Users className="w-3.5 h-3.5 text-emerald-400" />
-                  Đang khám: Buồng Nội tổng quát
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400">Đang hoạt động</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div className="w-[75%] h-full rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
+      {/* RIGHT SIDE: Hospital Visual */}
+      <div className="relative hidden flex-1 overflow-hidden bg-emerald-950 lg:block">
+        <img
+          src="/images/hero-hospital.png"
+          alt="Không gian bệnh viện Medicore với đội ngũ y tế đang hỗ trợ người bệnh"
+          className="h-full min-h-screen w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/50 via-emerald-900/20 to-slate-950/55" />
+        <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-white/10 to-transparent" />
       </div>
 
     </div>
