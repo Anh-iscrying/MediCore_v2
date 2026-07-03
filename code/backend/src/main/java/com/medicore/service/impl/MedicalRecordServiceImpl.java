@@ -1,18 +1,24 @@
 package com.medicore.service.impl;
 
 import com.medicore.common.constants.AppointmentStatus; // Import Enum chuẩn
+import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.MedicalRecordRequest;
+import com.medicore.dto.response.MedicalRecordResponse;
 import com.medicore.entity.catalog.Disease;
 import com.medicore.entity.clinical.*;
+import com.medicore.entity.user.AuthCredentials;
 import com.medicore.repository.*;
 import com.medicore.service.IdGeneratorService;
 import com.medicore.service.MedicalRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.medicore.common.constants.ErrorCodes; 
 
 import java.time.OffsetDateTime; // Dùng OffsetDateTime thay vì LocalDateTime
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +29,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionDetailRepository prescriptionDetailRepository;
     private final MedicineRepository medicineRepository; // Cần cái này để tìm thuốc
+    private final AuthCredentialsRepository authCredentialsRepository;
     private final IdGeneratorService idGeneratorService;
     private final DiseaseRepository diseaseRepository;
 
@@ -106,5 +113,35 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         // 6. Cập nhật trạng thái (Dùng Enum thay vì String)
         appointment.setStatus(AppointmentStatus.DONE); 
         appointmentRepository.save(appointment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> getHistoryByEmail(String email) {
+        // 1. Tìm tài khoản login của người em
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
+        if (credentials.getPatient() == null) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
+        }
+
+        // 2. Lấy toàn bộ bệnh án của mã bệnh nhân này
+        String patientCode = credentials.getPatient().getPatientCode();
+        return recordRepository.findByPatientPatientCode(patientCode).stream()
+                .map(this::mapToMedicalRecordResponse) // Gọi đúng hàm map cho MedicalRecord
+                .collect(Collectors.toList());
+    }
+
+    // HÀM MAPPING CHUẨN ĐỂ HẾT LỖI Type Mismatch
+    private MedicalRecordResponse mapToMedicalRecordResponse(MedicalRecord record) {
+        return MedicalRecordResponse.builder()
+                .emrCode(record.getEmrCode())
+                .doctorName(record.getDoctor() != null ? record.getDoctor().getDoctorName() : "N/A")
+                .diagnosisIcd10(record.getDiagnosisIcd10() != null ? record.getDiagnosisIcd10().getIcd10Code() : "N/A")
+                .clinicalNote(record.getClinicalNote())
+                .careAdvice(record.getCareAdvice())
+                .createdAt(record.getCreatedAt())
+                .build();
     }
 }

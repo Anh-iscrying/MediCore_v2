@@ -1,5 +1,7 @@
 package com.medicore.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -23,4 +25,10 @@ public class PatientRequest {
     private String email;
     private String insuranceNumber;
     private String status;
+    
+    // Mẹo: Thêm cái này để dù Postman gửi "dob" hay "dateOfBirth" đều chạy được
+    @JsonProperty("dob") 
+    public void setDob(String dob) {
+        this.dateOfBirth = dob;
+    }
 }

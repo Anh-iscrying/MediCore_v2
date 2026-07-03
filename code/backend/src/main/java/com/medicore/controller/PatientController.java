@@ -91,4 +91,17 @@ public class PatientController {
         patientService.deletePatient(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa bệnh nhân thành công", null));
     }
+
+    @PostMapping("/family")
+    @PreAuthorize("hasRole('PATIENT')") // Chỉ bệnh nhân mới được thêm người thân cho mình
+    public ResponseEntity<ApiResponse<PatientResponse>> addFamilyMember(@Valid @RequestBody PatientRequest request) {
+        
+        // 1. Lấy email của người đang đăng nhập (chủ tài khoản - Chị Bầu)
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        // 2. Gọi service để tạo hồ sơ người thân và gắn managedBy = email này
+        PatientResponse response = patientService.addFamilyMember(request, currentUserEmail);
+        
+        return ResponseEntity.ok(ApiResponse.success("Thêm người thân thành công", response));
+    }
 }

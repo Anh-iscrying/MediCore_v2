@@ -34,4 +34,7 @@ public class Patient extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String address;
+
+    @Column(name = "managed_by")
+    private String managedBy;
 }

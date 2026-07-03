@@ -29,6 +29,7 @@ import org.springframework.http.HttpHeaders;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
@@ -102,78 +103,96 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
 
-        // 1. Kiểm tra email tồn tại
+        // 1. Kiểm tra email đã có tài khoản login chưa
         if (authCredentialsRepository.existsByEmail(request.getEmail())) {
-            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Email này đã được sử dụng");
         }
 
-        // 2. Public register chỉ tạo tài khoản bệnh nhân
-        UserRole targetRole = UserRole.PATIENT;
-        String businessCode = idGeneratorService.generatePatientCode();
-        String displayName = request.getName();
-
-        LocalDate dob = null;
-        if (request.getDob() != null) {
-            dob = LocalDate.parse(
-                    request.getDob(),
-                    DateTimeFormatter.ISO_DATE
-            );
-        }
-
-        GenderType targetGender = null;
-
-        if (request.getGender() != null && !request.getGender().isBlank()) {
-            try {
-                targetGender = GenderType.valueOf(
-                        request.getGender().toUpperCase()
-                );
-            } catch (IllegalArgumentException e) {
-                targetGender = null;
+        // 2. LOGIC "NHẬN DIỆN NGƯỜI THÂN": Kiểm tra SĐT đã tồn tại trong danh sách bệnh nhân chưa
+        // Giả sử bạn đã thêm phương thức findByPhone trong PatientRepository
+        Optional<Patient> existingPatient = patientRepository.findByPhone(request.getPhone());
+        
+        Patient patient;
+        String businessCode;
+        
+        if (existingPatient.isPresent()) {
+            Patient oldProfile = existingPatient.get();
+            
+            // Kiểm tra xem hồ sơ này đã có ai đứng tên (liên kết với AuthCredentials) chưa
+            boolean alreadyLinked = authCredentialsRepository.findByPatientId(oldProfile.getId()).isPresent();
+            
+            if (alreadyLinked) {
+                // Nếu SĐT này đã gắn với 1 tài khoản email khác rồi -> Cấm trùng SĐT
+                throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Số điện thoại này đã được sử dụng cho tài khoản khác");
             }
+            
+            // TRƯỜNG HỢP RA RIÊNG: Nếu hồ sơ này đang được "đặt hộ" (managed_by != null)
+            // Chúng ta sẽ "chuyển nhượng" hồ sơ này cho tài khoản mới
+            patient = oldProfile;
+            patient.setFullName(request.getName()); // Cập nhật tên mới nhất
+            patient.setManagedBy(null);             // Thoát khỏi sự quản lý của người thân
+            patient.setUpdatedAt(LocalDateTime.now());
+            businessCode = patient.getPatientCode(); // Giữ nguyên mã cũ EMR/PAT cũ
+            
+        } else {
+            // TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN: Chưa từng có trong hệ thống
+            businessCode = idGeneratorService.generatePatientCode();
+            
+            LocalDate dob = null;
+            if (request.getDob() != null) {
+                dob = LocalDate.parse(request.getDob(), DateTimeFormatter.ISO_DATE);
+            }
+
+            GenderType targetGender = null;
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                try {
+                    targetGender = GenderType.valueOf(request.getGender().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    targetGender = null;
+                }
+            }
+
+            patient = Patient.builder()
+                    .patientCode(businessCode)
+                    .fullName(request.getName())
+                    .dob(dob)
+                    .gender(targetGender)
+                    .phone(request.getPhone())
+                    .address(request.getAddress())
+                    .build();
+            
+            patient.setCreatedAt(LocalDateTime.now());
+            patient.setUpdatedAt(LocalDateTime.now());
         }
 
-        Patient patient = Patient.builder()
-                .patientCode(businessCode)
-                .fullName(request.getName())
-                .dob(dob)
-                .gender(targetGender)
-                .phone(request.getPhone())
-                .address(request.getAddress())
-                .build();
-
-        patient.setCreatedAt(LocalDateTime.now());
-        patient.setUpdatedAt(LocalDateTime.now());
-
+        // Lưu/Cập nhật thông tin bệnh nhân
         patient = patientRepository.save(patient);
         Integer businessId = patient.getId();
 
+        // 3. Tạo tài khoản đăng nhập (Luôn tạo mới cho Email mới)
         AuthCredentials credentials = AuthCredentials.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.PATIENT)
-                .patient(patient)
+                .patient(patient) // Liên kết với hồ sơ (mới hoặc cũ đều ok)
                 .build();
-
-        // 3. Lưu thông tin đăng nhập
         authCredentialsRepository.save(credentials);
 
-        // 4. Sinh JWT
+        // 4. Phần sinh JWT và Cookie (Giữ nguyên như code cũ của bạn)
         String token = jwtTokenProvider.generateToken(
                 credentials.getEmail(),
-                targetRole.name(),
+                UserRole.PATIENT.name(),
                 businessId,
                 businessCode
         );
 
         LoginResponse response = LoginResponse.builder()
                 .token(token)
-                .role(targetRole.name())
+                .role(UserRole.PATIENT.name())
                 .email(credentials.getEmail())
-                .name(displayName)
-                .doctorId(targetRole == UserRole.DOCTOR ? businessId : null)
-                .doctorCode(targetRole == UserRole.DOCTOR ? businessCode : null)
-                .patientId(targetRole == UserRole.PATIENT ? businessId : null)
-                .patientCode(targetRole == UserRole.PATIENT ? businessCode : null)
+                .name(request.getName())
+                .patientId(businessId)
+                .patientCode(businessCode)
                 .build();
 
         ResponseCookie cookie = ResponseCookie.from("accessToken", token)
@@ -186,10 +205,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.success(
-                        "Đăng ký tài khoản thành công",
-                        response
-                ));
+                .body(ApiResponse.success("Đăng ký thành công", response));
     }
 
     @GetMapping("/me")
