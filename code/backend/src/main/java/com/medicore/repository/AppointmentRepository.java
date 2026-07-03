@@ -17,6 +17,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     List<Appointment> findByDoctorId(Integer doctorId);
     List<Appointment> findByDoctorIdAndAppointmentDate(Integer doctorId, LocalDate appointmentDate);
     List<Appointment> findByDoctorIdAndAppointmentDateAndStatusNot(Integer doctorId, LocalDate appointmentDate, AppointmentStatus status);
+
+    @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty WHERE a.patient.patientCode = :patientCode")
+    List<Appointment> findByPatientPatientCodeWithRelations(@Param("patientCode") String patientCode);
+
+    @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty WHERE d.id IN :doctorIds AND a.appointmentDate = :appointmentDate AND a.status <> :status")
+    List<Appointment> findByDoctorIdsAndAppointmentDateAndStatusNot(
+            @Param("doctorIds") List<Integer> doctorIds,
+            @Param("appointmentDate") LocalDate appointmentDate,
+            @Param("status") AppointmentStatus status);
     @Query("SELECT a FROM Appointment a LEFT JOIN FETCH a.patient LEFT JOIN FETCH a.doctor d LEFT JOIN FETCH d.specialty WHERE d.id = :doctorId AND a.appointmentDate = :appointmentDate AND a.status IN :statuses ORDER BY a.timeSlot ASC")
     List<Appointment> findByDoctorIdAndAppointmentDateAndStatusIn(
             @Param("doctorId") Integer doctorId,
@@ -25,6 +34,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     boolean existsByDoctorIdAndAppointmentDate(Integer doctorId, LocalDate appointmentDate);
     boolean existsByPatientPatientCodeAndStatusIn(String patientCode, List<AppointmentStatus> statuses);
     boolean existsByPatientPatientCodeAndStatusInAndIdNot(String patientCode, List<AppointmentStatus> statuses, Integer id);
+    long countByPatientPatientCodeAndStatusIn(String patientCode, List<AppointmentStatus> statuses);
+    long countByPatientPatientCodeAndStatusInAndIdNot(String patientCode, List<AppointmentStatus> statuses, Integer id);
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.patient.patientCode = :patientCode AND a.createdAt >= :startOfDay AND a.createdAt < :startOfNextDay")
     long countAppointmentsCreatedToday(
             @Param("patientCode") String patientCode,

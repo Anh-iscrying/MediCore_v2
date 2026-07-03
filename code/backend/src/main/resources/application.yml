@@ -28,6 +28,11 @@ spring:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  appointment:
+    min-hours-before-booking: ${APPOINTMENT_MIN_HOURS_BEFORE_BOOKING:2}
+    min-hours-before-cancellation: ${APPOINTMENT_MIN_HOURS_BEFORE_CANCELLATION:2}
+    max-active-per-patient: ${APPOINTMENT_MAX_ACTIVE_PER_PATIENT:3}
+    max-created-per-patient-per-day: ${APPOINTMENT_MAX_CREATED_PER_PATIENT_PER_DAY:3}
 
 # Cấu hình Swagger/OpenAPI
 springdoc:
