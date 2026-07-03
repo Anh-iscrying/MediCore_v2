@@ -8,15 +8,21 @@ import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.config.JwtTokenProvider;
 import com.medicore.dto.request.LoginRequest;
 import com.medicore.dto.request.RegisterRequest;
+import com.medicore.dto.request.RequestOtpRequest;
+import com.medicore.dto.request.ResetPasswordRequest;
+import com.medicore.dto.request.VerifyOtpRequest;
 import com.medicore.dto.response.LoginResponse;
+import com.medicore.dto.response.OtpVerifyResponse;
 import com.medicore.entity.user.AuthCredentials;
-import com.medicore.entity.user.Patient; // Đảm bảo đã có Entity này
+import com.medicore.entity.user.Patient;
 import com.medicore.repository.AuthCredentialsRepository;
-import com.medicore.repository.PatientRepository; // Bạn cần tạo file này
+import com.medicore.repository.PatientRepository;
+import com.medicore.service.EmailOtpService;
 import com.medicore.service.IdGeneratorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,12 +30,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpHeaders;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/auth")
@@ -37,79 +43,43 @@ import java.util.Optional;
 public class AuthController {
 
     private final AuthCredentialsRepository authCredentialsRepository;
-    private final PatientRepository patientRepository; // Thêm Repository này
+    private final PatientRepository patientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final IdGeneratorService idGeneratorService;
+    private final EmailOtpService emailOtpService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        AuthCredentials credentials = authCredentialsRepository.findByEmail(request.getEmail())
+        String email = normalizeEmail(request.getEmail());
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getPassword(), credentials.getPasswordHash())) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
         }
 
-        String name = "User";
-        Integer businessId = null;
-        String businessCode = null;
-
-        // Kiểm tra role để lấy thông tin định danh tương ứng
-        if (credentials.getRole() == UserRole.DOCTOR && credentials.getDoctor() != null) {
-            name = credentials.getDoctor().getDoctorName();
-            businessId = credentials.getDoctor().getId();
-            businessCode = credentials.getDoctor().getDoctorCode();
-        } else if (credentials.getRole() == UserRole.PATIENT && credentials.getPatient() != null) {
-            name = credentials.getPatient().getFullName();
-            businessId = credentials.getPatient().getId();
-            businessCode = credentials.getPatient().getPatientCode();
-        }
-
-        String token = jwtTokenProvider.generateToken(
-                credentials.getEmail(),
-                credentials.getRole().name(),
-                businessId,
-                businessCode
-        );
-
-        // 2. TẠO COOKIE
-        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
-            .httpOnly(true)                // Bảo mật: JS không đọc được, chống XSS
-            .secure(false)                 // Để false khi chạy localhost (http)
-            .path("/")                     // Cookie có hiệu lực toàn bộ website
-            .maxAge(24 * 60 * 60)          // Hết hạn sau 24 giờ (đúng AC-AUTH-04)
-            .sameSite("Lax")               // Hỗ trợ gửi cookie khi chuyển trang
-            .build();
-
-        LoginResponse response = LoginResponse.builder()
-                .token(token)
-                .role(credentials.getRole().name())
-                .email(credentials.getEmail())
-                .name(name)
-                .doctorId(credentials.getRole() == UserRole.DOCTOR ? businessId : null)
-                .doctorCode(credentials.getRole() == UserRole.DOCTOR ? businessCode : null)
-                .patientId(credentials.getRole() == UserRole.PATIENT ? businessId : null)
-                .patientCode(credentials.getRole() == UserRole.PATIENT ? businessCode : null)
-                .build();
+        LoginResponse response = buildLoginResponse(credentials, createToken(credentials));
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, cookie.toString()) // Gửi "tem" về trình duyệt
-            .body(ApiResponse.success("Đăng nhập thành công", response));
+                .header(HttpHeaders.SET_COOKIE, createAccessTokenCookie(response.getToken(), 24 * 60 * 60).toString())
+                .body(ApiResponse.success("Đăng nhập thành công", response));
     }
 
     @PostMapping("/register")
     @Transactional
-    public ResponseEntity<ApiResponse<LoginResponse>> register(
-            @Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        String email = normalizeEmail(request.getEmail());
 
-        // 1. Kiểm tra email đã có tài khoản login chưa
-        if (authCredentialsRepository.existsByEmail(request.getEmail())) {
+        // 1. Kiểm tra email tồn tại
+        if (authCredentialsRepository.existsByEmail(email)) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Email này đã được sử dụng");
         }
 
-        // 2. LOGIC "NHẬN DIỆN NGƯỜI THÂN": Kiểm tra SĐT đã tồn tại trong danh sách bệnh nhân chưa
-        // Giả sử bạn đã thêm phương thức findByPhone trong PatientRepository
+        // 2. Xác thực OTP (Logic từ MC-09-v1)
+        emailOtpService.consumeSignupVerification(email, request.getSignupVerificationToken());
+
+        // 3. LOGIC "NHẬN DIỆN NGƯỜI THÂN" (Logic từ HEAD)
         Optional<Patient> existingPatient = patientRepository.findByPhone(request.getPhone());
         
         Patient patient;
@@ -118,24 +88,22 @@ public class AuthController {
         if (existingPatient.isPresent()) {
             Patient oldProfile = existingPatient.get();
             
-            // Kiểm tra xem hồ sơ này đã có ai đứng tên (liên kết với AuthCredentials) chưa
+            // Kiểm tra xem hồ sơ SĐT này đã gắn với tài khoản email nào chưa
             boolean alreadyLinked = authCredentialsRepository.findByPatientId(oldProfile.getId()).isPresent();
             
             if (alreadyLinked) {
-                // Nếu SĐT này đã gắn với 1 tài khoản email khác rồi -> Cấm trùng SĐT
                 throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Số điện thoại này đã được sử dụng cho tài khoản khác");
             }
             
-            // TRƯỜNG HỢP RA RIÊNG: Nếu hồ sơ này đang được "đặt hộ" (managed_by != null)
-            // Chúng ta sẽ "chuyển nhượng" hồ sơ này cho tài khoản mới
+            // TRƯỜNG HỢP RA RIÊNG: "Chuyển nhượng" hồ sơ từ người quản lý sang tài khoản mới
             patient = oldProfile;
-            patient.setFullName(request.getName()); // Cập nhật tên mới nhất
-            patient.setManagedBy(null);             // Thoát khỏi sự quản lý của người thân
+            patient.setFullName(request.getName());
+            patient.setManagedBy(null); // Thoát khỏi sự quản lý của người thân
             patient.setUpdatedAt(LocalDateTime.now());
-            businessCode = patient.getPatientCode(); // Giữ nguyên mã cũ EMR/PAT cũ
+            businessCode = patient.getPatientCode();
             
         } else {
-            // TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN: Chưa từng có trong hệ thống
+            // TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN
             businessCode = idGeneratorService.generatePatientCode();
             
             LocalDate dob = null;
@@ -160,29 +128,29 @@ public class AuthController {
                     .phone(request.getPhone())
                     .address(request.getAddress())
                     .build();
-            
+
             patient.setCreatedAt(LocalDateTime.now());
             patient.setUpdatedAt(LocalDateTime.now());
         }
 
-        // Lưu/Cập nhật thông tin bệnh nhân
+        // Lưu thông tin bệnh nhân
         patient = patientRepository.save(patient);
-        Integer businessId = patient.getId();
 
-        // 3. Tạo tài khoản đăng nhập (Luôn tạo mới cho Email mới)
+        // 4. Tạo tài khoản đăng nhập
         AuthCredentials credentials = AuthCredentials.builder()
-                .email(request.getEmail())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.PATIENT)
-                .patient(patient) // Liên kết với hồ sơ (mới hoặc cũ đều ok)
+                .patient(patient)
                 .build();
+        
         authCredentialsRepository.save(credentials);
 
-        // 4. Phần sinh JWT và Cookie (Giữ nguyên như code cũ của bạn)
+        // 5. Sinh JWT và Cookie
         String token = jwtTokenProvider.generateToken(
                 credentials.getEmail(),
                 UserRole.PATIENT.name(),
-                businessId,
+                patient.getId(),
                 businessCode
         );
 
@@ -191,21 +159,43 @@ public class AuthController {
                 .role(UserRole.PATIENT.name())
                 .email(credentials.getEmail())
                 .name(request.getName())
-                .patientId(businessId)
+                .patientId(patient.getId())
                 .patientCode(businessCode)
                 .build();
 
-        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(24 * 60 * 60)
-                .sameSite("Lax")
-                .build();
-
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.success("Đăng ký thành công", response));
+                .header(HttpHeaders.SET_COOKIE, createAccessTokenCookie(token, 24 * 60 * 60).toString())
+                .body(ApiResponse.success("Đăng ký tài khoản thành công", response));
+    }
+
+    @PostMapping("/patient/signup/request-otp")
+    public ResponseEntity<ApiResponse<Void>> requestSignupOtp(@Valid @RequestBody RequestOtpRequest request) {
+        emailOtpService.requestSignupOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi đến email của bạn", null));
+    }
+
+    @PostMapping("/patient/signup/verify-otp")
+    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifySignupOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        OtpVerifyResponse response = emailOtpService.verifySignupOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công", response));
+    }
+
+    @PostMapping("/patient/password-reset/request-otp")
+    public ResponseEntity<ApiResponse<Void>> requestPasswordResetOtp(@Valid @RequestBody RequestOtpRequest request) {
+        emailOtpService.requestPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success("Nếu email tồn tại, mã OTP đã được gửi", null));
+    }
+
+    @PostMapping("/patient/password-reset/verify-otp")
+    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifyPasswordResetOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        OtpVerifyResponse response = emailOtpService.verifyPasswordResetOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công", response));
+    }
+
+    @PostMapping("/patient/password-reset/reset")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        emailOtpService.resetPatientPassword(request.getEmail(), request.getResetToken(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
     }
 
     @GetMapping("/me")
@@ -220,6 +210,13 @@ public class AuthController {
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
 
         return ResponseEntity.ok(ApiResponse.success(buildLoginResponse(credentials, null)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, createAccessTokenCookie("", 0).toString())
+                .body(ApiResponse.success("Đăng xuất thành công", null));
     }
 
     private LoginResponse buildLoginResponse(AuthCredentials credentials, String token) {
@@ -251,17 +248,37 @@ public class AuthController {
                 .build();
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
-        // Tạo một Cookie trống, có thời hạn bằng 0 để ghi đè lên Cookie cũ
-        ResponseCookie cookie = ResponseCookie.from("accessToken", "")
-                .httpOnly(true)
-                .path("/")
-                .maxAge(0) // Hết hạn ngay lập tức
-                .build();
+    private String createToken(AuthCredentials credentials) {
+        Integer businessId = null;
+        String businessCode = null;
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.success("Đăng xuất thành công", null));
+        if (credentials.getRole() == UserRole.DOCTOR && credentials.getDoctor() != null) {
+            businessId = credentials.getDoctor().getId();
+            businessCode = credentials.getDoctor().getDoctorCode();
+        } else if (credentials.getRole() == UserRole.PATIENT && credentials.getPatient() != null) {
+            businessId = credentials.getPatient().getId();
+            businessCode = credentials.getPatient().getPatientCode();
+        }
+
+        return jwtTokenProvider.generateToken(
+                credentials.getEmail(),
+                credentials.getRole().name(),
+                businessId,
+                businessCode
+        );
+    }
+
+    private ResponseCookie createAccessTokenCookie(String token, long maxAge) {
+        return ResponseCookie.from("accessToken", token)
+                .httpOnly(true)
+                .secure(false) // Đặt true nếu dùng HTTPS
+                .path("/")
+                .maxAge(maxAge)
+                .sameSite("Lax")
+                .build();
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     }
 }

@@ -20,6 +20,13 @@ export type LoginInput = {
 
 export type RegisterPatientInput = LoginInput & {
   name: string
+  signupVerificationToken: string
+}
+
+export type OtpVerifyResponse = {
+  verificationToken?: string | null
+  resetToken?: string | null
+  expiresAt: string
 }
 
 export function login(input: LoginInput) {
@@ -40,7 +47,43 @@ export function registerPatient(input: RegisterPatientInput) {
       password: input.password.trim(),
       name: input.name.trim(),
       role: "PATIENT",
+      signupVerificationToken: input.signupVerificationToken,
     }),
+  })
+}
+
+export function requestSignupOtp(email: string) {
+  return apiFetch<void>("/auth/patient/signup/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim() }),
+  })
+}
+
+export function verifySignupOtp(email: string, otp: string) {
+  return apiFetch<OtpVerifyResponse>("/auth/patient/signup/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim(), otp }),
+  })
+}
+
+export function requestPasswordResetOtp(email: string) {
+  return apiFetch<void>("/auth/patient/password-reset/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim() }),
+  })
+}
+
+export function verifyPasswordResetOtp(email: string, otp: string) {
+  return apiFetch<OtpVerifyResponse>("/auth/patient/password-reset/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim(), otp }),
+  })
+}
+
+export function resetPassword(email: string, resetToken: string, newPassword: string) {
+  return apiFetch<void>("/auth/patient/password-reset/reset", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim(), resetToken, newPassword }),
   })
 }
 

@@ -7,57 +7,41 @@ import { Button } from "@/components/base/ui/button"
 import { useAuth } from "@/components/auth/auth-provider"
 import { AuthenticatedUserMenu } from "@/components/base/authenticated-user-menu"
 
+const navLinks = [
+  { label: "Chuyên khoa", href: "#specialties" },
+  { label: "Hỗ trợ AI", href: "#ai-care" },
+  { label: "Công nghệ", href: "#tech" },
+  { label: "Bác sĩ", href: "#doctors" },
+  { label: "Thông tin", href: "#mission" },
+]
+
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const { user, isLoading } = useAuth()
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 p-6">
-      <nav className="max-w-7xl mx-auto bg-card/80 backdrop-blur-md border border-border/60 rounded-3xl shadow-xl shadow-black/10 dark:shadow-black/30">
-        <div className="flex items-center justify-between h-20 px-6 lg:px-8">
-          {/* Logo */}
+    <header className="fixed left-0 right-0 top-0 z-50 px-4 pt-4">
+      <nav className="mx-auto max-w-7xl rounded-[24px] border border-border/70 bg-card/90 shadow-lg shadow-black/5 backdrop-blur-md dark:shadow-black/30">
+        <div className="flex h-16 items-center justify-between px-5 lg:px-6">
           <Link href="/" className="flex items-center gap-2 group">
-            <span className="font-sans text-foreground text-xl font-bold tracking-tight transition-opacity group-hover:opacity-90">
+            <span className="font-sans text-xl font-black tracking-tight text-foreground transition-opacity group-hover:opacity-90">
               Medicore<span className="text-primary">.</span>
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="#specialties"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Chuyên Khoa
-            </Link>
-            <Link
-              href="#ai-care"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Hỗ trợ AI
-            </Link>
-            <Link
-              href="#tech"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Công nghệ
-            </Link>
-            <Link
-              href="#doctors"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Bác sĩ
-            </Link>
-            <Link
-              href="#mission"
-              className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Thông tin
-            </Link>
+          <div className="hidden items-center gap-7 md:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
 
-          {/* CTA Buttons or Authenticated User Menu */}
-          <div className="hidden md:flex items-center gap-5">
+          <div className="hidden items-center gap-5 md:flex">
             {isLoading ? (
               <div className="h-9 w-28 animate-pulse rounded-full bg-muted" />
             ) : user ? (
@@ -66,84 +50,64 @@ export function Header() {
               <>
                 <Link
                   href="/auth/login"
-                  className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Đăng nhập
                 </Link>
-                <Link href="/auth/signup">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-102 font-bold uppercase tracking-widest text-[11px] rounded-full px-6 py-3 transition-all duration-200">
-                    Đặt lịch hẹn
-                  </Button>
-                </Link>
+                <Button
+                  asChild
+                  className="h-11 rounded-[24px] bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02]"
+                >
+                  <Link href="/dashboard/appointments">Đặt lịch khám</Link>
+                </Button>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
+            className="rounded-full p-2 text-foreground transition-colors hover:bg-muted md:hidden"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Mở hoặc đóng menu"
+            aria-expanded={isOpen}
+            aria-controls="mobile-navigation"
           >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isOpen ? <X className="size-6" /> : <Menu className="size-6" />}
           </button>
         </div>
 
-        {/* Mobile Navigation Panel */}
         {isOpen && (
-          <div className="md:hidden py-6 px-6 border-t border-border flex flex-col gap-5 bg-card/95 backdrop-blur-md rounded-b-3xl">
-            <Link
-              href="#specialties"
-              className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Chuyên Khoa
-            </Link>
-            <Link
-              href="#ai-care"
-              className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Hỗ trợ AI
-            </Link>
-            <Link
-              href="#tech"
-              className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Công nghệ
-            </Link>
-            <Link
-              href="#doctors"
-              className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Bác sĩ
-            </Link>
-            <Link
-              href="#mission"
-              className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Thông tin
-            </Link>
-            <div className="h-px bg-border my-2" />
+          <div id="mobile-navigation" className="flex flex-col gap-5 rounded-b-[24px] border-t border-border bg-card/95 px-6 py-6 backdrop-blur-md md:hidden">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="my-1 h-px bg-border" />
             {isLoading ? (
-              <div className="h-9 w-full animate-pulse rounded-full bg-muted" />
+              <div className="h-10 w-full animate-pulse rounded-full bg-muted" />
             ) : user ? (
               <div className="flex justify-center py-2">
                 <AuthenticatedUserMenu onNavigate={() => setIsOpen(false)} />
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <Link href="/auth/login" onClick={() => setIsOpen(false)} className="w-full text-center py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+                <Link
+                  href="/auth/login"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full rounded-[24px] py-3 text-center text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
                   Đăng nhập
                 </Link>
-                <Link href="/auth/signup" onClick={() => setIsOpen(false)} className="w-full">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-widest text-[11px] rounded-full w-full py-4">
-                    Đặt lịch hẹn
-                  </Button>
-                </Link>
+                <Button asChild className="h-12 w-full rounded-[24px] bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+                  <Link href="/dashboard/appointments" onClick={() => setIsOpen(false)}>
+                    Đặt lịch khám
+                  </Link>
+                </Button>
               </div>
             )}
           </div>
@@ -152,4 +116,3 @@ export function Header() {
     </header>
   )
 }
-

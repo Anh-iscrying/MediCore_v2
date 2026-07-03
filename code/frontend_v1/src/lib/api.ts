@@ -202,6 +202,10 @@ export const appointmentsApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  startExam: (id: string | number) =>
+    request<any>(`/appointments/${id}/start-exam`, {
+      method: "PUT",
+    }),
   delete: (id: string | number) =>
     request<void>(`/appointments/${id}`, {
       method: "DELETE",

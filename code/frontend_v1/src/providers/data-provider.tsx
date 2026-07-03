@@ -688,7 +688,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     updateAppointment: async (id, a) => {
       try {
-        const updated = await appointmentsApi.update(id, getAppointmentRequest(a))
+        const updated = a.status === "IN_PROGRESS"
+          ? await appointmentsApi.startExam(id)
+          : await appointmentsApi.update(id, getAppointmentRequest(a))
         setAppointments((p) => p.map((x) => (x.id === id ? mapAppointment(updated, patients, { ...x, ...a }) : x)))
       } catch (error) {
         console.error("Không thể cập nhật lịch hẹn", error)

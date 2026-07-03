@@ -56,8 +56,30 @@ public class DoctorController {
             @RequestParam String date) {
 
         LocalDate workDate = LocalDate.parse(date);
-        List<Map<String, Object>> responses = doctorRepository.findBySpecialtyId(specialtyId).stream()
-                .map(doctor -> mapDoctorWithAvailableSchedules(doctor, workDate))
+        List<Doctor> doctors = doctorRepository.findActiveBySpecialtyIdWithSpecialty(specialtyId);
+        List<Integer> doctorIds = doctors.stream()
+                .map(Doctor::getId)
+                .collect(Collectors.toList());
+
+        if (doctorIds.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+
+        Map<Integer, List<Appointment>> appointmentsByDoctorId = appointmentRepository
+                .findByDoctorIdsAndAppointmentDateAndStatusNot(doctorIds, workDate, AppointmentStatus.CANCELLED)
+                .stream()
+                .collect(Collectors.groupingBy(appointment -> appointment.getDoctor().getId()));
+
+        Map<Integer, List<DoctorSchedule>> schedulesByDoctorId = scheduleRepository
+                .findByDoctorIdsAndWorkDate(doctorIds, workDate)
+                .stream()
+                .collect(Collectors.groupingBy(schedule -> schedule.getDoctor().getId()));
+
+        List<Map<String, Object>> responses = doctors.stream()
+                .map(doctor -> mapDoctorWithAvailableSchedules(
+                        doctor,
+                        schedulesByDoctorId.getOrDefault(doctor.getId(), List.of()),
+                        appointmentsByDoctorId.getOrDefault(doctor.getId(), List.of())))
                 .filter(response -> !((List<?>) response.get("doctor_schedules")).isEmpty())
                 .collect(Collectors.toList());
 
@@ -137,12 +159,12 @@ public class DoctorController {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ cá nhân thành công", updatedDoctor));
     }
 
-    private Map<String, Object> mapDoctorWithAvailableSchedules(Doctor doctor, LocalDate workDate) {
-        List<Appointment> bookedAppointments = appointmentRepository.findByDoctorIdAndAppointmentDate(doctor.getId(), workDate).stream()
-                .filter(appointment -> appointment.getStatus() != AppointmentStatus.CANCELLED)
-                .collect(Collectors.toList());
+    private Map<String, Object> mapDoctorWithAvailableSchedules(
+            Doctor doctor,
+            List<DoctorSchedule> doctorSchedules,
+            List<Appointment> bookedAppointments) {
 
-        List<Map<String, Object>> schedules = scheduleRepository.findByDoctorIdAndWorkDate(doctor.getId(), workDate).stream()
+        List<Map<String, Object>> schedules = doctorSchedules.stream()
                 .filter(schedule -> isWorkingSchedule(schedule.getTimeSlot()))
                 .flatMap(schedule -> expandAvailableSlots(schedule, bookedAppointments).stream())
                 .collect(Collectors.toList());

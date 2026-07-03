@@ -1,104 +1,72 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { ScrollBlurText } from "@/components/base/scroll-blur-text"
-import { Cpu, ShieldCheck, Activity, Zap } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, Bell, FileText, LockKeyhole } from "lucide-react"
+import { Button } from "@/components/base/ui/button"
 
 const technologies = [
   {
-    title: "Hệ thống phẫu thuật hỗ trợ robot",
-    description: "Ứng dụng cánh tay robot phẫu thuật có độ chính xác cao cho các thủ thuật ít xâm lấn, giúp rút ngắn thời gian hồi phục và giảm sẹo.",
-    highlight: "Độ chính xác dưới milimet",
+    title: "Hồ sơ khám tập trung",
+    description: "Lưu thông tin lần khám, thuốc đang dùng và kết quả cũ để bác sĩ có bối cảnh đầy đủ hơn.",
+    icon: FileText,
   },
   {
-    title: "Chẩn đoán hình ảnh hỗ trợ AI",
-    description: "Mô hình học sâu sàng lọc tức thì ảnh MRI và CT, làm nổi bật các bất thường vi mô và dự báo nguy cơ tiềm ẩn từ sớm.",
-    highlight: "Sàng lọc nguy cơ sớm",
+    title: "Đặt lịch và nhắc lịch",
+    description: "Người bệnh xem lịch hẹn, nhận nhắc chuẩn bị trước khi đến viện và hạn chế quên tái khám.",
+    icon: Bell,
   },
   {
-    title: "Theo dõi từ xa bằng thiết bị đeo sinh trắc học",
-    description: "Vòng cảm biến ghi nhận dữ liệu thời gian thực như ECG, độ bão hòa oxy và nhiệt độ cơ thể trực tiếp lên bảng điều khiển của bác sĩ.",
-    highlight: "Dữ liệu thời gian thực",
+    title: "Dữ liệu được bảo vệ",
+    description: "Thông tin y tế được xử lý theo quyền truy cập phù hợp, giảm chia sẻ thừa trong quá trình chăm sóc.",
+    icon: LockKeyhole,
   },
 ]
 
 export function TechSection() {
-  const sectionRef = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate-fade-up")
-          }
-        })
-      },
-      { threshold: 0.1 },
-    )
-
-    const elements = sectionRef.current?.querySelectorAll(".reveal")
-    elements?.forEach((el) => observer.observe(el))
-
-    return () => observer.disconnect()
-  }, [])
-
   return (
-    <section ref={sectionRef} id="tech" className="py-24 lg:py-32 bg-background border-t border-border">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        
-        {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 lg:mb-20">
-          <div className="max-w-2xl text-left">
-            <p className="text-xs uppercase tracking-[0.25em] text-primary font-bold mb-4">
-              ĐỔI MỚI LÂM SÀNG TIÊN TIẾN
-            </p>
-            <ScrollBlurText
-              text="Công nghệ y tế hiện đại"
-              className="font-sans text-4xl text-foreground font-extrabold tracking-tight mb-6 md:text-5xl"
-            />
-          </div>
-          <p className="text-muted-foreground text-base max-w-sm mt-4 md:mt-0 leading-relaxed">
-Kết hợp chuyên môn khoa học với hạ tầng đạt chuẩn lâm sàng để mang lại kết quả chẩn đoán vượt trội.
+    <section id="tech" className="scroll-mt-24 border-t border-border bg-background py-20 lg:py-24">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mb-12 max-w-2xl">
+          <p className="mb-4 max-w-max rounded-full bg-card px-4 py-2 text-sm font-semibold text-foreground ring-1 ring-border">
+            Hạ tầng chăm sóc
+          </p>
+          <h2 className="text-4xl font-black tracking-[-0.03em] text-foreground md:text-5xl">
+            Công nghệ phục vụ quyết định y khoa
+          </h2>
+          <p className="mt-5 text-base leading-8 text-foreground/65">
+            Hệ thống số hóa tập trung vào những việc người bệnh cần nhất: đặt lịch rõ, thông tin đủ và theo dõi thuận tiện.
           </p>
         </div>
 
-        {/* List of Technologies (Spotify Tracklist Style) */}
-        <div className="flex flex-col border border-border rounded-lg overflow-hidden bg-card" style={{
-          boxShadow: 'rgba(0,0,0,0.05) 0px 8px 8px'
-        }}>
-          {technologies.map((tech, index) => (
-            <div
-              key={tech.title}
-              className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border last:border-0 hover:bg-muted group transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex gap-5 items-start">
-                {/* Index / Hover Icon */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-background text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 flex items-center justify-center font-bold text-sm transition-all duration-300 border border-border">
-                  {index + 1}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {technologies.map((tech) => {
+            const Icon = tech.icon
+            return (
+              <div key={tech.title} className="rounded-[24px] bg-card p-7 ring-1 ring-border transition-all duration-300 hover:-translate-y-1 hover:bg-muted">
+                <div className="mb-8 flex size-14 items-center justify-center rounded-full bg-primary/20 text-foreground">
+                  <Icon className="size-6 stroke-[1.7]" />
                 </div>
-
-                <div>
-                  <h3 className="text-foreground font-bold text-base md:text-lg mb-1.5 flex items-center gap-3">
-                    {tech.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl">
-                    {tech.description}
-                  </p>
-                </div>
+                <h3 className="text-2xl font-black tracking-tight text-foreground">{tech.title}</h3>
+                <p className="mt-4 text-sm leading-7 text-foreground/65">{tech.description}</p>
               </div>
-
-              {/* Status / Highlight Tag */}
-              <div className="flex items-center gap-3 pl-13 md:pl-0">
-                <span className="text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 whitespace-nowrap">
-                  {tech.highlight}
-                </span>
-              </div>
-
-            </div>
-          ))}
+            )
+          })}
         </div>
 
+        <div className="mt-8 rounded-[24px] bg-foreground p-6 text-background lg:flex lg:items-center lg:justify-between lg:p-8">
+          <div>
+            <h3 className="text-2xl font-black tracking-tight text-background">Cổng bệnh nhân Medicore</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-background/70">
+              Theo dõi lịch hẹn, thông tin khám và các hướng dẫn trước khi đến viện trong một nơi.
+            </p>
+          </div>
+          <Button asChild className="mt-6 h-12 rounded-[24px] bg-primary px-7 text-base font-semibold text-primary-foreground hover:bg-primary/90 lg:mt-0">
+            <Link href="/dashboard">
+              Vào cổng bệnh nhân
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </section>
   )

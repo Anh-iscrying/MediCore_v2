@@ -33,4 +33,11 @@ public class AiConsultationLog {
 
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+    }
 }

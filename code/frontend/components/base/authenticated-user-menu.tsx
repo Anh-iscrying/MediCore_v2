@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
-import { Bell, ChevronDown, ExternalLink, LogOut, Settings } from "lucide-react"
+import { Bell, CheckCheck, ChevronDown, ExternalLink, LogOut, Settings, X } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
+import { useNotifications } from "@/hooks/use-notifications"
 import { cn } from "@/lib/utils"
 
 interface AuthenticatedUserMenuProps {
@@ -13,8 +15,15 @@ interface AuthenticatedUserMenuProps {
 
 export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { user, logout } = useAuth()
+  const { notifications, unreadCount, isLoading, examNotification, dismissExamNotification, markRead, markAllRead } = useNotifications(user)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const displayName = user?.name || user?.email || "Người dùng"
   const initials = displayName
@@ -33,18 +42,91 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
 
   const handleLinkClick = () => {
     setShowDropdown(false)
+    setShowNotifications(false)
     if (onNavigate) onNavigate()
   }
 
+  const handleNotificationClick = async (id: number) => {
+    await markRead(id)
+  }
+
+  const formatNotificationTime = (value?: string | null) => {
+    if (!value) return "Vừa xong"
+    return new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+    }).format(new Date(value))
+  }
+
   return (
+    <>
     <div className="flex items-center gap-3">
-      <button
-        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all hover:text-foreground hover:bg-card"
-        title="Thông báo"
-      >
-        <Bell className="h-4 w-4" />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
-      </button>
+      <div className="relative">
+        <button
+          className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all hover:text-foreground hover:bg-card"
+          title="Thông báo"
+          onClick={() => {
+            setShowNotifications(!showNotifications)
+            setShowDropdown(false)
+          }}
+        >
+          <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-primary-foreground">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {showNotifications && (
+          <div className="absolute right-0 mt-2 w-80 rounded-xl border border-border bg-card p-2 text-xs text-card-foreground z-50 shadow-lg">
+            <div className="flex items-center justify-between px-2 py-2">
+              <span className="font-black uppercase tracking-widest">Thông báo</span>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="flex items-center gap-1 rounded px-2 py-1 font-bold text-primary transition-colors hover:bg-muted"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  Đọc tất cả
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto">
+              {isLoading ? (
+                <div className="px-3 py-6 text-center font-bold text-muted-foreground">Đang tải...</div>
+              ) : notifications.length === 0 ? (
+                <div className="px-3 py-6 text-center font-bold text-muted-foreground">Không có thông báo</div>
+              ) : (
+                notifications.map((notification) => (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    onClick={() => handleNotificationClick(notification.id)}
+                    className={cn(
+                      "mb-1 flex w-full flex-col gap-1 rounded-lg p-3 text-left transition-colors hover:bg-muted",
+                      !notification.readAt && "bg-primary/10"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="font-black text-foreground">{notification.title}</span>
+                      {!notification.readAt && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                    </div>
+                    <span className="font-medium leading-relaxed text-muted-foreground">{notification.message}</span>
+                    <span className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {formatNotificationTime(notification.createdAt)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="relative">
         <button
@@ -91,5 +173,39 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
         )}
       </div>
     </div>
+
+    {mounted && examNotification && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+        <div className="relative w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center text-card-foreground shadow-2xl">
+          <button
+            type="button"
+            onClick={dismissExamNotification}
+            className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Đóng thông báo"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Bell className="h-8 w-8" />
+          </div>
+          <h2 className="mb-3 text-2xl font-black uppercase tracking-wide text-foreground">
+            Xin mời vào khám
+          </h2>
+          <p className="mb-6 text-base font-semibold leading-relaxed text-muted-foreground">
+            Bác sĩ đã bắt đầu khám bệnh. Bạn vui lòng vào phòng khám.
+          </p>
+          <button
+            type="button"
+            onClick={dismissExamNotification}
+            className="w-full rounded-full bg-primary px-6 py-3 text-sm font-black uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+          >
+            Tôi đã hiểu
+          </button>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
 }

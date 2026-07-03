@@ -77,6 +77,12 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật lịch hẹn thành công", appointmentService.updateAppointment(id, request)));
     }
 
+    @PutMapping("/{id}/start-exam")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> startExam(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success("Bắt đầu khám bệnh thành công", appointmentService.startExam(id)));
+    }
+
     @PutMapping("/{id}/cancel")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<ApiResponse<AppointmentResponse>> cancelCurrentPatientAppointment(@PathVariable Integer id) {

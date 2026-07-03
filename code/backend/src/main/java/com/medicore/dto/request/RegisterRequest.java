@@ -30,6 +30,9 @@ public class RegisterRequest {
     private String address; // Địa chỉ
     private String role;    // PATIENT hoặc DOCTOR (mặc định nên là PATIENT)
 
+    @NotBlank(message = "Mã xác thực đăng ký không được để trống")
+    private String signupVerificationToken;
+
     // Các trường cũ của Bác sĩ (có thể để null nếu là bệnh nhân)
     private Integer specialtyId;
     private String title; 

@@ -61,7 +61,7 @@ function addDaysIso(dateIso: string, days: number) {
 }
 
 function isActiveAppointmentStatus(status?: string) {
-  return !!status && status !== "CANCELLED"
+  return !!status && (status === "WAITING" || status === "PENDING" || status === "CONFIRMED" || status === "IN_PROGRESS")
 }
 
 function isSlotBookable(dateIso: string, slot: string) {
@@ -227,8 +227,9 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
   const handleBook = async () => {
     if (!doctor || !selectedTimeSlot) return
 
-    if (appointments.some(app => isActiveAppointmentStatus(app.status))) {
-      triggerToast("Bạn chỉ có thể đặt một lịch khám đang hoạt động. Vui lòng hủy lịch hiện tại trước khi đặt lịch mới.", "danger", "Không thể đặt lịch")
+    const activeAppointmentsCount = appointments.filter(app => isActiveAppointmentStatus(app.status)).length
+    if (activeAppointmentsCount >= 3) {
+      triggerToast("Bạn đã có tối đa 3 lịch khám đang hoạt động. Vui lòng hoàn thành hoặc hủy lịch hiện tại trước khi đặt lịch mới.", "danger", "Không thể đặt lịch")
       return
     }
 

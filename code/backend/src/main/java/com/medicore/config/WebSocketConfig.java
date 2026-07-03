@@ -4,7 +4,11 @@ import com.medicore.common.constants.ErrorCodes;
 import com.medicore.common.exception.CustomBusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.Cookie;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -14,11 +18,14 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Collections;
+import java.util.Map;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -43,7 +50,32 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*") // Domain của Frontend
+                .addInterceptors(jwtCookieHandshakeInterceptor())
                 .withSockJS(); // Hỗ trợ fallback nếu trình duyệt cũ
+    }
+
+    private HandshakeInterceptor jwtCookieHandshakeInterceptor() {
+        return new HandshakeInterceptor() {
+            @Override
+            public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                           WebSocketHandler wsHandler, Map<String, Object> attributes) {
+                if (request instanceof ServletServerHttpRequest servletRequest
+                        && servletRequest.getServletRequest().getCookies() != null) {
+                    for (Cookie cookie : servletRequest.getServletRequest().getCookies()) {
+                        if ("accessToken".equals(cookie.getName())) {
+                            attributes.put("accessToken", cookie.getValue());
+                            break;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                       WebSocketHandler wsHandler, Exception exception) {
+            }
+        };
     }
 
     @Override
@@ -56,8 +88,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
-                    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                        String token = authHeader.substring(7);
+                    String token = authHeader != null && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+                    if (token == null && accessor.getSessionAttributes() != null) {
+                        Object cookieToken = accessor.getSessionAttributes().get("accessToken");
+                        token = cookieToken instanceof String ? (String) cookieToken : null;
+                    }
+                    if (token != null) {
                         if (jwtTokenProvider.validateToken(token)) {
                             String email = jwtTokenProvider.getEmailFromToken(token);
                             // Lưu thông tin user vào phiên làm việc của WebSocket
