@@ -48,7 +48,7 @@ jwt:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    allowed-origins: http://localhost:3000
 
   mail:
     from: ${MAIL_FROM:${GMAIL_USERNAME:}}
