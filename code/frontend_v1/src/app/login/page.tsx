@@ -1,11 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useAuth } from "@/providers/auth-provider"
 import { Button } from "@/components/base/ui/button"
 import { Input } from "@/components/base/ui/input"
 import { Label } from "@/components/base/ui/label"
 import { Alert, AlertDescription } from "@/components/base/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 import { 
   Stethoscope, 
   Key, 
@@ -18,10 +19,43 @@ import {
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const errorParam = params.get("error")
+      if (errorParam) {
+        let msg = "Yêu cầu xác thực không hợp lệ."
+        let toastTitle = "Lỗi xác thực"
+        if (errorParam === "required") {
+          msg = "Vui lòng đăng nhập để truy cập trang quản trị / bác sĩ."
+          toastTitle = "Yêu cầu đăng nhập"
+        } else if (errorParam === "forbidden") {
+          msg = "Tài khoản của bạn không có quyền truy cập hệ thống Quản trị / Bác sĩ."
+          toastTitle = "Truy cập bị từ chối"
+        } else if (errorParam === "session_expired") {
+          msg = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+          toastTitle = "Phiên đăng nhập hết hạn"
+        }
+        
+        setError(msg)
+        toast({
+          title: toastTitle,
+          description: msg,
+          variant: "destructive",
+        })
+
+        // Dọn dẹp tham số URL
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, document.title, newUrl)
+      }
+    }
+  }, [toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,7 +65,16 @@ export default function LoginPage() {
     try {
       await login(email, password)
     } catch (err: any) {
-      setError(err.message || "Tên đăng nhập hoặc mật khẩu không chính xác")
+      const isPermissionError = err.message?.includes("quyền truy cập")
+      const msg = isPermissionError 
+        ? err.message 
+        : "Email hoặc mật khẩu không hợp lệ"
+      setError(msg)
+      toast({
+        title: "Đăng nhập thất bại",
+        description: msg,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

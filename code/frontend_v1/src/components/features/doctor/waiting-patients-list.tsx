@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useData } from "@/providers/data-provider"
 import { Button } from "@/components/base/ui/button"
@@ -19,17 +19,21 @@ interface WaitingItem {
 
 export function WaitingPatientsList() {
   const router = useRouter()
-  const { patients, getWaitingPatients, appointments } = useData()
+  const { patients, getWaitingPatients, appointments, loadWaitingAppointments, updateAppointment, updatePatient } = useData()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+
+  useEffect(() => {
+    loadWaitingAppointments()
+  }, [loadWaitingAppointments])
 
   const waitingPatients = getWaitingPatients()
 
   // Tạo danh sách theo APPOINTMENT (mỗi lịch hẹn = 1 thẻ), sắp xếp theo giờ sớm nhất
   const waitingItems = useMemo((): WaitingItem[] => {
     const today = new Date().toISOString().split("T")[0]
-    const waitingStatuses = new Set(["WAITING", "PENDING"])
+    const waitingStatuses = new Set(["WAITING", "PENDING", "IN_PROGRESS"])
 
     const items: WaitingItem[] = waitingPatients.flatMap((patient): WaitingItem[] => {
       const patientAppointments = appointments.filter(
@@ -63,6 +67,43 @@ export function WaitingPatientsList() {
   )
 
   const selectedPatient = selectedPatientId ? patients.find((p) => p.id === selectedPatientId) : null
+
+  const handleCancelAppointment = async (appointment: Appointment | null) => {
+    if (!appointment) return
+    if (!confirm("Bạn có chắc muốn hủy lịch hẹn này?")) return
+
+    try {
+      await updateAppointment(appointment.id, {
+        ...appointment,
+        status: "CANCELLED",
+      })
+    } catch (error) {
+      console.error("Không thể hủy lịch hẹn", error)
+      alert("Không thể hủy lịch hẹn. Vui lòng thử lại.")
+    }
+  }
+
+  const handleStartExamination = async (patient: Patient, appointment: Appointment | null) => {
+    try {
+      if (appointment) {
+        await updateAppointment(appointment.id, {
+          ...appointment,
+          status: "IN_PROGRESS",
+        })
+      }
+
+      await updatePatient(patient.id, {
+        ...patient,
+        status: "in-examination",
+      })
+
+      const appointmentQuery = appointment ? `?appointmentId=${appointment.id}` : ""
+      router.push(`/doctor/examination/${patient.id}${appointmentQuery}`)
+    } catch (error) {
+      console.error("Không thể bắt đầu khám bệnh", error)
+      alert("Không thể bắt đầu khám bệnh. Vui lòng thử lại.")
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -146,9 +187,18 @@ export function WaitingPatientsList() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => router.push(`/doctor/examination/${patient.id}`)}
+                      variant="outline"
+                      className="text-destructive hover:text-destructive"
+                      disabled={!appointment}
+                      onClick={() => handleCancelAppointment(appointment)}
                     >
-                      Khám bệnh
+                      Hủy lịch hẹn
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleStartExamination(patient, appointment)}
+                    >
+                      {appointment?.status === "IN_PROGRESS" ? "Tiếp tục khám" : "Khám bệnh"}
                     </Button>
                   </div>
                 </div>

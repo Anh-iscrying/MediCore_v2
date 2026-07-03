@@ -187,6 +187,10 @@ export const patientsApi = {
 export const appointmentsApi = {
   list: () => request<any[]>("/appointments"),
   listByDoctor: (doctorId: string | number) => request<any[]>(`/appointments/doctor/${doctorId}`),
+  listDoctorWaiting: (doctorId: string | number, date?: string) => {
+    const query = date ? `?date=${encodeURIComponent(date)}` : ""
+    return request<any[]>(`/appointments/doctor/${doctorId}/waiting${query}`)
+  },
   get: (id: string | number) => request<any>(`/appointments/${id}`),
   create: (data: any) =>
     request<any>("/appointments", {

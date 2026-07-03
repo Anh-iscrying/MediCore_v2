@@ -13,7 +13,8 @@ import {
   Calendar as CalendarIcon,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  Activity
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -54,14 +55,15 @@ const shiftConfig = {
 
 export function DoctorScheduleContent() {
   const { user } = useAuth()
-  const { schedule, appointments, patients, ensureScheduleLoaded } = useData()
+  const { schedule, appointments, patients, ensureScheduleLoaded, ensureAppointmentsLoaded } = useData()
   
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
   useEffect(() => {
     ensureScheduleLoaded()
-  }, [ensureScheduleLoaded])
+    ensureAppointmentsLoaded()
+  }, [ensureScheduleLoaded, ensureAppointmentsLoaded])
 
   const doctorId = String(user?.doctorId ?? "")
 
@@ -70,7 +72,9 @@ export function DoctorScheduleContent() {
   }, [schedule, doctorId])
 
   const doctorAppointments = useMemo(() => {
-    return appointments.filter((a) => String(a.doctorId) === doctorId)
+    return appointments.filter(
+      (a) => String(a.doctorId) === doctorId && a.status?.toUpperCase() !== "CANCELLED"
+    )
   }, [appointments, doctorId])
 
   const year = currentDate.getFullYear()
@@ -115,32 +119,40 @@ export function DoctorScheduleContent() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
+      case "WAITING":
       case "PENDING":
         return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1">
-            <AlertCircle className="w-3 h-3" /> Đang chờ
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 gap-1 px-2 py-0.5 font-semibold">
+            <Clock className="w-3.5 h-3.5" /> Chờ khám
           </Badge>
         )
       case "CONFIRMED":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1">
-            <Clock className="w-3 h-3" /> Đã xác nhận
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50 gap-1 px-2 py-0.5 font-semibold">
+            <CheckCircle className="w-3.5 h-3.5" /> Đã xác nhận
           </Badge>
         )
+      case "IN_PROGRESS":
+        return (
+          <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/50 gap-1 px-2 py-0.5 font-semibold">
+            <Activity className="w-3.5 h-3.5 animate-pulse" /> Đang khám
+          </Badge>
+        )
+      case "DONE":
       case "COMPLETED":
         return (
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-            <CheckCircle className="w-3 h-3" /> Hoàn thành
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50 gap-1 px-2 py-0.5 font-semibold">
+            <CheckCircle className="w-3.5 h-3.5" /> Hoàn thành
           </Badge>
         )
       case "CANCELLED":
         return (
-          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 gap-1">
-            <XCircle className="w-3 h-3" /> Đã hủy
+          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/50 gap-1 px-2 py-0.5 font-semibold">
+            <XCircle className="w-3.5 h-3.5" /> Đã hủy
           </Badge>
         )
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline" className="px-2 py-0.5 font-semibold">{status}</Badge>
     }
   }
 
@@ -228,8 +240,8 @@ export function DoctorScheduleContent() {
         </Card>
 
         {/* Bảng Chi Tiết Ngày */}
-        <div className="space-y-4">
-          <Card className="p-6 bg-card flex flex-col border-none shadow-sm">
+        <div className="space-y-4 lg:h-full lg:flex lg:flex-col">
+          <Card className="p-6 bg-card flex flex-col border-none shadow-sm lg:flex-1 lg:h-full">
             <div className="border-b pb-3 mb-4">
               <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Chi tiết ngày</span>
               <span className="text-lg font-bold text-foreground mt-1 block">
@@ -250,7 +262,7 @@ export function DoctorScheduleContent() {
             </div>
 
             {/* Danh sách Lịch hẹn đăng ký */}
-            <div className="mt-5 flex-1 flex flex-col">
+            <div className="mt-5 flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Lịch hẹn khám ({selectedDayAppointments.length})
@@ -266,7 +278,7 @@ export function DoctorScheduleContent() {
                   </span>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                   {selectedDayAppointments.map((app) => (
                     <div 
                       key={app.id}
