@@ -73,7 +73,7 @@ function formatDateLabel(dateIso?: string) {
 }
 
 function isActiveAppointmentStatus(status?: string) {
-  return !!status && status !== "CANCELLED"
+  return !!status && (status === "WAITING" || status === "PENDING" || status === "CONFIRMED" || status === "IN_PROGRESS")
 }
 
 function isSlotBookable(dateIso: string, slot: string) {
@@ -82,9 +82,9 @@ function isSlotBookable(dateIso: string, slot: string) {
   const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
   const [year, month, day] = dateIso.split("-").map(Number)
   const [hour, minute] = startTimeStr.split(":").map(Number)
-  
+
   const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
-  
+
   const twoHoursInMs = 2 * 60 * 60 * 1000
   return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
 }
@@ -93,14 +93,14 @@ function isAppointmentCancellable(appointment: Appointment) {
   const dateIso = appointment.appointmentDate
   const slot = appointment.timeSlot
   if (!dateIso || !slot) return false
-  
+
   const now = new Date()
   const startTimeStr = slot.split("-")[0].trim() // e.g. "08:00"
   const [year, month, day] = dateIso.split("-").map(Number)
   const [hour, minute] = startTimeStr.split(":").map(Number)
-  
+
   const appointmentDate = new Date(year, month - 1, day, hour, minute, 0, 0)
-  
+
   const twoHoursInMs = 2 * 60 * 60 * 1000
   return (appointmentDate.getTime() - now.getTime()) >= twoHoursInMs
 }
@@ -131,11 +131,11 @@ export default function AppointmentsPage() {
   const [toastTitle, setToastTitle] = useState<string | undefined>(undefined)
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null)
 
-  const triggerToast = (message: string, variant: "success" | "danger" = "success", title?: string) => {
+  const triggerToast = useCallback((message: string, variant: "success" | "danger" = "success", title?: string) => {
     setToastTitle(title)
     setToastVariant(variant)
     setToastMessage(message)
-  }
+  }, [])
 
   useEffect(() => {
     if (toastMessage) {
@@ -146,7 +146,11 @@ export default function AppointmentsPage() {
 
   // Booked appointments list
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isSpecialtiesLoading, setIsSpecialtiesLoading] = useState(true)
+  const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(true)
+  const [isDoctorsLoading, setIsDoctorsLoading] = useState(false)
+  const doctorsCacheRef = useRef<Record<string, Doctor[]>>({})
+  const doctorsRequestIdRef = useRef(0)
 
   // Parse URL search params safely on client mount
   useEffect(() => {
@@ -165,7 +169,7 @@ export default function AppointmentsPage() {
         window.sessionStorage.removeItem("bookingSuccess")
       }
     }
-  }, [])
+  }, [triggerToast])
 
   const hasRestoredRef = useRef(false)
 
@@ -207,94 +211,140 @@ export default function AppointmentsPage() {
     window.sessionStorage.setItem("booking_symptoms", symptoms)
   }, [symptoms])
 
-  // Fetch doctors for a given date and refresh is_booked state
-  const loadDoctors = useCallback(async (date: string, activeSpecialty?: string) => {
-    try {
-      const docsRes = await fetch(`/api/doctors?date=${encodeURIComponent(date)}`)
-      if (!docsRes.ok) throw new Error(await readApiError(docsRes, "Không thể tải danh sách bác sĩ"))
-      const docsData: Doctor[] = await docsRes.json()
-      setDoctors(docsData)
-
-      // Re-select a valid slot from the refreshed doctor list
-      const specialty = activeSpecialty || selectedSpecialty
-      const docsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === specialty)
-      const docsWithSlot = docsForSpecialty.filter((doc: Doctor) =>
-        doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && s.time_slot === selectedTimeSlot)
-      )
-      if (docsWithSlot.length > 0) {
-        setSelectedDoctor(docsWithSlot[0])
-      } else {
-        // Previously selected slot may now be booked — reset to first available
-        const docWithAnySlot = docsForSpecialty.find((doc: Doctor) =>
-          doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked)
+  const chooseDoctorFromData = useCallback((docsData: Doctor[], date: string, specialty: string, preferredSlot: string) => {
+    const docsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === specialty)
+    const docsWithSlot = preferredSlot
+      ? docsForSpecialty.filter((doc: Doctor) =>
+          doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && s.time_slot === preferredSlot && isSlotBookable(date, s.time_slot))
         )
-        if (docWithAnySlot) {
-          const firstSlot = docWithAnySlot.doctor_schedules.find(s => s.work_date === date && !s.is_booked)?.time_slot ?? ""
-          setSelectedDoctor(docWithAnySlot)
-          setSelectedTimeSlot(firstSlot)
-        }
+      : []
+
+    if (docsWithSlot.length > 0) {
+      setSelectedDoctor(docsWithSlot[0])
+      setSelectedTimeSlot(preferredSlot)
+      return
+    }
+
+    const docWithAnySlot = docsForSpecialty.find((doc: Doctor) =>
+      doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && isSlotBookable(date, s.time_slot))
+    )
+
+    if (docWithAnySlot) {
+      const firstSlot = docWithAnySlot.doctor_schedules.find(s =>
+        s.work_date === date && !s.is_booked && isSlotBookable(date, s.time_slot)
+      )?.time_slot ?? ""
+      setSelectedDoctor(docWithAnySlot)
+      setSelectedTimeSlot(firstSlot)
+      return
+    }
+
+    setSelectedDoctor(docsForSpecialty[0] ?? null)
+    setSelectedTimeSlot("")
+  }, [])
+
+  const loadAppointments = useCallback(async () => {
+    setIsAppointmentsLoading(true)
+    try {
+      const appsRes = await fetch("/api/appointments")
+      if (!appsRes.ok) throw new Error(await readApiError(appsRes, "Không thể tải lịch hẹn"))
+      const appsData = await appsRes.json()
+      setAppointments(appsData)
+    } catch (err) {
+      console.error("Failed to load appointments:", err)
+      triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải lịch hẹn.", "danger", "Lỗi dữ liệu")
+    } finally {
+      setIsAppointmentsLoading(false)
+    }
+  }, [triggerToast])
+
+  const loadSpecialties = useCallback(async () => {
+    setIsSpecialtiesLoading(true)
+    try {
+      const specialtiesRes = await fetch("/api/specialties")
+      if (!specialtiesRes.ok) throw new Error(await readApiError(specialtiesRes, "Không thể tải danh sách chuyên khoa"))
+      const specialtiesData: Specialty[] = await specialtiesRes.json()
+      const savedSpecialty = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_specialty") : null
+      const activeSpecialty = specialtiesData.some(spec => spec.name === savedSpecialty)
+        ? savedSpecialty || ""
+        : specialtiesData[0]?.name || ""
+
+      setSpecialties(specialtiesData)
+      if (activeSpecialty) {
+        setSelectedSpecialty(activeSpecialty)
       }
     } catch (err) {
-      console.error("Failed to reload doctors:", err)
+      console.error("Failed to load specialties:", err)
+      triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải danh sách chuyên khoa.", "danger", "Lỗi dữ liệu")
+    } finally {
+      setIsSpecialtiesLoading(false)
     }
-  }, [selectedSpecialty, selectedTimeSlot])
+  }, [triggerToast])
 
-  // Fetch doctors and appointments on mount/date change
-  useEffect(() => {
-    async function initData() {
-      try {
-        const [specialtiesRes, docsRes, appsRes] = await Promise.all([
-          fetch("/api/specialties"),
-          fetch(`/api/doctors?date=${encodeURIComponent(selectedDate)}`),
-          fetch("/api/appointments")
-        ])
+  // Fetch doctors for a given date/specialty and refresh is_booked state
+  const loadDoctors = useCallback(async (date: string, activeSpecialty = selectedSpecialty, forceRefresh = false) => {
+    const specialty = specialties.find(spec => spec.name === activeSpecialty)
+    if (!specialty) {
+      setDoctors([])
+      setSelectedDoctor(null)
+      setSelectedTimeSlot("")
+      return
+    }
 
-        if (!specialtiesRes.ok) throw new Error(await readApiError(specialtiesRes, "Không thể tải danh sách chuyên khoa"))
-        if (!docsRes.ok) throw new Error(await readApiError(docsRes, "Không thể tải danh sách bác sĩ"))
-        if (!appsRes.ok) throw new Error(await readApiError(appsRes, "Không thể tải lịch hẹn"))
+    const cacheKey = `${date}:${specialty.id}`
+    const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
+    const preferredSlot = savedTimeSlot || selectedTimeSlot
 
-        const specialtiesData = await specialtiesRes.json()
-        const docsData = await docsRes.json()
-        const appsData = await appsRes.json()
-        const savedSpecialty = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_specialty") : null
-        const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
+    if (!forceRefresh && doctorsCacheRef.current[cacheKey]) {
+      const cachedDoctors = doctorsCacheRef.current[cacheKey]
+      setDoctors(cachedDoctors)
+      chooseDoctorFromData(cachedDoctors, date, activeSpecialty, preferredSlot)
+      return
+    }
 
-        const activeSpecialty = savedSpecialty || selectedSpecialty || specialtiesData[0]?.name || ""
-        const currentSlot = savedTimeSlot || selectedTimeSlot
+    const requestId = doctorsRequestIdRef.current + 1
+    doctorsRequestIdRef.current = requestId
+    setIsDoctorsLoading(true)
 
-        setSpecialties(specialtiesData)
-        setDoctors(docsData)
-        setAppointments(appsData)
-        if (activeSpecialty) {
-          setSelectedSpecialty(activeSpecialty)
-        }
+    try {
+      const docsRes = await fetch(
+        `/api/doctors?date=${encodeURIComponent(date)}&specialtyId=${encodeURIComponent(String(specialty.id))}`
+      )
+      if (!docsRes.ok) throw new Error(await readApiError(docsRes, "Không thể tải danh sách bác sĩ"))
+      const docsData: Doctor[] = await docsRes.json()
 
-        const initialDocsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === activeSpecialty)
-        const availableDocs = initialDocsForSpecialty.filter((doc: Doctor) => getAvailableSlots(doc, selectedDate).includes(currentSlot))
-        if (availableDocs.length > 0) {
-          setSelectedDoctor(availableDocs[0])
-          if (currentSlot) {
-            setSelectedTimeSlot(currentSlot)
-          }
-        } else if (initialDocsForSpecialty.length > 0) {
-          const docWithSchedule = initialDocsForSpecialty.find((doc: Doctor) => getAvailableSlots(doc, selectedDate).length > 0)
-          if (docWithSchedule) {
-            setSelectedDoctor(docWithSchedule)
-            setSelectedTimeSlot(getAvailableSlots(docWithSchedule, selectedDate)[0])
-          } else {
-            setSelectedDoctor(initialDocsForSpecialty[0])
-            setSelectedTimeSlot("")
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err)
-        triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải dữ liệu.", "danger", "Lỗi dữ liệu")
-      } finally {
-        setIsLoading(false)
+      if (requestId !== doctorsRequestIdRef.current) return
+
+      doctorsCacheRef.current[cacheKey] = docsData
+      setDoctors(docsData)
+      chooseDoctorFromData(docsData, date, activeSpecialty, preferredSlot)
+    } catch (err) {
+      if (requestId !== doctorsRequestIdRef.current) return
+      console.error("Failed to reload doctors:", err)
+      triggerToast(err instanceof Error ? err.message : "Không thể tải danh sách bác sĩ.", "danger", "Lỗi dữ liệu")
+    } finally {
+      if (requestId === doctorsRequestIdRef.current) {
+        setIsDoctorsLoading(false)
       }
     }
-    initData()
-  }, [selectedDate])
+  }, [chooseDoctorFromData, selectedSpecialty, selectedTimeSlot, specialties, triggerToast])
+
+  // Fetch static page data once, then load doctors only for the selected specialty/date.
+  useEffect(() => {
+    loadSpecialties()
+    loadAppointments()
+  }, [loadSpecialties, loadAppointments])
+
+  useEffect(() => {
+    if (isSpecialtiesLoading || specialties.length === 0 || !selectedSpecialty) return
+    loadDoctors(selectedDate, selectedSpecialty)
+  }, [isSpecialtiesLoading, loadDoctors, selectedDate, selectedSpecialty, specialties.length])
+
+  const invalidateDoctorsCache = useCallback((date: string, specialtyName = selectedSpecialty) => {
+    const specialty = specialties.find(spec => spec.name === specialtyName)
+    if (specialty) {
+      delete doctorsCacheRef.current[`${date}:${specialty.id}`]
+    }
+  }, [selectedSpecialty, specialties])
 
   const getAllSlots = (doctor: Doctor, workDate = selectedDate) =>
     doctor.doctor_schedules
@@ -332,18 +382,9 @@ export default function AppointmentsPage() {
   // Handle specialty change
   const handleSpecialtyChange = (spec: string) => {
     setSelectedSpecialty(spec)
-
-    const docs = doctors.filter(doc => doc.specialty === spec)
-    const availableDocs = docs.filter(doc => getAvailableSlots(doc).includes(selectedTimeSlot))
-    if (availableDocs.length > 0) {
-      setSelectedDoctor(availableDocs[0])
-    } else {
-      const docWithSchedule = docs.find(doc => getAvailableSlots(doc).length > 0)
-      if (docWithSchedule) {
-        setSelectedDoctor(docWithSchedule)
-        setSelectedTimeSlot(getAvailableSlots(docWithSchedule)[0])
-      }
-    }
+    setDoctors([])
+    setSelectedDoctor(null)
+    setSelectedTimeSlot("")
   }
 
   // Handle time slot change
@@ -364,8 +405,9 @@ export default function AppointmentsPage() {
     const targetDoc = doctorToBook || selectedDoctor
     if (!targetDoc) return
 
-    if (appointments.some(app => isActiveAppointmentStatus(app.status))) {
-      triggerToast("Bạn chỉ có thể đặt một lịch khám đang hoạt động. Vui lòng hủy lịch hiện tại trước khi đặt lịch mới.", "danger", "Không thể đặt lịch")
+    const activeAppointmentsCount = appointments.filter(app => isActiveAppointmentStatus(app.status)).length
+    if (activeAppointmentsCount >= 3) {
+      triggerToast("Bạn đã có tối đa 3 lịch khám đang hoạt động. Vui lòng hoàn thành hoặc hủy lịch hiện tại trước khi đặt lịch mới.", "danger", "Không thể đặt lịch")
       return
     }
 
@@ -390,6 +432,7 @@ export default function AppointmentsPage() {
 
       const newApp = await res.json()
       setAppointments(prev => [newApp, ...prev])
+      invalidateDoctorsCache(selectedDate, targetDoc.specialty)
 
       triggerToast(
         `Đăng ký lịch hẹn thành công với ${targetDoc.doctor_name}`,
@@ -434,8 +477,9 @@ export default function AppointmentsPage() {
         )
       )
 
-      // Re-fetch doctors so the cancelled slot's is_booked resets to false
-      await loadDoctors(selectedDate)
+      // Re-fetch only the active specialty/date so the cancelled slot's is_booked resets to false
+      invalidateDoctorsCache(selectedDate)
+      await loadDoctors(selectedDate, selectedSpecialty, true)
 
       setAppointmentToCancel(null)
       triggerToast("Hủy lịch thành công", "danger", "Hủy lịch thành công")
@@ -465,18 +509,10 @@ export default function AppointmentsPage() {
     appointment.time || appointment.timeSlot || ""
 
   const isWaitingStatus = (status?: string) => status === "PENDING" || status === "WAITING"
+  const isPatientCancellableStatus = isWaitingStatus
   const isConfirmedStatus = (status?: string) => status === "CONFIRMED"
   const isInProgressStatus = (status?: string) => status === "IN_PROGRESS"
   const isCompletedStatus = (status?: string) => status === "COMPLETED" || status === "DONE"
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none flex flex-col items-center justify-center min-h-[500px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-foreground" />
-        <p className="text-muted-foreground text-sm font-semibold mt-4">Đang tải thông tin từ hệ thống...</p>
-      </div>
-    )
-  }
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
@@ -560,8 +596,11 @@ export default function AppointmentsPage() {
                   <select
                     value={selectedSpecialty}
                     onChange={(e) => handleSpecialtyChange(e.target.value)}
-                    className="w-full rounded-md border border-[#0e0f0c] bg-card text-[#0e0f0c] px-4 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors cursor-pointer"
+                    disabled={isSpecialtiesLoading || specialties.length === 0}
+                    className="w-full rounded-md border border-[#0e0f0c] bg-card text-[#0e0f0c] px-4 py-2.5 text-xs font-bold outline-none focus:border-primary transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
+                    {isSpecialtiesLoading && <option value="">Đang tải chuyên khoa...</option>}
+                    {!isSpecialtiesLoading && specialties.length === 0 && <option value="">Chưa có chuyên khoa</option>}
                     {specialties.map(spec => (
                       <option key={spec.id} value={spec.name}>Khoa {spec.name}</option>
                     ))}
@@ -647,7 +686,12 @@ export default function AppointmentsPage() {
               </p>
 
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide flex flex-col gap-4 pb-2">
-                {filteredDoctors.length > 0 ? (
+                {isDoctorsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-xs text-muted-foreground font-medium">
+                    <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+                    Đang tải lịch trống của bác sĩ...
+                  </div>
+                ) : filteredDoctors.length > 0 ? (
                   filteredDoctors.map((doc) => {
                     return (
                       <div
@@ -704,7 +748,7 @@ export default function AppointmentsPage() {
 
             <div className="mt-5 pt-4 border-t border-border shrink-0">
               <div className="rounded-md bg-secondary p-3 text-[11px] text-muted-foreground leading-relaxed border border-border">
-                <span>Quy định: Hủy lịch tối thiểu 2 giờ và Đặt lịch trước tối thiểu 2 giờ trước giờ hẹn khám. Bạn chỉ có thể đặt lịch tối đa 3 lần trong một ngày.</span>
+                <span>Quy định: Chỉ có thể hủy lịch đang chờ xác nhận và trước giờ hẹn tối thiểu 2 giờ. Đặt lịch trước tối thiểu 2 giờ trước giờ hẹn khám. Bạn chỉ có thể đặt lịch tối đa 3 lần trong một ngày.</span>
               </div>
             </div>
           </article>
@@ -723,48 +767,53 @@ export default function AppointmentsPage() {
                 <h2 className="text-lg font-sans font-black text-foreground tracking-tight">Danh sách lịch hẹn khám của bạn</h2>
               </div>
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-hide flex flex-col gap-3 pb-2">
-                {sortedAppointments.length > 0 ? (
+                {isAppointmentsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-xs text-muted-foreground font-medium">
+                    <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+                    Đang tải lịch hẹn của bạn...
+                  </div>
+                ) : sortedAppointments.length > 0 ? (
                   sortedAppointments.map((appointment, idx) => (
                     <div key={`${appointment.id}-${idx}`} className="rounded-xl border border-border bg-background p-4 shrink-0">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                      <div className="flex items-start gap-3">
-                        <div>
-                          <p className="text-sm font-sans font-black text-foreground tracking-tight">{getAppointmentDoctor(appointment)}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Khoa {getAppointmentSpecialty(appointment)} • {getAppointmentDate(appointment)} • {getAppointmentTime(appointment)}</p>
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div>
+                            <p className="text-sm font-sans font-black text-foreground tracking-tight">{getAppointmentDoctor(appointment)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Khoa {getAppointmentSpecialty(appointment)} • {getAppointmentDate(appointment)} • {getAppointmentTime(appointment)}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn(
+                            "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
+                            isConfirmedStatus(appointment.status) ? "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20" :
+                              isInProgressStatus(appointment.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                isWaitingStatus(appointment.status) ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                  "bg-secondary text-muted-foreground border-border"
+                          )}>
+                            {isConfirmedStatus(appointment.status) ? "ĐÃ XÁC NHẬN" :
+                              isInProgressStatus(appointment.status) ? "ĐANG KHÁM" :
+                                isWaitingStatus(appointment.status) ? "ĐANG CHỜ" :
+                                  isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
+                          </span>
+                          {isPatientCancellableStatus(appointment.status) && isAppointmentCancellable(appointment) && (
+                            <button
+                              onClick={() => setAppointmentToCancel(appointment)}
+                              className="rounded-xl border border-border bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c64545] hover:bg-background transition-colors"
+                            >
+                              Hủy lịch
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn(
-                          "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                          isConfirmedStatus(appointment.status) ? "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20" :
-                            isInProgressStatus(appointment.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
-                              isWaitingStatus(appointment.status) ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                "bg-secondary text-muted-foreground border-border"
-                        )}>
-                          {isConfirmedStatus(appointment.status) ? "ĐÃ XÁC NHẬN" :
-                            isInProgressStatus(appointment.status) ? "ĐANG KHÁM" :
-                              isWaitingStatus(appointment.status) ? "ĐANG CHỜ" :
-                                isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
-                        </span>
-                        {appointment.status !== "CANCELLED" && !isCompletedStatus(appointment.status) && isAppointmentCancellable(appointment) && (
-                          <button
-                            onClick={() => setAppointmentToCancel(appointment)}
-                            className="rounded-xl border border-border bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c64545] hover:bg-background transition-colors"
-                          >
-                            Hủy lịch
-                          </button>
-                        )}
-                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-xs text-muted-foreground font-medium">
+                    Bạn chưa có lịch hẹn khám nào được đăng ký.
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-xs text-muted-foreground font-medium">
-                  Bạn chưa có lịch hẹn khám nào được đăng ký.
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
           </section>
         )
       })()}
