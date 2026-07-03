@@ -21,7 +21,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PatientServiceImpl implements PatientService {
@@ -217,5 +219,33 @@ public class PatientServiceImpl implements PatientService {
                 .patientCode(patient.getPatientCode())
                 .createdAt(patient.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public PatientResponse addFamilyMember(PatientRequest request, String ownerEmail) {
+        // 1. SINH MÃ PATIENT CODE TRƯỚC (Đây là dòng bạn đang thiếu)
+        String patientCode = idGeneratorService.generatePatientCode();
+
+        // 2. Xử lý ngày sinh an toàn
+        java.time.LocalDate dob = null;
+        if (request.getDateOfBirth() != null) {
+            dob = java.time.LocalDate.parse(request.getDateOfBirth());
+        }
+
+        // 3. Xây dựng đối tượng (Lúc này patientCode đã có giá trị)
+        Patient familyMember = Patient.builder()
+                .patientCode(patientCode) // Hết lỗi đỏ
+                .fullName(request.getName())
+                .phone(request.getPhone())
+                .dob(dob)
+                .managedBy(ownerEmail)
+                .build();
+
+        // Set thời gian thủ công để tránh lỗi NULL created_at
+        familyMember.setCreatedAt(java.time.LocalDateTime.now());
+        familyMember.setUpdatedAt(java.time.LocalDateTime.now());
+
+        return mapToResponse(patientRepository.save(familyMember));
     }
 }

@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
 
+                // 1. Phải đưa cái này lên ĐẦU TIÊN để cho phép Bệnh nhân xem lịch sử
+                .requestMatchers("/clinical/medical-records/my-history").hasRole("PATIENT")
                 // API Hàng chờ/Hồ sơ bệnh án: Chỉ ADMIN hoặc DOCTOR mới được xem danh sách tổng
                 .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
 

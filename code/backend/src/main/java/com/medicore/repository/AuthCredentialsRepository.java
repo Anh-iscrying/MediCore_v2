@@ -16,4 +16,5 @@ public interface AuthCredentialsRepository extends JpaRepository<AuthCredentials
 
     @Query("SELECT ac.doctor.id, ac.email FROM AuthCredentials ac WHERE ac.doctor IS NOT NULL")
     List<Object[]> findAllDoctorEmails();
+    Optional<AuthCredentials> findByPatientId(Integer patientId); 
 }

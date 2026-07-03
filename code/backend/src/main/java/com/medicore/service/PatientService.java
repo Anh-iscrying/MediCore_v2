@@ -15,4 +15,5 @@ public interface PatientService {
     PatientResponse updatePatient(Integer id, PatientRequest request);
     PatientResponse updateCurrentPatient(String email, PatientUpdateRequest request);
     void deletePatient(Integer id);
+    PatientResponse addFamilyMember(PatientRequest request, String ownerEmail);
 }
