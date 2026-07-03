@@ -121,7 +121,7 @@ git commit -m "[feat] [MC-03] Thiết kế màn hình đăng nhập Next.js"
 ```
 
 #### Bước 4: Đẩy nhánh lên GitHub và tạo Pull Request (PR)
-Khi tính năng đã hoàn thành và test chạy ổn trên máy cá nhân:
+Khi tính năng đã hoàn thành và test chạy ổn trên máy cá nhân
 ```bash
 # Đẩy nhánh phụ của bạn lên server GitHub
 git push origin feature/MC-03-auth

@@ -142,9 +142,9 @@ export default function DashboardPage() {
     },
     {
       title: "Trợ lý sức khỏe AI",
-      description: "Hỏi đáp nhanh thông tin dịch vụ, chỉ dẫn phòng khám và nhắc nhở sau khám.",
+      description: "Hỏi đáp nhanh thông tin sức khỏe, chuẩn bị trước buổi khám và nhận hướng dẫn tham khảo từ AI.",
       href: "/dashboard/ai-assistant",
-      meta: "Trò chuyện tự động"
+      meta: "Kết nối AI backend"
     }
   ]
 
@@ -223,7 +223,7 @@ export default function DashboardPage() {
             )}
           >
             <div className="flex items-start justify-end gap-4">
-              {!(card.href === "/dashboard/profile" || card.href === "/dashboard/appointments") && (
+              {!(card.href === "/dashboard/profile" || card.href === "/dashboard/appointments" || card.href === "/dashboard/ai-assistant") && (
                 <span className={cn("rounded-sm border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
                   card.highlight
                     ? "border-[#9fe870]/20 bg-[#9fe870]/10 text-[#9fe870]"
@@ -262,7 +262,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-lg font-sans font-black tracking-tight text-[#9fe870]">Cổng thông tin tự phục vụ dành cho bệnh nhân</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[#868685]">
-              Các chức năng được phân tách rõ ràng trên giao diện trực quan. Thao tác lưu trữ dữ liệu, xuất file đơn thuốc và kết nối AI đầy đủ sẽ được tích hợp sau.
+              Các chức năng được phân tách rõ ràng trên giao diện trực quan. Chatbot AI đã kết nối backend; các tính năng xuất file đơn thuốc và mở rộng dữ liệu lâm sàng sẽ được tích hợp tiếp.
             </p>
           </div>
         </div>

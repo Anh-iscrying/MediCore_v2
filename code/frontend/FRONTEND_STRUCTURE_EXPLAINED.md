@@ -333,8 +333,8 @@ Route `/dashboard/ai-assistant`.
 Chức năng:
 
 - Trang trợ lý AI toàn màn hình trong dashboard.
-- Render component `VercelV0Chat` từ `components/ui/v0-ai-chat.tsx`.
-- Chat phản hồi theo keyword, chưa gọi API AI thật.
+- Render component `MedicalAiChat` từ `components/ui/medical-ai-chat.tsx`.
+- Chat gọi backend qua `/api/backend/ai/chat`, backend giữ AI gateway key và lưu log hội thoại.
 
 ---
 
@@ -738,7 +738,7 @@ Chức năng:
 
 Thư mục này chứa component UI riêng, nằm ngoài bộ `components/base/ui`.
 
-### `components/ui/v0-ai-chat.tsx`
+### `components/ui/medical-ai-chat.tsx`
 
 Chat AI toàn màn hình cho route `/dashboard/ai-assistant`.
 
@@ -749,9 +749,10 @@ Chức năng:
 - Có suggestion chips ban đầu.
 - Quản lý danh sách message, input, loading/typing.
 - Auto resize textarea.
-- Sinh câu trả lời theo keyword như triệu chứng, đơn thuốc, phục hồi, huyết áp, dinh dưỡng...
+- Gửi message và 10 tin nhắn history gần nhất tới backend `/ai/chat` qua proxy `/api/backend`.
+- Hiển thị lỗi phiên đăng nhập hoặc gateway AI bằng thông báo tiếng Việt an toàn.
 
-Lưu ý: đây là AI chat mô phỏng, chưa gọi model/API thật.
+Lưu ý: AI chỉ hỗ trợ tham khảo, không thay thế bác sĩ.
 
 ### `components/ui/textarea.tsx`
 
@@ -997,23 +998,24 @@ Người dùng bấm hủy
 → chuyển về /dashboard/appointments?tab=appointments
 ```
 
-### 20.6. Luồng AI assistant mô phỏng
+### 20.6. Luồng AI assistant
 
 Có 2 UI chat:
 
-1. `AIHealthAssistant`: floating chat, dùng trong trang appointments.
-2. `VercelV0Chat`: full page chat, dùng ở `/dashboard/ai-assistant`.
+1. `AIHealthAssistant`: floating chat cũ, dùng trong trang appointments, vẫn phản hồi client-side.
+2. `MedicalAiChat`: full page chat, dùng ở `/dashboard/ai-assistant`, đã gọi backend thật.
 
-Cả hai đều:
+Luồng `MedicalAiChat`:
 
 ```text
 Người dùng nhập tin nhắn
-→ component đọc keyword trong nội dung
-→ chọn câu trả lời hardcoded phù hợp
-→ thêm message assistant vào UI
+→ frontend POST /api/backend/ai/chat
+→ Next proxy chuyển tới backend /api/v1/ai/chat kèm cookie accessToken
+→ backend kiểm tra role PATIENT
+→ backend gọi AI gateway OpenAI-compatible bằng env server-side
+→ backend lưu ai_consultation_logs
+→ frontend hiển thị reply
 ```
-
-Chưa có gọi API AI/backend thật.
 
 ---
 

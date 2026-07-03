@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
+import base64
 import json
-import urllib.request
+import os
 import urllib.error
+import urllib.request
 
-BASE_URL = "https://rtls3su.abc-tunnel.us/v1"
-API_KEY = "sk-217cd9c2ec115af2-79wa3f-2ef5c412"
+BASE_URL = os.getenv("AI_GATEWAY_BASE_URL", "").rstrip("/")
+API_KEY = os.getenv("AI_GATEWAY_API_KEY", "")
+MODEL = os.getenv("AI_GATEWAY_MODEL", "cx/gpt-5.5")
+IMAGE_PATH = os.getenv("AI_TEST_IMAGE_PATH")
+
 
 def make_request(url, headers, data=None):
     req = urllib.request.Request(url, headers=headers, method="POST" if data else "GET")
     if data:
         req.data = json.dumps(data).encode("utf-8")
-    
+
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:
             raw_body = response.read().decode("utf-8").strip()
             if raw_body.endswith("data: [DONE]"):
                 raw_body = raw_body[:-12].strip()
@@ -23,67 +28,79 @@ def make_request(url, headers, data=None):
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8")
         try:
-            err_json = json.loads(body)
-            return e.code, err_json
+            return e.code, json.loads(body)
         except Exception:
             return e.code, body
     except Exception as e:
         return 0, str(e)
 
-import base64
-from pathlib import Path
-
-IMAGE_PATH = "/Users/doando/Documents/medicore/MediCore_v2/code/frontend/public/images/doctor-chen.png"
 
 def get_image_base64(path):
     with open(path, "rb") as image_file:
         encoded = base64.b64encode(image_file.read()).decode("utf-8")
         return f"data:image/png;base64,{encoded}"
 
+
+def build_user_content():
+    if not IMAGE_PATH:
+        return "Tôi bị đau đầu nhẹ từ sáng nay, không sốt. Tôi nên theo dõi gì và khi nào cần đi khám? Trả lời ngắn gọn bằng tiếng Việt."
+
+    print(f"\nStep 1: Encoding image '{IMAGE_PATH}' to base64...")
+    image_base64 = get_image_base64(IMAGE_PATH)
+    print("Image encoded successfully.")
+
+    return [
+        {
+            "type": "text",
+            "text": "Hãy cho biết người trong bức ảnh này làm nghề gì, mặc trang phục gì và có thái độ như thế nào? Trả lời ngắn gọn.",
+        },
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": image_base64,
+            },
+        },
+    ]
+
+
 def main():
+    if not BASE_URL or not API_KEY:
+        print("Missing AI_GATEWAY_BASE_URL or AI_GATEWAY_API_KEY")
+        return
+
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "MediCore-Test/1.0",
     }
 
-    model = "cx/gpt-5.5"
-    print(f"Using vision model: '{model}'")
+    print(f"Using model: '{MODEL}'")
+    if IMAGE_PATH:
+        print("AI_TEST_IMAGE_PATH detected; sending multimodal request.")
+    else:
+        print("AI_TEST_IMAGE_PATH not set; sending text-only request.")
 
-    print(f"\nStep 1: Encoding image '{IMAGE_PATH}' to base64...")
     try:
-        image_base64 = get_image_base64(IMAGE_PATH)
-        print("Image encoded successfully.")
+        content = build_user_content()
     except Exception as e:
-        print(f"Failed to encode image: {e}")
+        print(f"Failed to prepare request content: {e}")
         return
 
-    print("\nStep 2: Sending test chat completion request with text and image...")
+    print("\nSending chat completion request...")
     chat_payload = {
-        "model": model,
+        "model": MODEL,
         "messages": [
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Hãy cho biết người trong bức ảnh này làm nghề gì, mặc trang phục gì và có thái độ như thế nào? Trả lời ngắn gọn."
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_base64
-                        }
-                    }
-                ]
+                "content": content,
             }
         ],
-        "temperature": 0.5
+        "temperature": 0.5,
     }
 
     status, chat_res = make_request(f"{BASE_URL}/chat/completions", headers, chat_payload)
     print(f"Chat status response: {status}")
-    
+
     if status == 200:
         try:
             if isinstance(chat_res, str) and "JSON parse error" in chat_res:
@@ -93,13 +110,13 @@ def main():
                 print("\n=== SUCCESS: AI RESPONSE ===")
                 print(reply)
                 print("============================\n")
-                print(f"Multimodal verification complete! Model '{model}' supports vision.")
         except Exception as e:
             print(f"Failed to parse successful chat response: {e}")
             print(json.dumps(chat_res, indent=2, ensure_ascii=False) if isinstance(chat_res, dict) else chat_res)
     else:
-        print(f"Model '{model}' failed with status {status}. Error details:")
+        print(f"Model '{MODEL}' failed with status {status}. Error details:")
         print(json.dumps(chat_res, indent=2, ensure_ascii=False) if isinstance(chat_res, dict) else chat_res)
+
 
 if __name__ == "__main__":
     main()

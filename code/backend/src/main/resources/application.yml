@@ -19,6 +19,11 @@ spring:
       hibernate:
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:5MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:16MB}
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -48,6 +53,17 @@ app:
     from: ${MAIL_FROM:${GMAIL_USERNAME:}}
   otp:
     secret: ${OTP_SECRET:${JWT_SECRET:change-me-before-running-very-long-secret-key-32-chars-long}}
+  ai:
+    base-url: ${AI_GATEWAY_BASE_URL:}
+    api-key: ${AI_GATEWAY_API_KEY:}
+    model: ${AI_GATEWAY_MODEL:cx/gpt-5.5}
+    timeout-ms: ${AI_GATEWAY_TIMEOUT_MS:30000}
+    temperature: ${AI_GATEWAY_TEMPERATURE:0.4}
+    max-input-chars: ${AI_MAX_INPUT_CHARS:4000}
+    max-history-messages: ${AI_MAX_HISTORY_MESSAGES:10}
+    max-images-per-message: ${AI_MAX_IMAGES_PER_MESSAGE:3}
+    max-image-bytes: ${AI_MAX_IMAGE_BYTES:5242880}
+    allowed-image-mime-types: ${AI_ALLOWED_IMAGE_MIME_TYPES:image/png,image/jpeg,image/webp}
 
 # Cấu hình Swagger/OpenAPI
 springdoc:
