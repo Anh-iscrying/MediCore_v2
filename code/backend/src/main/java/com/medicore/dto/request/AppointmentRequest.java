@@ -22,5 +22,6 @@ public class AppointmentRequest {
     private String timeSlot;
 
     private String symptomsInitial;
+    private String cancellationReason;
     private String status;
 }

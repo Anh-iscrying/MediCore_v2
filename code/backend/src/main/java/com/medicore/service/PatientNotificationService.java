@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 public class PatientNotificationService {
 
     private static final String EXAM_STARTED = "EXAM_STARTED";
+    private static final String APPOINTMENT_CANCELLED = "APPOINTMENT_CANCELLED";
+    private static final String APPOINTMENT_COMPLETED = "APPOINTMENT_COMPLETED";
 
     private final NotificationRepository notificationRepository;
     private final AuthCredentialsRepository authCredentialsRepository;
@@ -110,9 +112,66 @@ public class PatientNotificationService {
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
         notificationService.notifyPatient(credentials.getEmail(), EXAM_STARTED, response.getMessage(), response);
-        
-        // Gửi email thông báo vào khám cho bệnh nhân
+
         sendExamStartedEmail(appointment, credentials.getEmail());
+    }
+
+    @Transactional
+    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus, String cancellationReason) {
+        if (newStatus == null || oldStatus == newStatus) {
+            return;
+        }
+        if (newStatus != AppointmentStatus.CANCELLED && newStatus != AppointmentStatus.DONE) {
+            return;
+        }
+        if (appointment.getPatient() == null) {
+            log.warn("Skip appointment status notification: appointment {} has no patient", appointment.getId());
+            return;
+        }
+
+        AuthCredentials credentials = authCredentialsRepository.findByPatientId(appointment.getPatient().getId())
+                .orElse(null);
+        if (credentials == null) {
+            log.warn("Skip appointment status notification: patient {} has no auth credentials", appointment.getPatient().getId());
+            return;
+        }
+
+        String type = newStatus == AppointmentStatus.CANCELLED ? APPOINTMENT_CANCELLED : APPOINTMENT_COMPLETED;
+        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(), appointment.getId(), type)) {
+            log.info("Skip appointment status notification: already exists for appointment {} and patient {}", appointment.getId(), credentials.getEmail());
+            return;
+        }
+
+        String title = newStatus == AppointmentStatus.CANCELLED ? "Lịch khám đã bị hủy" : "Khám bệnh đã hoàn tất";
+        String message = newStatus == AppointmentStatus.CANCELLED
+                ? buildCancellationMessage(cancellationReason)
+                : "Buổi khám của bạn đã được ghi nhận hoàn tất. Hồ sơ bệnh án và đơn thuốc đã được lưu trong hệ thống.";
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("appointmentId", appointment.getId());
+        data.put("doctorId", appointment.getDoctor() != null ? appointment.getDoctor().getId() : null);
+        data.put("doctorName", appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null);
+        data.put("patientId", appointment.getPatient().getId());
+        data.put("oldStatus", oldStatus != null ? oldStatus.name() : null);
+        data.put("newStatus", newStatus.name());
+        data.put("reason", cancellationReason);
+
+        Notification notification = Notification.builder()
+                .recipientEmail(credentials.getEmail())
+                .patient(appointment.getPatient())
+                .appointment(appointment)
+                .type(type)
+                .title(title)
+                .message(message)
+                .data(data)
+                .build();
+
+        notification = notificationRepository.save(notification);
+        log.info("Created {} notification {} for appointment {} and patient {}", type, notification.getId(), appointment.getId(), credentials.getEmail());
+        NotificationResponse response = mapToResponse(notification);
+        response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
+        notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
+        sendAppointmentStatusEmail(appointment, credentials.getEmail(), newStatus, cancellationReason);
     }
 
     private void sendExamStartedEmail(Appointment appointment, String recipientEmail) {
@@ -133,6 +192,66 @@ public class PatientNotificationService {
         } catch (Exception e) {
             log.error("Lỗi khi gửi email thông báo bắt đầu khám cho lịch hẹn {}", appointment.getId(), e);
         }
+    }
+
+    private void sendAppointmentStatusEmail(Appointment appointment, String recipientEmail, AppointmentStatus newStatus, String cancellationReason) {
+        try {
+            String patientName = appointment.getPatient() != null ? appointment.getPatient().getFullName() : "N/A";
+            String patientCode = appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : "N/A";
+            String doctorName = appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : "N/A";
+            String specialtyName = (appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null)
+                    ? appointment.getDoctor().getSpecialty().getSpecialtyName()
+                    : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
+
+            String subject = newStatus == AppointmentStatus.CANCELLED
+                    ? "[MediCore] Lịch khám đã bị hủy - Bệnh nhân " + patientName
+                    : "[MediCore] Hoàn tất khám bệnh - Bệnh nhân " + patientName;
+            String htmlContent = newStatus == AppointmentStatus.CANCELLED
+                    ? buildCancellationEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot, cancellationReason)
+                    : buildCompletionEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot);
+
+            emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo trạng thái lịch hẹn {} cho lịch hẹn {}", newStatus, appointment.getId(), e);
+        }
+    }
+
+    private String buildCancellationMessage(String cancellationReason) {
+        String baseReason = (cancellationReason != null && !cancellationReason.isBlank())
+                ? "Lý do: " + cancellationReason + "."
+                : "Lý do: bác sĩ cần điều chỉnh lịch làm việc.";
+        return "Lịch khám của bạn đã bị hủy. " + baseReason + " Chúng tôi xin lỗi vì sự bất tiện này. Vui lòng đặt lại lịch khám khác nếu cần.";
+    }
+
+    private String buildCancellationEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot, String cancellationReason) {
+        String reasonText = (cancellationReason != null && !cancellationReason.isBlank())
+                ? cancellationReason
+                : "Bác sĩ cần điều chỉnh lịch làm việc.";
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset=\"utf-8\"><title>Hủy lịch hẹn - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">" +
+                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">" +
+                "<h2 style=\"color:#0f172a;margin-top:0;\">Lịch khám đã bị hủy</h2>" +
+                "<p>Kính chào Ông/Bà " + patientName + ",</p>" +
+                "<p>Lịch khám của bạn đã bị hủy bởi bác sĩ phụ trách.</p>" +
+                "<p><strong>Lý do:</strong> " + reasonText + "</p>" +
+                "<p>Chúng tôi xin lỗi vì sự bất tiện này. Nếu cần, quý khách có thể đặt lại lịch khám khác tại hệ thống MediCore.</p>" +
+                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot + "</p>" +
+                "<p>Trân trọng,<br/>MediCore</p>" +
+                "</div></body></html>";
+    }
+
+    private String buildCompletionEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot) {
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset=\"utf-8\"><title>Hoàn tất khám bệnh - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">" +
+                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">" +
+                "<h2 style=\"color:#0f172a;margin-top:0;\">Khám bệnh đã hoàn tất</h2>" +
+                "<p>Kính chào Ông/Bà " + patientName + ",</p>" +
+                "<p>Buổi khám của bạn đã được ghi nhận hoàn tất. Hồ sơ bệnh án và đơn thuốc đã được lưu trong hệ thống.</p>" +
+                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot + "</p>" +
+                "<p>Trân trọng,<br/>MediCore</p>" +
+                "</div></body></html>";
     }
 
     private String buildExamStartedEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot) {

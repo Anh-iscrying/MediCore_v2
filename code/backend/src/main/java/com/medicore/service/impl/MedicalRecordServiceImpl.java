@@ -17,6 +17,7 @@ import com.medicore.repository.*;
 import com.medicore.service.IdGeneratorService;
 import com.medicore.service.MedicalRecordPdfService;
 import com.medicore.service.MedicalRecordService;
+import com.medicore.service.PatientNotificationService;
 import com.medicore.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private final IdGeneratorService idGeneratorService;
     private final MedicalRecordPdfService pdfService;
     private final SupabaseStorageService storageService;
+    private final PatientNotificationService patientNotificationService;
 
     @Override
     @Transactional
@@ -78,8 +80,10 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         prescriptionDetailRepository.deleteByPrescriptionId(prescription.getId());
         List<PrescriptionDetail> details = savePrescriptionDetails(prescription, request.getMedicines());
 
+        AppointmentStatus oldStatus = appointment.getStatus();
         appointment.setStatus(AppointmentStatus.DONE);
         appointmentRepository.save(appointment);
+        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, AppointmentStatus.DONE, null);
 
         return toResponse(savedRecord, details);
     }

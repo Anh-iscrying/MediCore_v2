@@ -72,7 +72,8 @@ export function useNotifications(user: AuthUser | null) {
               const exists = current.some((notification) => notification.id === payload.data?.id)
               return exists ? current : [payload.data as NotificationItem, ...current].slice(0, 20)
             })
-            if (payload.eventType === "EXAM_STARTED") {
+            const shouldShowPopup = ["EXAM_STARTED", "APPOINTMENT_CANCELLED", "APPOINTMENT_COMPLETED"].includes(payload.eventType || "")
+            if (shouldShowPopup) {
               setExamNotification(payload.data)
             }
             setUnreadCount((count) => payload.data?.unreadCount ?? count + 1)

@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/base/ui/dialog"
 import PatientInfo from "./PatientInfo";
 import ExaminationForm from "./ExaminationForm";
 import PrescriptionSection from "./PrescriptionSection";
@@ -41,7 +49,7 @@ import { useAuth } from "@/providers/auth-provider"
 import type { Appointment, Patient, Specialty, SpecialtyExamTemplateField } from "@/types/medical"
 import { useReactToPrint } from "react-to-print"
 import { useRef } from "react"
-import { medicalRecordsApi } from "@/lib/api"
+import { medicalRecordsApi, treatmentTemplatesApi } from "@/lib/api"
 import { generateMedicalRecordPdf } from "@/lib/generate-medical-record-pdf"
 
 interface ExaminationPageProps {
@@ -129,23 +137,58 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
     setInput(question)
   }
   const [prescriptionItems, setPrescriptionItems] = useState<
-    Array<{ medicineId: string; medicineName: string; quantity: number; unit: string; dosage: string; notes?: string }>
+    Array<{ medicineId: string; medicineName: string; quantity: number; unit: string; dosage: string; notes?: string; isFromTemplate?: boolean }>
   >([])
   const [prescriptionNotes, setPrescriptionNotes] = useState("")
   const [selectedTemplateId, setSelectedTemplateId] = useState("")
+  const [treatmentTemplates, setTreatmentTemplates] = useState<Array<{ id: string; templateName: string; description?: string; details?: Array<{ medicineId: number; medicineName?: string; quantity: number; unit?: string; dosage: string }> }>>([])
   const [isCompleting, setIsCompleting] = useState(false)
-
-  const treatmentTemplates = [
-    { id: "1", name: "Combo cảm cúm" },
-    { id: "2", name: "Combo tăng huyết áp" },
-    { id: "3", name: "Combo tiểu đường" },
-  ];
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [selectedTemplatePreview, setSelectedTemplatePreview] = useState<null | {
+    id: string
+    templateName: string
+    description?: string
+    details: Array<{ medicineId: number; medicineName?: string; quantity: number; unit?: string; dosage: string }>
+  }>(null)
   const [selectedMedicineId, setSelectedMedicineId] = useState("")
   const [quantity, setQuantity] = useState("")
   const [dosage, setDosage] = useState("")
   const [medicineNotes, setMedicineNotes] = useState("")
 
   const selectedIcd = icdCodes.find((c) => c.id === icdCode)
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      if (!selectedIcd?.code) {
+        setTreatmentTemplates([])
+        setSelectedTemplateId("")
+        return
+      }
+
+      try {
+        const templates = await treatmentTemplatesApi.list({ icd10Code: selectedIcd.code })
+        setTreatmentTemplates(
+          (templates || []).map((template: any) => ({
+            id: String(template.id),
+            templateName: template.templateName,
+            description: template.description,
+            details: (template.details || []).map((detail: any) => ({
+              medicineId: detail.medicineId,
+              medicineName: detail.medicineName,
+              quantity: detail.quantity ?? 1,
+              unit: detail.unit,
+              dosage: detail.dosage ?? "",
+            })),
+          }))
+        )
+      } catch (error) {
+        console.error("Không thể tải combo thuốc", error)
+        setTreatmentTemplates([])
+      }
+    }
+
+    void loadTemplates()
+  }, [selectedIcd?.code])
   const selectedMedicine = medicines.find((m) => m.id === selectedMedicineId)
   const specialtyFields = specialty?.examTemplate?.fields ?? []
 
@@ -237,6 +280,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
           unit: selectedMedicine.unit,
           dosage,
           notes: medicineNotes,
+          isFromTemplate: false,
         },
       ])
       setSelectedMedicineId("")
@@ -244,6 +288,60 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
       setDosage("")
       setMedicineNotes("")
     }
+  }
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = treatmentTemplates.find((item) => item.id === templateId)
+    if (!template) return
+
+    setSelectedTemplateId(templateId)
+    setSelectedTemplatePreview({
+      id: template.id,
+      templateName: template.templateName,
+      description: template.description,
+      details: (template.details || []).map((detail) => ({
+        medicineId: detail.medicineId,
+        medicineName: detail.medicineName,
+        quantity: detail.quantity,
+        unit: detail.unit,
+        dosage: detail.dosage,
+      })),
+    })
+    setIsTemplateModalOpen(true)
+  }
+
+  const applyTemplateToPrescription = () => {
+    if (!selectedTemplatePreview) return
+
+    const itemsToAdd = selectedTemplatePreview.details
+      .filter((detail) => detail.medicineId && detail.medicineName)
+      .map((detail) => ({
+        medicineId: String(detail.medicineId),
+        medicineName: detail.medicineName || "Thuốc",
+        quantity: detail.quantity || 1,
+        unit: detail.unit || "viên",
+        dosage: detail.dosage || "",
+        notes: "",
+        isFromTemplate: true,
+      }))
+
+    if (itemsToAdd.length > 0) {
+      setPrescriptionItems((prev) => [...prev, ...itemsToAdd])
+    }
+
+    setSelectedTemplateId("")
+    setSelectedTemplatePreview(null)
+    setIsTemplateModalOpen(false)
+  }
+
+  const removeTemplatePreviewMedicine = (index: number) => {
+    setSelectedTemplatePreview((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        details: prev.details.filter((_, detailIndex) => detailIndex !== index),
+      }
+    })
   }
 
   const handleRemoveMedicine = (index: number) => {
@@ -300,6 +398,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
           medicineId: Number(item.medicineId),
           quantity: item.quantity,
           dosageInstruction: [item.dosage, item.notes].filter(Boolean).join(" - "),
+          isFromTemplate: Boolean(item.isFromTemplate),
         })),
         additionalData: {
           specialtyExamValues,
@@ -934,7 +1033,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
 
                         <Select
                           value={selectedTemplateId}
-                          onValueChange={setSelectedTemplateId}
+                          onValueChange={handleTemplateSelect}
                         >
                           <SelectTrigger className="w-full bg-card">
                             <SelectValue placeholder="Chọn combo thuốc" />
@@ -946,7 +1045,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
                                 key={template.id}
                                 value={template.id}
                               >
-                                {template.name}
+                                {template.templateName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1218,6 +1317,63 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
           </Card>
         </div>
       </div>
+
+      <Dialog open={isTemplateModalOpen} onOpenChange={(open) => {
+        setIsTemplateModalOpen(open)
+        if (!open) {
+          setSelectedTemplatePreview(null)
+          setSelectedTemplateId("")
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Preview combo thuốc</DialogTitle>
+            <DialogDescription>
+              {selectedTemplatePreview?.templateName || "Xem trước thuốc trong combo trước khi áp dụng"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTemplatePreview && (
+            <div className="space-y-4">
+              {selectedTemplatePreview.description && (
+                <p className="text-sm text-muted-foreground">{selectedTemplatePreview.description}</p>
+              )}
+
+              <div className="rounded-lg border bg-slate-50 p-3">
+                <div className="mb-2 text-sm font-medium">Danh sách thuốc trong combo</div>
+                <div className="space-y-2">
+                  {selectedTemplatePreview.details.map((detail, index) => (
+                    <div key={`${detail.medicineId}-${index}`} className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                      <div>
+                        <div className="text-sm font-medium">{detail.medicineName || "Thuốc"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {detail.quantity || 1} {detail.unit || "viên"} • {detail.dosage || "Chưa có liều dùng"}
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeTemplatePreviewMedicine(index)}>
+                        Bỏ
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => {
+              setIsTemplateModalOpen(false)
+              setSelectedTemplatePreview(null)
+              setSelectedTemplateId("")
+            }}>
+              Hủy
+            </Button>
+            <Button type="button" onClick={applyTemplateToPrescription} disabled={!selectedTemplatePreview?.details?.length}>
+              Áp dụng vào đơn thuốc
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
