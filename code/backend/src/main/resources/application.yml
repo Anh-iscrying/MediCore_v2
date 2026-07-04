@@ -71,8 +71,8 @@ app:
     max-image-bytes: ${AI_MAX_IMAGE_BYTES:5242880}
     allowed-image-mime-types: ${AI_ALLOWED_IMAGE_MIME_TYPES:image/png,image/jpeg,image/webp}
   appointment:
-    min-hours-before-booking: ${APPOINTMENT_MIN_HOURS_BEFORE_BOOKING:2}
-    min-hours-before-cancellation: ${APPOINTMENT_MIN_HOURS_BEFORE_CANCELLATION:2}
+    min-hours-before-booking: ${APPOINTMENT_MIN_HOURS_BEFORE_BOOKING:0}
+    min-hours-before-cancellation: ${APPOINTMENT_MIN_HOURS_BEFORE_CANCELLATION:0}
     max-active-per-patient: ${APPOINTMENT_MAX_ACTIVE_PER_PATIENT:3}
     max-created-per-patient-per-day: ${APPOINTMENT_MAX_CREATED_PER_PATIENT_PER_DAY:3}
 

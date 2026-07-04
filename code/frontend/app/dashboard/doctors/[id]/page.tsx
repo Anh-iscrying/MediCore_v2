@@ -73,8 +73,9 @@ function isSlotBookable(dateIso: string, slot: string) {
 
   const slotDate = new Date(year, month - 1, day, hour, minute, 0, 0)
 
-  const twoHoursInMs = 2 * 60 * 60 * 1000
-  return (slotDate.getTime() - now.getTime()) >= twoHoursInMs
+  const minHours = Number(process.env.NEXT_PUBLIC_APPOINTMENT_MIN_HOURS_BEFORE_BOOKING || 1)
+  const requiredMs = minHours * 60 * 60 * 1000
+  return (slotDate.getTime() - now.getTime()) >= requiredMs
 }
 
 async function readApiError(response: Response, fallback: string) {
