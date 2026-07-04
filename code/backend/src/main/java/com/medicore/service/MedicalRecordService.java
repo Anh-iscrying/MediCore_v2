@@ -8,4 +8,5 @@ public interface MedicalRecordService {
     // Hàm xử lý lưu toàn bộ hồ sơ, bệnh và đơn thuốc
     void createMedicalRecord(MedicalRecordRequest request);
     List<MedicalRecordResponse> getHistoryByEmail(String email);
+    MedicalRecordResponse getById(Integer id);
 }

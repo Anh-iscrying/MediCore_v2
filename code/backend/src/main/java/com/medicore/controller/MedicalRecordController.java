@@ -34,4 +34,10 @@ public class MedicalRecordController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(ApiResponse.success(medicalRecordService.getHistoryByEmail(email)));
     }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    public ResponseEntity<ApiResponse<MedicalRecordResponse>> getRecordById(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success(medicalRecordService.getById(id)));
+    }
 }

@@ -138,10 +138,23 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+        public MedicalRecordResponse getById(Integer id) {
+        // 1. Tìm hồ sơ bệnh án trong DB
+        MedicalRecord record = recordRepository.findById(id)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+
+        // 2. Dùng hàm mapping chúng ta vừa sửa lúc nãy để trả về DTO có chứa PAT-CODE
+        return mapToMedicalRecordResponse(record);
+        }
+
     // HÀM MAPPING CHUẨN ĐỂ HẾT LỖI Type Mismatch
     private MedicalRecordResponse mapToMedicalRecordResponse(MedicalRecord record) {
         return MedicalRecordResponse.builder()
                 .emrCode(record.getEmrCode())
+                .patientCode(record.getPatient() != null ? record.getPatient().getPatientCode() : "N/A")
+                .patientName(record.getPatient() != null ? record.getPatient().getFullName() : "N/A")
                 .doctorName(record.getDoctor() != null ? record.getDoctor().getDoctorName() : "N/A")
                 .diagnosisIcd10(record.getDiagnosisIcd10() != null ? record.getDiagnosisIcd10().getIcd10Code() : "N/A")
                 .clinicalNote(record.getClinicalNote())
