@@ -55,8 +55,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy lịch hẹn"));
 
-        // Tìm hoặc tạo mới MedicalRecord
-        MedicalRecord record = recordRepository.findByAppointmentId(appointment.getId())
+        MedicalRecord recordToSave = recordRepository.findByAppointmentId(appointment.getId())
                 .orElseGet(() -> MedicalRecord.builder()
                         .emrCode(idGeneratorService.generateEmrCode())
                         .appointment(appointment)
@@ -65,27 +64,24 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                         .createdAt(OffsetDateTime.now())
                         .build());
 
-        // Áp dụng dữ liệu từ request
-        applyRequest(record, request);
-        record = recordRepository.save(record);
+        applyRequest(recordToSave, request);
+        MedicalRecord savedRecord = recordRepository.save(recordToSave); 
 
-        // Xử lý đơn thuốc
-        Prescription prescription = prescriptionRepository.findByMedicalRecordId(record.getId())
+        // XỬ LÝ ĐƠN THUỐC - ĐÃ SỬA BIẾN RECORD THÀNH SAVEDRECORD
+        Prescription prescription = prescriptionRepository.findByMedicalRecordId(savedRecord.getId())
                 .orElseGet(() -> Prescription.builder()
-                        .medicalRecord(record)
+                        .medicalRecord(savedRecord)
                         .createdAt(OffsetDateTime.now())
                         .build());
         prescription = prescriptionRepository.save(prescription);
 
-        // Xóa chi tiết thuốc cũ và lưu mới
         prescriptionDetailRepository.deleteByPrescriptionId(prescription.getId());
         List<PrescriptionDetail> details = savePrescriptionDetails(prescription, request.getMedicines());
 
-        // Cập nhật trạng thái lịch hẹn
         appointment.setStatus(AppointmentStatus.DONE);
         appointmentRepository.save(appointment);
 
-        return toResponse(record, details);
+        return toResponse(savedRecord, details);
     }
 
     @Override
@@ -130,7 +126,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         record.setFollowUpDate(request.getFollowUpDate());
         record.setAdditionalData(request.getSpecialtyData() == null ? Collections.emptyMap() : request.getSpecialtyData());
 
-        // Tìm mã ICD-10 chính
+        // TÌM MÃ ICD-10 CHÍNH
         String primaryIcd10 = null;
         if (request.getDiagnoses() != null && !request.getDiagnoses().isEmpty()) {
             primaryIcd10 = request.getDiagnoses().stream()
@@ -141,8 +137,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         }
 
         if (StringUtils.hasText(primaryIcd10)) {
-            Disease disease = diseaseRepository.findById(primaryIcd10.trim())
-                    .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Mã bệnh không tồn tại: " + primaryIcd10));
+            final String finalCode = primaryIcd10.trim(); 
+            Disease disease = diseaseRepository.findById(finalCode)
+                    .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Mã bệnh không tồn tại: " + finalCode));
             record.setDiagnosisIcd10(disease);
         }
     }

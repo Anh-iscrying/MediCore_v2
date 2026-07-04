@@ -7,10 +7,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.util.Map;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -70,6 +66,7 @@ public class MedicalRecord {
     @Column(name = "follow_up_date")
     private LocalDate followUpDate;
 
+    // Chỉ giữ lại 1 định nghĩa chuẩn duy nhất cho JSONB
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "additional_data", columnDefinition = "jsonb")
     private Map<String, Object> additionalData;
@@ -85,8 +82,4 @@ public class MedicalRecord {
 
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
-
-    @JdbcTypeCode(SqlTypes.JSON) // THÊM DÒNG NÀY: Ép kiểu sang JSON khi lưu DB
-    @Column(name = "additional_data")
-    private Map<String, Object> additionalData;
 }
