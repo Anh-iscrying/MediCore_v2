@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -13,4 +15,5 @@ public class SpecialtyResponse {
     private Integer id;
     private String name;
     private Long doctorCount;
+    private Map<String, Object> examTemplate;
 }

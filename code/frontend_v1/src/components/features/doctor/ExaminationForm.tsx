@@ -3,6 +3,7 @@
 import { Card } from "@/components/base/ui/card";
 import { Input } from "@/components/base/ui/input";
 import { Textarea } from "@/components/base/ui/textarea";
+import { Button } from "@/components/base/ui/button";
 import {
     Select,
     SelectContent,
@@ -13,6 +14,7 @@ import {
 
 import PatientInfo from "./PatientInfo";
 import PrescriptionSection from "./PrescriptionSection";
+import { User } from "lucide-react";
 
 interface ExaminationFormProps {
     patient: any;
@@ -174,7 +176,7 @@ export default function ExaminationForm({
 
                                 </span>{" "}
 
-                                {patient.id}
+                                {patient.patientCode || patient.id}
 
                             </p>
 

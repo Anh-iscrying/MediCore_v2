@@ -38,6 +38,12 @@ export function PatientProfileModal({
     return age
   }
 
+  const formatSpecialtyValue = (value: unknown) => {
+    if (typeof value === "boolean") return value ? "Có" : "Không"
+    if (value === undefined || value === null || value === "") return "-"
+    return String(value)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -120,6 +126,17 @@ export function PatientProfileModal({
                           <span className="font-medium">Kết quả xét nghiệm:</span> {record.testResults}
                         </p>
                       )}
+                      {record.specialtyExamTemplate?.fields?.length ? (
+                        <div className="rounded-md bg-muted/40 p-2 space-y-1">
+                          <p className="font-medium">Thông tin chuyên khoa:</p>
+                          {record.specialtyExamTemplate.fields.map((field) => (
+                            <p key={field.id}>
+                              <span className="font-medium">{field.label}:</span>{" "}
+                              {formatSpecialtyValue(record.specialtyExamValues?.[field.id])}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
                       <p>
                         <span className="font-medium">Điều trị:</span> {record.treatment}
                       </p>

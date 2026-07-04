@@ -31,6 +31,7 @@ public class PatientNotificationService {
     private final NotificationRepository notificationRepository;
     private final AuthCredentialsRepository authCredentialsRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public NotificationListResponse getCurrentPatientNotifications(String email) {
@@ -109,6 +110,200 @@ public class PatientNotificationService {
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
         notificationService.notifyPatient(credentials.getEmail(), EXAM_STARTED, response.getMessage(), response);
+        
+        // Gửi email thông báo vào khám cho bệnh nhân
+        sendExamStartedEmail(appointment, credentials.getEmail());
+    }
+
+    private void sendExamStartedEmail(Appointment appointment, String recipientEmail) {
+        try {
+            String patientName = appointment.getPatient() != null ? appointment.getPatient().getFullName() : "N/A";
+            String patientCode = appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : "N/A";
+            String doctorName = appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : "N/A";
+            String specialtyName = (appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null)
+                    ? appointment.getDoctor().getSpecialty().getSpecialtyName()
+                    : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
+
+            String subject = "[MediCore] Mời vào phòng khám - Bệnh nhân " + patientName;
+            String htmlContent = buildExamStartedEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot);
+
+            emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo bắt đầu khám cho lịch hẹn {}", appointment.getId(), e);
+        }
+    }
+
+    private String buildExamStartedEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot) {
+        return "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <meta charset=\"utf-8\">\n" +
+                "    <title>Mời Vào Phòng Khám - MediCore</title>\n" +
+                "    <style>\n" +
+                "        body {\n" +
+                "            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n" +
+                "            background-color: #f4f6f8;\n" +
+                "            margin: 0;\n" +
+                "            padding: 0;\n" +
+                "            color: #333333;\n" +
+                "        }\n" +
+                "        .container {\n" +
+                "            max-width: 600px;\n" +
+                "            margin: 30px auto;\n" +
+                "            background: #ffffff;\n" +
+                "            border-radius: 12px;\n" +
+                "            overflow: hidden;\n" +
+                "            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);\n" +
+                "            border: 1px solid #eef2f5;\n" +
+                "        }\n" +
+                "        .header {\n" +
+                "            background: linear-gradient(135deg, #0f172a, #1e293b);\n" +
+                "            color: #ffffff;\n" +
+                "            padding: 30px 20px;\n" +
+                "            text-align: center;\n" +
+                "        }\n" +
+                "        .header h1 {\n" +
+                "            margin: 0;\n" +
+                "            font-size: 24px;\n" +
+                "            font-weight: 600;\n" +
+                "            letter-spacing: 0.5px;\n" +
+                "        }\n" +
+                "        .header p {\n" +
+                "            margin: 5px 0 0 0;\n" +
+                "            font-size: 14px;\n" +
+                "            color: #94a3b8;\n" +
+                "        }\n" +
+                "        .content {\n" +
+                "            padding: 30px 40px;\n" +
+                "        }\n" +
+                "        .greeting {\n" +
+                "            font-size: 18px;\n" +
+                "            font-weight: 600;\n" +
+                "            margin-bottom: 20px;\n" +
+                "            color: #0f172a;\n" +
+                "        }\n" +
+                "        .invitation-box {\n" +
+                "            background-color: #f0fdf4;\n" +
+                "            border-left: 4px solid #22c55e;\n" +
+                "            padding: 15px 20px;\n" +
+                "            border-radius: 4px;\n" +
+                "            margin-bottom: 25px;\n" +
+                "            font-size: 15px;\n" +
+                "            line-height: 1.6;\n" +
+                "            color: #166534;\n" +
+                "        }\n" +
+                "        .section-title {\n" +
+                "            font-size: 14px;\n" +
+                "            text-transform: uppercase;\n" +
+                "            letter-spacing: 1px;\n" +
+                "            color: #64748b;\n" +
+                "            margin-bottom: 12px;\n" +
+                "            font-weight: bold;\n" +
+                "            border-bottom: 1px solid #f1f5f9;\n" +
+                "            padding-bottom: 6px;\n" +
+                "        }\n" +
+                "        .info-grid {\n" +
+                "            width: 100%;\n" +
+                "            border-collapse: collapse;\n" +
+                "            margin-bottom: 25px;\n" +
+                "        }\n" +
+                "        .info-grid td {\n" +
+                "            padding: 10px 0;\n" +
+                "            vertical-align: top;\n" +
+                "            font-size: 15px;\n" +
+                "        }\n" +
+                "        .info-label {\n" +
+                "            color: #64748b;\n" +
+                "            width: 35%;\n" +
+                "            font-weight: 500;\n" +
+                "        }\n" +
+                "        .info-value {\n" +
+                "            color: #0f172a;\n" +
+                "            font-weight: 600;\n" +
+                "        }\n" +
+                "        .footer {\n" +
+                "            background-color: #f8fafc;\n" +
+                "            padding: 20px;\n" +
+                "            text-align: center;\n" +
+                "            font-size: 13px;\n" +
+                "            color: #64748b;\n" +
+                "            border-top: 1px solid #f1f5f9;\n" +
+                "        }\n" +
+                "        .footer p {\n" +
+                "            margin: 5px 0;\n" +
+                "        }\n" +
+                "        .btn {\n" +
+                "            display: inline-block;\n" +
+                "            background: #2563eb;\n" +
+                "            color: #ffffff !important;\n" +
+                "            padding: 12px 25px;\n" +
+                "            border-radius: 6px;\n" +
+                "            text-decoration: none;\n" +
+                "            font-weight: 600;\n" +
+                "            margin-top: 10px;\n" +
+                "            font-size: 15px;\n" +
+                "            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);\n" +
+                "        }\n" +
+                "    </style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "    <div class=\"container\">\n" +
+                "        <div class=\"header\">\n" +
+                "            <h1>MediCore EMR</h1>\n" +
+                "            <p>Hệ Thống Quản Lý Hồ Sơ Bệnh Án Điện Tử</p>\n" +
+                "        </div>\n" +
+                "        <div class=\"content\">\n" +
+                "            <div class=\"greeting\">Kính chào Ông/Bà " + patientName + ",</div>\n" +
+                "            <div class=\"invitation-box\">\n" +
+                "                Bác sĩ phụ trách đã bắt đầu phiên khám cho lịch hẹn của Ông/Bà. Kính mời Ông/Bà di chuyển vào phòng khám để được bác sĩ trực tiếp thăm khám.\n" +
+                "            </div>\n" +
+                "            \n" +
+                "            <div class=\"section-title\">Thông tin bệnh nhân</div>\n" +
+                "            <table class=\"info-grid\">\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Mã bệnh nhân:</td>\n" +
+                "                    <td class=\"info-value\">" + patientCode + "</td>\n" +
+                "                </tr>\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Họ và tên:</td>\n" +
+                "                    <td class=\"info-value\">" + patientName + "</td>\n" +
+                "                </tr>\n" +
+                "            </table>\n" +
+                "\n" +
+                "            <div class=\"section-title\">Thông tin lịch hẹn</div>\n" +
+                "            <table class=\"info-grid\">\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Bác sĩ khám:</td>\n" +
+                "                    <td class=\"info-value\">" + doctorName + "</td>\n" +
+                "                </tr>\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Chuyên khoa:</td>\n" +
+                "                    <td class=\"info-value\">" + specialtyName + "</td>\n" +
+                "                </tr>\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Ngày khám:</td>\n" +
+                "                    <td class=\"info-value\">" + appointmentDate + "</td>\n" +
+                "                </tr>\n" +
+                "                <tr>\n" +
+                "                    <td class=\"info-label\">Khung giờ:</td>\n" +
+                "                    <td class=\"info-value\">" + timeSlot + "</td>\n" +
+                "                </tr>\n" +
+                "            </table>\n" +
+                "            \n" +
+                "            <div style=\"text-align: center; margin-top: 10px;\">\n" +
+                "                <a href=\"http://localhost:3000/dashboard/appointments\" class=\"btn\">Xem chi tiết lịch hẹn</a>\n" +
+                "            </div>\n" +
+                "        </div>\n" +
+                "        <div class=\"footer\">\n" +
+                "            <p>Email này được gửi tự động từ hệ thống quản lý phòng khám MediCore.</p>\n" +
+                "            <p>Vui lòng không trả lời trực tiếp email này.</p>\n" +
+                "            <p>&copy; 2026 MediCore. All rights reserved.</p>\n" +
+                "        </div>\n" +
+                "    </div>\n" +
+                "</body>\n" +
+                "</html>";
     }
 
     private void ensureOwner(Notification notification, String email) {

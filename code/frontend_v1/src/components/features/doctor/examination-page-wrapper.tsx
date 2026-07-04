@@ -10,12 +10,23 @@ interface ExaminationPageWrapperProps {
 }
 
 export function ExaminationPageWrapper({ patientId, appointmentId }: ExaminationPageWrapperProps) {
-  const { patients, appointments, ensurePatientsLoaded, ensureAppointmentsLoaded } = useData()
+  const {
+    patients,
+    appointments,
+    doctors,
+    specialties,
+    ensurePatientsLoaded,
+    ensureAppointmentsLoaded,
+    ensureDoctorsLoaded,
+    ensureSpecialtiesLoaded,
+  } = useData()
 
   useEffect(() => {
     ensurePatientsLoaded()
     ensureAppointmentsLoaded()
-  }, [ensurePatientsLoaded, ensureAppointmentsLoaded])
+    ensureDoctorsLoaded()
+    ensureSpecialtiesLoaded()
+  }, [ensurePatientsLoaded, ensureAppointmentsLoaded, ensureDoctorsLoaded, ensureSpecialtiesLoaded])
 
   const patient = patients.find((p) => p.id === patientId)
   const today = new Date().toISOString().split("T")[0]
@@ -47,5 +58,9 @@ export function ExaminationPageWrapper({ patientId, appointmentId }: Examination
     createdAt: new Date().toISOString(),
   }
 
-  return <ExaminationPage patient={displayPatient} appointment={appointment} />
+  const doctor = appointment ? doctors.find((d) => d.id === appointment.doctorId) : undefined
+  const specialtyId = appointment?.specialtyId || doctor?.specialtyId
+  const specialty = specialtyId ? specialties.find((s) => s.id === specialtyId) : undefined
+
+  return <ExaminationPage patient={displayPatient} appointment={appointment} specialty={specialty} />
 }

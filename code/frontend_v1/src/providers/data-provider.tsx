@@ -23,6 +23,7 @@ import type {
   ScheduleResponse,
   ShiftType,
   Specialty,
+  SpecialtyExamTemplate,
   SpecialtyResponse,
 } from "@/types/medical"
 import {
@@ -102,6 +103,12 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 const toNumber = (value: string) => Number.parseInt(value, 10)
 const safeNumber = (value: number | undefined, fallback = 0) => value ?? fallback
 
+const emptyExamTemplate: SpecialtyExamTemplate = { fields: [] }
+
+const normalizeExamTemplate = (template?: SpecialtyExamTemplate | null): SpecialtyExamTemplate => ({
+  fields: Array.isArray(template?.fields) ? template.fields : [],
+})
+
 const mapSpecialty = (s: SpecialtyResponse, fallback?: Partial<Specialty>): Specialty => ({
   id: String(s.id),
   name: s.name,
@@ -109,6 +116,7 @@ const mapSpecialty = (s: SpecialtyResponse, fallback?: Partial<Specialty>): Spec
   description: fallback?.description ?? "",
   doctorCount: Number(s.doctorCount ?? fallback?.doctorCount ?? 0),
   status: fallback?.status ?? "active",
+  examTemplate: normalizeExamTemplate(s.examTemplate ?? fallback?.examTemplate ?? emptyExamTemplate),
 })
 
 const mapDoctor = (d: DoctorResponse, fallback?: Partial<Doctor>): Doctor => ({
@@ -512,7 +520,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     addSpecialty: async (s) => {
       try {
-        const created = await specialtiesApi.create({ name: s.name })
+        const created = await specialtiesApi.create({ name: s.name, examTemplate: normalizeExamTemplate(s.examTemplate) })
         setSpecialties((p) => [...p, mapSpecialty(created, s)])
       } catch (error) {
         console.error("Không thể tạo chuyên khoa", error)
@@ -520,7 +528,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     updateSpecialty: async (id, s) => {
       try {
-        const updated = await specialtiesApi.update(id, { name: s.name })
+        const updated = await specialtiesApi.update(id, { name: s.name, examTemplate: normalizeExamTemplate(s.examTemplate) })
         setSpecialties((p) => p.map((x) => (x.id === id ? mapSpecialty(updated, { ...x, ...s }) : x)))
       } catch (error) {
         console.error("Không thể cập nhật chuyên khoa", error)
