@@ -8,9 +8,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     token = localStorage.getItem("token")
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((options?.headers as Record<string, string>) || {}),
+  const headers: Record<string, string> = {}
+  if (!(typeof FormData !== "undefined" && options?.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json"
+  }
+  if (options?.headers) {
+    Object.assign(headers, options.headers)
   }
 
   if (token) {
@@ -62,12 +65,12 @@ export const authApi = {
 export const specialtiesApi = {
   list: () => request<any[]>("/specialties"),
   get: (id: string | number) => request<any>(`/specialties/${id}`),
-  create: (data: { name: string }) =>
+  create: (data: { name: string; examTemplate?: any }) =>
     request<any>("/specialties", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  update: (id: string | number, data: { name: string }) =>
+  update: (id: string | number, data: { name: string; examTemplate?: any }) =>
     request<any>(`/specialties/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -182,6 +185,24 @@ export const patientsApi = {
     request<void>(`/patients/${id}`, {
       method: "DELETE",
     }),
+}
+
+export const medicalRecordsApi = {
+  create: (data: any) =>
+    request<any>("/clinical/medical-records", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getByAppointment: (appointmentId: string | number) =>
+    request<any>(`/clinical/medical-records/appointment/${appointmentId}`),
+  uploadPdf: (appointmentId: string | number, pdfBlob: Blob) => {
+    const formData = new FormData()
+    formData.append("file", pdfBlob, `record-${appointmentId}.pdf`)
+    return request<any>(`/clinical/medical-records/appointment/${appointmentId}/upload-pdf`, {
+      method: "POST",
+      body: formData,
+    })
+  },
 }
 
 export const appointmentsApi = {

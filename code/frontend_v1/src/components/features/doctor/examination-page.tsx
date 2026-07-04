@@ -15,11 +15,19 @@ import {
   Lightbulb,
   Sparkles,
   User,
+  Check,
+  Bot,
+  Send,
+  FileText,
+  Activity,
+  Pill,
 } from "lucide-react";
 import ExaminationPrintPreview from "./examination-print-preview"
+import { ChatInput, ChatInputTextArea, ChatInputSubmit } from "@/components/base/ui/chat-input"
 import { Button } from "@/components/base/ui/button"
 import { Input } from "@/components/base/ui/input"
 import { Textarea } from "@/components/base/ui/textarea"
+import { Checkbox } from "@/components/base/ui/checkbox"
 import { Card } from "@/components/base/ui/card"
 import {
   Select,
@@ -29,17 +37,22 @@ import {
   SelectValue,
 } from "@/components/base/ui/select"
 import { useData } from "@/providers/data-provider"
-import type { Appointment, Patient } from "@/types/medical"
+import { useAuth } from "@/providers/auth-provider"
+import type { Appointment, Patient, Specialty, SpecialtyExamTemplateField } from "@/types/medical"
 import { useReactToPrint } from "react-to-print"
 import { useRef } from "react"
+import { medicalRecordsApi } from "@/lib/api"
+import { generateMedicalRecordPdf } from "@/lib/generate-medical-record-pdf"
 
 interface ExaminationPageProps {
   patient: Patient
   appointment?: Appointment | null
+  specialty?: Specialty
 }
 
-export function ExaminationPage({ patient, appointment }: ExaminationPageProps) {
+export function ExaminationPage({ patient, appointment, specialty }: ExaminationPageProps) {
   const router = useRouter()
+  const { user } = useAuth()
   const {
     icdCodes,
     medicines,
@@ -63,6 +76,11 @@ export function ExaminationPage({ patient, appointment }: ExaminationPageProps) 
   const [symptoms, setSymptoms] = useState("")
   const [physicalExam, setPhysicalExam] = useState("")
   const [testResults, setTestResults] = useState("")
+  const [specialtyExamValues, setSpecialtyExamValues] = useState<Record<string, unknown>>({})
+
+  useEffect(() => {
+    setSpecialtyExamValues({})
+  }, [specialty?.id])
 
   const [previewMode, setPreviewMode] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
@@ -74,15 +92,10 @@ export function ExaminationPage({ patient, appointment }: ExaminationPageProps) 
       sender: "ai",
       text: `Xin chào bác sĩ 👋
 
-Tôi có thể hỗ trợ:
-
-• Gợi ý chẩn đoán
-
-• Tóm tắt bệnh án
-
-• Đề xuất xét nghiệm
-
-• Kiểm tra tương tác thuốc`,
+Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
+• Tóm tắt lịch sử khám của bệnh nhân
+• Hướng dẫn tra cứu phân loại mã ICD-10
+• Cung cấp tài liệu y khoa tham khảo nhanh`,
     },
   ]);
 
@@ -107,10 +120,7 @@ Tôi có thể hỗ trợ:
         ...prev,
         {
           sender: "ai",
-          text:
-            "Đây là phản hồi giả lập của MediCore AI.\n\nTriệu chứng: " +
-            question +
-            "\n\nKhuyến nghị: Khám lâm sàng thêm trước khi kết luận.",
+          text: `Đây là thông tin y khoa tham khảo giả lập từ hệ thống.\n\nYêu cầu tra cứu: "${question}"\n\nHướng dẫn tham khảo:\n- Xem xét các chỉ định tương tác thuốc theo hướng dẫn của nhà sản xuất.\n- Đối chiếu phác đồ điều trị tiêu chuẩn của Bộ Y tế cho mã bệnh lý liên quan.\n\n*Khuyến cáo: Các thông tin trên chỉ mang tính chất tham khảo học thuật hỗ trợ quy trình khám, bác sĩ chịu trách nhiệm đưa ra quyết định lâm sàng cuối cùng.*`,
         },
       ]);
     }, 800);
@@ -123,6 +133,7 @@ Tôi có thể hỗ trợ:
   >([])
   const [prescriptionNotes, setPrescriptionNotes] = useState("")
   const [selectedTemplateId, setSelectedTemplateId] = useState("")
+  const [isCompleting, setIsCompleting] = useState(false)
 
   const treatmentTemplates = [
     { id: "1", name: "Combo cảm cúm" },
@@ -136,6 +147,84 @@ Tôi có thể hỗ trợ:
 
   const selectedIcd = icdCodes.find((c) => c.id === icdCode)
   const selectedMedicine = medicines.find((m) => m.id === selectedMedicineId)
+  const specialtyFields = specialty?.examTemplate?.fields ?? []
+
+  const setSpecialtyExamValue = (fieldId: string, value: unknown) => {
+    setSpecialtyExamValues((prev) => ({ ...prev, [fieldId]: value }))
+  }
+
+  const isSpecialtyFieldEmpty = (field: SpecialtyExamTemplateField) => {
+    const value = specialtyExamValues[field.id]
+    if (field.type === "checkbox") return value !== true
+    return value === undefined || value === null || String(value).trim() === ""
+  }
+
+  const renderSpecialtyField = (field: SpecialtyExamTemplateField) => {
+    const value = specialtyExamValues[field.id]
+    const label = `${field.label}${field.required ? " *" : ""}`
+
+    if (field.type === "textarea") {
+      return (
+        <Textarea
+          value={String(value ?? "")}
+          onChange={(e) => setSpecialtyExamValue(field.id, e.target.value)}
+          placeholder={`Nhập ${field.label.toLowerCase()}`}
+          rows={3}
+          className="w-full bg-card"
+        />
+      )
+    }
+
+    if (field.type === "number") {
+      return (
+        <Input
+          type="number"
+          value={String(value ?? "")}
+          onChange={(e) => setSpecialtyExamValue(field.id, e.target.value)}
+          placeholder={`Nhập ${field.label.toLowerCase()}`}
+          className="w-full bg-card"
+        />
+      )
+    }
+
+    if (field.type === "select") {
+      return (
+        <Select value={String(value ?? "")} onValueChange={(nextValue) => setSpecialtyExamValue(field.id, nextValue)}>
+          <SelectTrigger className="w-full bg-card">
+            <SelectValue placeholder={`Chọn ${field.label.toLowerCase()}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options ?? []).map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    }
+
+    if (field.type === "checkbox") {
+      return (
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <Checkbox
+            checked={value === true}
+            onCheckedChange={(checked) => setSpecialtyExamValue(field.id, checked === true)}
+          />
+          {label}
+        </label>
+      )
+    }
+
+    return (
+      <Input
+        value={String(value ?? "")}
+        onChange={(e) => setSpecialtyExamValue(field.id, e.target.value)}
+        placeholder={`Nhập ${field.label.toLowerCase()}`}
+        className="w-full bg-card"
+      />
+    )
+  }
 
   const handleAddMedicine = () => {
     if (selectedMedicineId && selectedMedicine && quantity && dosage) {
@@ -174,17 +263,96 @@ Tôi có thể hỗ trợ:
     contentRef: printRef,
     documentTitle: `PhieuKham_${patient.name}`,
   });
-  const handleSaveExamination = async () => {
+  const handleSaveExamination = async (complete: boolean = false) => {
     if (!icdCode || !mainDiagnosis || !symptoms || !physicalExam || !treatment) {
       alert("Vui lòng điền đầy đủ các trường bắt buộc")
       return
     }
+    const missingSpecialtyField = specialtyFields.find((field) => field.required && isSpecialtyFieldEmpty(field))
+    if (missingSpecialtyField) {
+      alert(`Vui lòng điền mục chuyên khoa bắt buộc: ${missingSpecialtyField.label}`)
+      return
+    }
+    if (!appointment?.id) {
+      alert("Không tìm thấy lịch hẹn để lưu hồ sơ khám")
+      return
+    }
+
     const today = new Date().toISOString().split("T")[0]
-    const appointmentRecordId = appointment?.id ?? ""
-    const doctorId = appointment?.doctorId ?? "dr1"
+    const appointmentRecordId = appointment.id
+    const doctorId = appointment.doctorId ?? "dr1"
 
     try {
-      // Save examination record
+      if (complete) setIsCompleting(true)
+
+      const recordPayload = {
+        appointmentId: Number(appointment.id),
+        symptoms,
+        physicalExamination: physicalExam,
+        testResults: testResults || undefined,
+        mainDiagnosis,
+        clinicalNote: examinationNotes || undefined,
+        historySummary: appointment.symptomsInitial || undefined,
+        careAdvice: treatment,
+        followUpDate: followUpDate || undefined,
+        diagnoses: selectedIcd?.code ? [{ icd10Code: selectedIcd.code, isPrimary: true }] : [],
+        medicines: prescriptionItems.map((item) => ({
+          medicineId: Number(item.medicineId),
+          quantity: item.quantity,
+          dosageInstruction: [item.dosage, item.notes].filter(Boolean).join(" - "),
+        })),
+        additionalData: {
+          specialtyExamValues,
+          specialtyExamTemplate: specialty?.examTemplate,
+          prescriptionNotes,
+        },
+      }
+
+      if (complete) {
+        const savedRecord = await medicalRecordsApi.create(recordPayload)
+        
+        try {
+          const pdfProps = {
+            patient: {
+              name: patient.name,
+              patientCode: patient.patientCode,
+              id: patient.id,
+              gender: patient.gender,
+              phone: patient.phone,
+              address: patient.address,
+              dateOfBirth: patient.dateOfBirth,
+            },
+            symptoms,
+            physicalExam,
+            examinationNotes,
+            diagnosis: mainDiagnosis,
+            icdCode: selectedIcd?.code ?? icdCode,
+            treatment,
+            followUpDate,
+            prescriptionItems: prescriptionItems.map((item) => ({
+              medicineName: item.medicineName,
+              quantity: String(item.quantity),
+              unit: item.unit,
+              dosage: item.dosage,
+              notes: item.notes,
+            })),
+            prescriptionNotes,
+            specialtyFields,
+            specialtyExamValues,
+            doctorName: user?.name || undefined,
+            specialtyName: specialty?.name || undefined,
+            appointmentDate: appointment?.appointmentDate || undefined,
+            timeSlot: appointment?.timeSlot || undefined,
+            emrCode: savedRecord?.emrCode || undefined,
+          }
+          const pdfBlob = await generateMedicalRecordPdf(pdfProps)
+          await medicalRecordsApi.uploadPdf(Number(appointment.id), pdfBlob)
+        } catch (pdfError) {
+          console.error("Không thể tạo và tải lên PDF hồ sơ khám", pdfError)
+        }
+      }
+
+      // Save examination record in local cache for current screen/session
       addExaminationRecord({
         appointmentId: appointmentRecordId,
         patientId: patient.id,
@@ -198,10 +366,12 @@ Tôi có thể hỗ trợ:
         treatment,
         followUpDate: followUpDate || undefined,
         notes: examinationNotes,
+        specialtyExamValues,
+        specialtyExamTemplate: specialty?.examTemplate,
         createdAt: today,
       })
 
-      // Save prescription if there are items
+      // Save prescription in local cache for current screen/session
       if (prescriptionItems.length > 0) {
         addPrescription({
           appointmentId: appointmentRecordId,
@@ -210,28 +380,34 @@ Tôi có thể hỗ trợ:
           prescriptionDate: today,
           items: prescriptionItems,
           notes: prescriptionNotes,
-          status: "issued",
+          status: complete ? "issued" : "draft",
         })
       }
 
-      if (appointment) {
+      if (complete) {
+        await updatePatient(patient.id, {
+          ...patient,
+          status: "completed",
+        })
+
+        alert("Hoàn thành khám bệnh thành công. Hồ sơ PDF đã được lưu.")
+        router.push("/doctor/waiting-patients")
+      } else {
         await updateAppointment(appointment.id, {
           ...appointment,
-          status: "DONE",
+          status: "IN_PROGRESS",
         })
+        await updatePatient(patient.id, {
+          ...patient,
+          status: "in-examination",
+        })
+        alert("Lưu thông tin khám bệnh thành công")
       }
-
-      // Update patient status
-      await updatePatient(patient.id, {
-        ...patient,
-        status: "completed",
-      })
-
-      alert("Lưu khám bệnh thành công")
-      router.push("/doctor/waiting-patients")
     } catch (error) {
       console.error("Không thể lưu khám bệnh", error)
-      alert("Không thể lưu khám bệnh. Vui lòng thử lại.")
+      alert(complete ? "Không thể hoàn thành khám hoặc lưu PDF. Vui lòng thử lại." : "Không thể lưu khám bệnh. Vui lòng thử lại.")
+    } finally {
+      if (complete) setIsCompleting(false)
     }
   }
 
@@ -364,13 +540,25 @@ Tôi có thể hỗ trợ:
             </Button>
           )}
 
-          {/* Lưu */}
+          {/* Lưu nháp */}
           <Button
-            onClick={handleSaveExamination}
-            className="bg-green-700 hover:bg-green-800"
+            variant="outline"
+            onClick={() => handleSaveExamination(false)}
+            disabled={isCompleting}
+            className="border-green-700 text-green-700 hover:bg-green-50 hover:text-green-800"
           >
             <Save className="w-4 h-4 mr-2" />
             Lưu khám bệnh
+          </Button>
+
+          {/* Hoàn thành */}
+          <Button
+            onClick={() => handleSaveExamination(true)}
+            disabled={isCompleting}
+            className="bg-green-700 hover:bg-green-800 text-white"
+          >
+            <Check className="w-4 h-4 mr-2" />
+            {isCompleting ? "Đang lưu hồ sơ và tạo PDF..." : "Hoàn thành"}
           </Button>
 
         </div>
@@ -390,14 +578,15 @@ Tôi có thể hỗ trợ:
                 patient={patient}
                 symptoms={symptoms}
                 physicalExam={physicalExam}
-                testResults={testResults}
                 examinationNotes={examinationNotes}
                 diagnosis={mainDiagnosis}
                 icdCode={selectedIcd?.code ?? ""}
                 treatment={treatment}
                 followUpDate={followUpDate}
-                prescriptionItems={prescriptionItems}
+                prescriptionItems={prescriptionItems.map((item) => ({ ...item, quantity: String(item.quantity) }))}
                 prescriptionNotes={prescriptionNotes}
+                specialtyFields={specialtyFields}
+                specialtyExamValues={specialtyExamValues}
                 onBack={() => setPreviewMode(false)}
                 onPrint={handlePrint}
               />
@@ -459,7 +648,7 @@ Tôi có thể hỗ trợ:
                           <span className="font-semibold">
                             Mã BN:
                           </span>{" "}
-                          {patient.id}
+                          {patient.patientCode || patient.id}
                         </p>
 
                         <p className="mt-1">
@@ -517,7 +706,7 @@ Tôi có thể hỗ trợ:
                         <span className="font-semibold">
                           Mã bệnh nhân:
                         </span>{" "}
-                        {patient.id}
+                        {patient.patientCode || patient.id}
                       </div>
 
                       <div>
@@ -591,24 +780,32 @@ Tôi có thể hỗ trợ:
                   {/* Header */}
                   <div className="bg-muted/30 px-6 py-4">
                     <h2 className="text-base font-semibold text-foreground">
-                      III. CHUYÊN KHOA
+                      III. CHUYÊN KHOA{specialty?.name ? `: ${specialty.name.toUpperCase()}` : ""}
                     </h2>
                   </div>
 
                   {/* Content */}
                   <div className="p-8 space-y-6">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-2">
-                        Kết quả xét nghiệm & Chẩn đoán hình ảnh
-                      </label>
-                      <Textarea
-                        value={testResults}
-                        onChange={(e) => setTestResults(e.target.value)}
-                        placeholder="Điền kết quả xét nghiệm sinh hóa, huyết học, siêu âm, điện tim (nếu có)..."
-                        rows={3}
-                        className="w-full bg-card"
-                      />
-                    </div>
+                    {specialtyFields.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {specialtyFields.map((field) => (
+                          <div key={field.id} className={field.type === "textarea" ? "md:col-span-2" : ""}>
+                            {field.type !== "checkbox" && (
+                              <label className="block text-xs font-medium text-muted-foreground mb-2">
+                                {field.label}{field.required ? " *" : ""}
+                              </label>
+                            )}
+                            {renderSpecialtyField(field)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Chuyên khoa này chưa có template khám riêng.
+                      </p>
+                    )}
+
+
 
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-2">
@@ -944,117 +1141,83 @@ Tôi có thể hỗ trợ:
 
         </div>
         <div className="lg:col-span-4">
-          <Card className="sticky top-6 h-[calc(100vh-200px)] flex flex-col rounded-xl shadow-sm">
+          <Card className="sticky top-6 h-[calc(100vh-210px)] min-h-[550px] flex flex-col rounded-2xl border border-border/80 shadow-md bg-card overflow-hidden">
 
             {/* Header */}
-            <div className="border-b px-5 py-4">
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                MediCore AI
-              </h2>
-              <div className="border-b px-5 py-4 mb-3"></div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendQuickQuestion("Tóm tắt bệnh án")}
-                >
-                  Tóm tắt
-                </Button>
- 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendQuickQuestion("Gợi ý chuẩn đoán")}
-                >
-                  Chẩn đoán
-                </Button>
- 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendQuickQuestion("Đề xuất xét nghệm")}
-                >
-                  Xét nghiệm
-                </Button>
- 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendQuickQuestion("Đánh giá đơn thuốc")}
-                >
-                  Thuốc
-                </Button>
- 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendQuickQuestion("Giải thích mã ICD-10")}
-                >
-                  ICD-10
-                </Button>
- 
+            <div className="p-3 border-b border-border bg-muted/10">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <h3 className="font-semibold text-xs text-foreground uppercase tracking-wider">
+                  MediCore AI Copilot
+                </h3>
               </div>
-            </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-
-              {messages.map((message, index) => (
-
-                <div
-                  key={index}
-                  className={`flex ${message.sender === "doctor"
-                    ? "justify-end"
-                    : "justify-start"
-                    }`}
-                >
-
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-line ${message.sender === "doctor"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                      }`}
+              {/* Quick Actions Grid */}
+              <div className="mt-3 flex flex-wrap gap-1">
+                {[
+                  { label: "Tóm tắt lịch sử khám của bệnh nhân", text: "Lịch sử khám" },
+                  { label: "Giải thích mã ICD-10", text: "Tra ICD-10" },
+                  { label: "Tra cứu tương tác thuốc", text: "Tương tác thuốc" },
+                ].map((btn, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => sendQuickQuestion(btn.label)}
+                    className="px-2 py-1 rounded-md text-[11px] font-medium bg-secondary hover:bg-emerald-600 hover:text-white transition-all border border-border/40 active:scale-95 cursor-pointer"
                   >
-
-                    {message.text}
-
-                  </div>
-
-                </div>
-
-              ))}
-
+                    {btn.text}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Input */}
-            <div className="border-t p-4">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+              {messages.map((message, index) => {
+                const isDoctor = message.sender === "doctor";
+                return (
+                  <div
+                    key={index}
+                    className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm leading-relaxed whitespace-pre-wrap ${isDoctor
+                        ? "bg-green-700 text-white rounded-tr-none"
+                        : "bg-white border border-border text-foreground rounded-tl-none"
+                        }`}
+                    >
+                      {message.text}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-              <div className="flex gap-2">
-
-                <Input
-                  value={input ?? ""}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Nhập câu hỏi cho AI..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSendMessage()
-                    }
-                  }}
+            {/* Chat Input Area */}
+            <div className="p-2 border-t border-border bg-muted/10">
+              <ChatInput
+                value={input ?? ""}
+                onChange={(e) => setInput(e.target.value)}
+                onSubmit={handleSendMessage}
+                variant="unstyled"
+                className="bg-card border border-border focus-within:ring-1 focus-within:ring-green-700 focus-within:border-green-700 rounded-xl p-1.5 flex flex-row items-center gap-2 w-full"
+              >
+                <ChatInputTextArea
+                  variant="unstyled"
+                  placeholder="Hỏi AI về lịch sử khám, tài liệu tham khảo..."
+                  className="min-h-[36px] max-h-[100px] text-xs py-1.5 flex-1"
+                  rows={1}
                 />
-
-                <Button onClick={handleSendMessage}>
-
-                  Gửi
-
-                </Button>
-
-              </div>
-
+                <ChatInputSubmit className="h-8 w-8 p-0 flex items-center justify-center shrink-0" />
+              </ChatInput>
             </div>
 
           </Card>
         </div>
       </div>
-    </div >
+    </div>
   )
 }

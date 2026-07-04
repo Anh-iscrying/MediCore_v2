@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useData } from "@/providers/data-provider"
 import { useAuth } from "@/providers/auth-provider"
-import type { Patient } from "@/types/medical"
+import { medicalRecordsApi } from "@/lib/api"
+import type { MedicalRecordResponse, Patient } from "@/types/medical"
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,15 @@ interface PatientRecordModalProps {
 export function PatientRecordModal({ patient, open, onOpenChange }: PatientRecordModalProps) {
   const { user } = useAuth()
   const { appointments, examinationRecords, ensureAppointmentsLoaded } = useData()
+  const [backendRecords, setBackendRecords] = useState<Record<string, MedicalRecordResponse>>({})
+  const [recordErrors, setRecordErrors] = useState<Record<string, string>>({})
+  const [loadingRecordIds, setLoadingRecordIds] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (open) ensureAppointmentsLoaded()
   }, [open, ensureAppointmentsLoaded])
 
-  const patientAppointments = appointments
+  const patientAppointments = useMemo(() => appointments
     .filter((appointment) =>
       appointment.doctorId === String(user?.doctorId ?? "") &&
       (
@@ -43,7 +47,33 @@ export function PatientRecordModal({ patient, open, onOpenChange }: PatientRecor
       const dateCompare = new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()
       if (dateCompare !== 0) return dateCompare
       return (b.timeSlot ?? "").localeCompare(a.timeSlot ?? "")
-    })
+    }), [appointments, patient.id, patient.patientCode, user?.doctorId])
+
+  useEffect(() => {
+    if (!open || patientAppointments.length === 0) return
+
+    patientAppointments
+      .filter((appointment) => ["DONE", "COMPLETED"].includes(appointment.status))
+      .forEach((appointment) => {
+        const appointmentId = String(appointment.id)
+        if (backendRecords[appointmentId] || loadingRecordIds[appointmentId] || recordErrors[appointmentId]) return
+
+        setLoadingRecordIds((current) => ({ ...current, [appointmentId]: true }))
+        medicalRecordsApi.getByAppointment(appointment.id)
+          .then((record) => {
+            setBackendRecords((current) => ({ ...current, [appointmentId]: record }))
+          })
+          .catch((error) => {
+            setRecordErrors((current) => ({
+              ...current,
+              [appointmentId]: error instanceof Error ? error.message : "Không thể tải hồ sơ khám",
+            }))
+          })
+          .finally(() => {
+            setLoadingRecordIds((current) => ({ ...current, [appointmentId]: false }))
+          })
+      })
+  }, [open, patientAppointments, backendRecords, loadingRecordIds, recordErrors])
 
   const patientRecords = examinationRecords
     .filter((e) => e.patientId === patient.id)
@@ -83,6 +113,12 @@ export function PatientRecordModal({ patient, open, onOpenChange }: PatientRecor
       default:
         return "secondary"
     }
+  }
+
+  const formatSpecialtyValue = (value: unknown) => {
+    if (typeof value === "boolean") return value ? "Có" : "Không"
+    if (value === undefined || value === null || value === "") return "-"
+    return String(value)
   }
 
   return (
@@ -153,78 +189,60 @@ export function PatientRecordModal({ patient, open, onOpenChange }: PatientRecor
                   </div>
                 ) : (
                   patientAppointments.map((appointment) => {
-                    const record = patientRecords.find((item) => item.appointmentId === appointment.id)
+                    const backendRecord = backendRecords[String(appointment.id)]
+                    const localRecord = patientRecords.find((item) => item.appointmentId === appointment.id)
+                    const isRecordLoading = loadingRecordIds[String(appointment.id)]
+                    const recordError = recordErrors[String(appointment.id)]
 
                     return (
                       <Card key={appointment.id} className="p-4">
-                        <div className="grid gap-3">
+                        <div className="space-y-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-xs text-muted-foreground">Ngày khám</p>
-                              <p className="font-medium text-sm">
-                                {new Date(appointment.appointmentDate).toLocaleDateString("vi-VN")}
-                              </p>
-                              {appointment.timeSlot && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{appointment.timeSlot}</p>
-                              )}
+                              <p className="text-xs text-muted-foreground">Bệnh nhân</p>
+                              <p className="font-semibold text-base text-foreground">{patient.name}</p>
                             </div>
                             <Badge variant={getAppointmentStatusVariant(appointment.status)}>
                               {getAppointmentStatusText(appointment.status)}
                             </Badge>
                           </div>
 
-                          {appointment.symptomsInitial && (
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Triệu chứng ban đầu</p>
-                              <p className="text-sm text-foreground">{appointment.symptomsInitial}</p>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="rounded-lg border border-border bg-background p-3">
+                              <p className="text-xs text-muted-foreground mb-1">Ngày khám</p>
+                              <p className="font-medium text-sm">
+                                {new Date(appointment.appointmentDate).toLocaleDateString("vi-VN")}
+                              </p>
                             </div>
-                          )}
+                            <div className="rounded-lg border border-border bg-background p-3">
+                              <p className="text-xs text-muted-foreground mb-1">Khung giờ</p>
+                              <p className="font-medium text-sm">{appointment.timeSlot || "-"}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background p-3">
+                              <p className="text-xs text-muted-foreground mb-1">Chẩn đoán chính</p>
+                              <p className="font-medium text-sm">
+                                {backendRecord?.mainDiagnosis || backendRecord?.diagnosisName || localRecord?.mainDiagnosis || "Chưa có chẩn đoán"}
+                              </p>
+                            </div>
+                          </div>
 
-                          {record ? (
-                            <>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Chẩn đoán chính</p>
-                                <p className="font-medium text-sm">{record.mainDiagnosis}</p>
-                              </div>
-
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Triệu chứng khi khám</p>
-                                <p className="text-sm text-foreground">{record.symptoms}</p>
-                              </div>
-
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Khám lâm sàng</p>
-                                <p className="text-sm text-foreground">{record.physicalExamination}</p>
-                              </div>
-
-                              {record.testResults && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">Kết quả xét nghiệm</p>
-                                  <p className="text-sm text-foreground">{record.testResults}</p>
-                                </div>
-                              )}
-
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">Phương pháp điều trị</p>
-                                <p className="text-sm text-foreground">{record.treatment}</p>
-                              </div>
-
-                              {record.followUpDate && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">Tái khám</p>
-                                  <p className="text-sm font-medium text-primary">
-                                    {new Date(record.followUpDate).toLocaleDateString("vi-VN")}
-                                  </p>
-                                </div>
-                              )}
-
-                              {record.notes && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">Ghi chú</p>
-                                  <p className="text-sm text-foreground italic">{record.notes}</p>
-                                </div>
-                              )}
-                            </>
+                          {backendRecord?.pdfUrl ? (
+                            <a
+                              href={backendRecord.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex w-fit rounded-xl bg-green-700 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-green-800"
+                            >
+                              Xem hồ sơ PDF
+                            </a>
+                          ) : isRecordLoading ? (
+                            <p className="text-sm text-muted-foreground italic">Đang tải hồ sơ khám...</p>
+                          ) : recordError ? (
+                            <p className="text-sm text-muted-foreground italic">{recordError}</p>
+                          ) : backendRecord ? (
+                            <p className="text-sm text-muted-foreground italic">PDF chưa được tạo cho hồ sơ này</p>
+                          ) : localRecord ? (
+                            <p className="text-sm text-muted-foreground italic">Hồ sơ này mới có trong phiên hiện tại, chưa có PDF từ backend.</p>
                           ) : (
                             <p className="text-sm text-muted-foreground italic">Chưa có hồ sơ khám chi tiết cho lịch này</p>
                           )}

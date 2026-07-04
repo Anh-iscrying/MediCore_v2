@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BookingSuccessToast } from "@/components/dashboard/booking-success-toast"
+import { getMedicalRecordByAppointment, type MedicalRecord } from "@/lib/medical-records"
 
 
 interface DoctorSchedule {
@@ -130,6 +131,8 @@ export default function AppointmentsPage() {
   const [toastVariant, setToastVariant] = useState<"success" | "danger">("success")
   const [toastTitle, setToastTitle] = useState<string | undefined>(undefined)
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null)
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
+  const [isRecordLoading, setIsRecordLoading] = useState(false)
 
   const triggerToast = useCallback((message: string, variant: "success" | "danger" = "success", title?: string) => {
     setToastTitle(title)
@@ -215,8 +218,8 @@ export default function AppointmentsPage() {
     const docsForSpecialty = docsData.filter((doc: Doctor) => doc.specialty === specialty)
     const docsWithSlot = preferredSlot
       ? docsForSpecialty.filter((doc: Doctor) =>
-          doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && s.time_slot === preferredSlot && isSlotBookable(date, s.time_slot))
-        )
+        doc.doctor_schedules.some(s => s.work_date === date && !s.is_booked && s.time_slot === preferredSlot && isSlotBookable(date, s.time_slot))
+      )
       : []
 
     if (docsWithSlot.length > 0) {
@@ -454,6 +457,19 @@ export default function AppointmentsPage() {
     }
   }
 
+  const handleViewRecord = async (appointment: Appointment) => {
+    setIsRecordLoading(true)
+    try {
+      const record = await getMedicalRecordByAppointment(appointment.id)
+      setSelectedRecord(record)
+    } catch (err) {
+      console.error("Failed to load medical record:", err)
+      triggerToast(err instanceof Error ? err.message : "Không thể tải hồ sơ khám.", "danger", "Lỗi hồ sơ")
+    } finally {
+      setIsRecordLoading(false)
+    }
+  }
+
   const handleCancelAppointment = async () => {
     if (!appointmentToCancel) return
 
@@ -543,6 +559,69 @@ export default function AppointmentsPage() {
               >
                 Có
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0e0f0c]/30 px-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-none max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{selectedRecord.emrCode}</p>
+                <h3 className="mt-1 text-xl font-sans font-black text-foreground tracking-tight">
+                  {selectedRecord.mainDiagnosis || selectedRecord.diagnosisName || "Hồ sơ khám"}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {selectedRecord.doctorName || "Bác sĩ"} • {selectedRecord.appointmentDate || ""} {selectedRecord.timeSlot ? `• ${selectedRecord.timeSlot}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRecord(null)}
+                className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Triệu chứng</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{selectedRecord.symptoms || "Chưa có thông tin"}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Khám lâm sàng</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{selectedRecord.physicalExamination || "Chưa có thông tin"}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-4 md:col-span-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hướng dẫn điều trị</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{selectedRecord.careAdvice || "Chưa có thông tin"}</p>
+              </div>
+              {selectedRecord.followUpDate && (
+                <div className="rounded-xl border border-border bg-background p-4 md:col-span-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ngày tái khám</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#454745] font-medium">{selectedRecord.followUpDate}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              {selectedRecord.pdfUrl ? (
+                <a
+                  href={selectedRecord.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl bg-primary hover:bg-[#cdffad] px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors cursor-pointer border border-primary"
+                >
+                  Xem PDF
+                </a>
+              ) : (
+                <span className="rounded-xl border border-border bg-background px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  PDF chưa được tạo
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -792,9 +871,18 @@ export default function AppointmentsPage() {
                           )}>
                             {isConfirmedStatus(appointment.status) ? "ĐÃ XÁC NHẬN" :
                               isInProgressStatus(appointment.status) ? "ĐANG KHÁM" :
-                                isWaitingStatus(appointment.status) ? "ĐANG CHỜ" :
+                                isWaitingStatus(appointment.status) ? "ĐANG CHỜ KHÁM" :
                                   isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
                           </span>
+                          {isCompletedStatus(appointment.status) && (
+                            <button
+                              onClick={() => handleViewRecord(appointment)}
+                              disabled={isRecordLoading}
+                              className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors disabled:opacity-60"
+                            >
+                              {isRecordLoading ? "Đang tải" : "Xem hồ sơ khám"}
+                            </button>
+                          )}
                           {isPatientCancellableStatus(appointment.status) && isAppointmentCancellable(appointment) && (
                             <button
                               onClick={() => setAppointmentToCancel(appointment)}

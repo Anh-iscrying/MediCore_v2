@@ -38,10 +38,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // CHỈ ĐỂ topic và queue ở đây thôi bạn nhé
-        config.enableSimpleBroker("/topic", "/queue"); 
-        
+        config.enableSimpleBroker("/topic", "/queue");
+
         config.setApplicationDestinationPrefixes("/app");
-        
+
         // Dòng này mới là dòng quan trọng để định nghĩa tiền tố cho User
         config.setUserDestinationPrefix("/user");
     }
@@ -58,7 +58,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         return new HandshakeInterceptor() {
             @Override
             public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                           WebSocketHandler wsHandler, Map<String, Object> attributes) {
+                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
                 if (request instanceof ServletServerHttpRequest servletRequest
                         && servletRequest.getServletRequest().getCookies() != null) {
                     for (Cookie cookie : servletRequest.getServletRequest().getCookies()) {
@@ -73,7 +73,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
             @Override
             public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                       WebSocketHandler wsHandler, Exception exception) {
+                    WebSocketHandler wsHandler, Exception exception) {
             }
         };
     }
@@ -85,10 +85,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-                
+
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
-                    String token = authHeader != null && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : null;
+                    String token = authHeader != null && authHeader.startsWith("Bearer ") ? authHeader.substring(7)
+                            : null;
                     if (token == null && accessor.getSessionAttributes() != null) {
                         Object cookieToken = accessor.getSessionAttributes().get("accessToken");
                         token = cookieToken instanceof String ? (String) cookieToken : null;
@@ -97,7 +98,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         if (jwtTokenProvider.validateToken(token)) {
                             String email = jwtTokenProvider.getEmailFromToken(token);
                             // Lưu thông tin user vào phiên làm việc của WebSocket
-                            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+                            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(email,
+                                    null, Collections.emptyList());
                             accessor.setUser(auth);
                             log.info("WebSocket: User {} đã kết nối thành công", email);
                         } else {

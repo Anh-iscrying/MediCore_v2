@@ -16,7 +16,6 @@ interface Props {
     patient: any;
     symptoms: string;
     physicalExam: string;
-    testResults: string;
     examinationNotes: string;
     diagnosis: string;
     icdCode: string;
@@ -24,6 +23,8 @@ interface Props {
     followUpDate: string;
     prescriptionItems: PrescriptionItem[];
     prescriptionNotes: string;
+    specialtyFields?: any[];
+    specialtyExamValues?: Record<string, any>;
 
     onBack: () => void;
     onPrint: () => void;
@@ -33,7 +34,6 @@ export default function ExaminationPrintPreview({
     patient,
     symptoms,
     physicalExam,
-    testResults,
     examinationNotes,
     diagnosis,
     icdCode,
@@ -41,9 +41,14 @@ export default function ExaminationPrintPreview({
     followUpDate,
     prescriptionItems,
     prescriptionNotes,
+    specialtyFields = [],
+    specialtyExamValues = {},
     onBack,
     onPrint,
 }: Props) {
+    const now = new Date();
+    const formattedDate = `Ngày ${String(now.getDate()).padStart(2, '0')} tháng ${String(now.getMonth() + 1).padStart(2, '0')} năm ${now.getFullYear()}`;
+
     return (
         <div className="flex flex-col items-center bg-slate-100 min-h-screen py-8">
 
@@ -105,7 +110,7 @@ export default function ExaminationPrintPreview({
 
                         <p>
 
-                            Mã BN: <b>{patient.id}</b>
+                            Mã BN: <b>{patient.patientCode || patient.id}</b>
 
                         </p>
 
@@ -169,7 +174,7 @@ export default function ExaminationPrintPreview({
 
                                 </span>{" "}
 
-                                {patient.id}
+                                {patient.patientCode || patient.id}
 
                             </div>
 
@@ -215,271 +220,156 @@ export default function ExaminationPrintPreview({
 
                 </div>
 
-                {/* ================= Triệu chứng ================= */}
-
+                {/* ================= II. Triệu chứng & Khám lâm sàng ================= */}
                 <div className="mt-7 border">
-
                     <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        II. Triệu chứng
-
+                        II. Triệu chứng & Khám lâm sàng
                     </div>
-
-                    <div className="p-5 min-h-[90px] whitespace-pre-wrap">
-
-                        {symptoms || "................................................"}
-
-                    </div>
-
-                </div>
-
-                {/* ================= Khám ================= */}
-
-                <div className="mt-7 border">
-
-                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        III. Khám lâm sàng
-
-                    </div>
-
-                    <div className="p-5 min-h-[90px] whitespace-pre-wrap">
-
-                        {physicalExam || "................................................"}
-
-                    </div>
-
-                </div>
-                {/* ================= Cận lâm sàng ================= */}
-
-                <div className="mt-7 border">
-
-                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        IV. Cận lâm sàng
-
-                    </div>
-
-                    <div className="p-5 min-h-[90px] whitespace-pre-wrap">
-
-                        {testResults || "................................................"}
-
-                    </div>
-
-                </div>
-
-                {/* ================= Chẩn đoán ================= */}
-
-                <div className="mt-7 border">
-
-                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        V. Chẩn đoán
-
-                    </div>
-
                     <div className="p-5 space-y-4">
+                        <div>
+                            <span className="font-semibold text-gray-700">Triệu chứng chính:</span>
+                            <div className="mt-1 whitespace-pre-wrap pl-3 border-l-2 border-gray-200 text-gray-800">
+                                {symptoms || "................................................"}
+                            </div>
+                        </div>
+                        <div className="pt-2">
+                            <span className="font-semibold text-gray-700">Kết quả khám lâm sàng thể chất:</span>
+                            <div className="mt-1 whitespace-pre-wrap pl-3 border-l-2 border-gray-200 text-gray-800">
+                                {physicalExam || "................................................"}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                {/* ================= III. Khám chuyên khoa ================= */}
+                <div className="mt-7 border">
+                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
+                        III. Khám chuyên khoa
+                    </div>
+                    <div className="p-5">
+                        {specialtyFields && specialtyFields.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-y-2 gap-x-8 text-sm">
+                                {specialtyFields.map((field) => {
+                                    const value = specialtyExamValues?.[field.id];
+                                    let displayValue = "................................................";
+                                    if (value !== undefined && value !== null && String(value).trim() !== "") {
+                                        if (field.type === "checkbox") {
+                                            displayValue = value === true ? "Có" : "Không";
+                                        } else {
+                                            displayValue = String(value);
+                                        }
+                                    }
+                                    return (
+                                        <div key={field.id} className="flex gap-2 items-baseline">
+                                            <span className="font-semibold text-gray-600 shrink-0">{field.label}:</span>
+                                            <span className="border-b border-dotted border-gray-400 flex-grow leading-none pb-0.5">
+                                                {displayValue}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-gray-400 text-sm italic">
+                                Không có chỉ định khám chuyên khoa riêng.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ================= IV. Chẩn đoán ================= */}
+                <div className="mt-7 border">
+                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
+                        IV. Chẩn đoán
+                    </div>
+                    <div className="p-5 space-y-4">
                         <div className="grid grid-cols-2 gap-5">
-
                             <div>
-
-                                <span className="font-semibold">
-
-                                    ICD-10:
-
-                                </span>{" "}
-
-                                {icdCode || "................................"}
-
+                                <span className="font-semibold text-gray-700">ICD-10:</span>{" "}
+                                <span className="text-gray-800">{icdCode || "................................"}</span>
                             </div>
-
                             <div>
-
-                                <span className="font-semibold">
-
-                                    Kết luận:
-
-                                </span>{" "}
-
-                                {diagnosis || "................................"}
-
+                                <span className="font-semibold text-gray-700">Chẩn đoán bệnh chính:</span>{" "}
+                                <span className="text-gray-800">{diagnosis || "................................"}</span>
                             </div>
-
                         </div>
-
                     </div>
-
                 </div>
 
-                {/* ================= Đơn thuốc ================= */}
-
+                {/* ================= V. Điều trị & Đơn thuốc ================= */}
                 <div className="mt-7 border">
-
                     <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        VI. Đơn thuốc
-
+                        V. Điều trị & Đơn thuốc
                     </div>
+                    <div className="p-5 space-y-4">
+                        <div>
+                            <span className="font-semibold text-gray-700">Chỉ định điều trị & Lời dặn:</span>
+                            <div className="mt-1 whitespace-pre-wrap pl-3 border-l-2 border-gray-200 text-gray-800">
+                                {treatment || "........................................................"}
+                            </div>
+                        </div>
 
-                    <table className="w-full text-sm border-collapse">
-
-                        <thead>
-
-                            <tr className="bg-gray-50">
-
-                                <th className="border p-2 w-12">
-                                    STT
-                                </th>
-
-                                <th className="border p-2">
-                                    Tên thuốc
-                                </th>
-
-                                <th className="border p-2 w-20">
-                                    ĐVT
-                                </th>
-
-                                <th className="border p-2 w-20">
-                                    SL
-                                </th>
-
-                                <th className="border p-2">
-                                    Liều dùng
-                                </th>
-
-                                <th className="border p-2">
-                                    Ghi chú
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            {prescriptionItems.length === 0 ? (
-
-                                <tr>
-
-                                    <td
-                                        colSpan={6}
-                                        className="border p-8 text-center text-gray-400"
-                                    >
-
-                                        Chưa kê đơn thuốc
-
-                                    </td>
-
-                                </tr>
-
-                            ) : (
-
-                                prescriptionItems.map((item, index) => (
-
-                                    <tr key={index}>
-
-                                        <td className="border p-2 text-center">
-
-                                            {index + 1}
-
-                                        </td>
-
-                                        <td className="border p-2">
-
-                                            {item.medicineName}
-
-                                        </td>
-
-                                        <td className="border p-2 text-center">
-
-                                            {item.unit}
-
-                                        </td>
-
-                                        <td className="border p-2 text-center">
-
-                                            {item.quantity}
-
-                                        </td>
-
-                                        <td className="border p-2">
-
-                                            {item.dosage}
-
-                                        </td>
-
-                                        <td className="border p-2">
-
-                                            {item.notes || "-"}
-
-                                        </td>
-
+                        <div className="pt-2">
+                            <span className="font-semibold text-gray-700 block mb-2">Đơn thuốc kèm theo:</span>
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50">
+                                        <th className="border p-2 w-12 text-left">STT</th>
+                                        <th className="border p-2 text-left">Tên thuốc</th>
+                                        <th className="border p-2 w-20 text-center">ĐVT</th>
+                                        <th className="border p-2 w-20 text-center">SL</th>
+                                        <th className="border p-2 text-left">Liều dùng</th>
+                                        <th className="border p-2 text-left">Ghi chú</th>
                                     </tr>
-
-                                ))
-
-                            )}
-
-                        </tbody>
-
-                    </table>
-
-                    <div className="border-t p-4">
-
-                        <span className="font-semibold">
-
-                            Hướng dẫn sử dụng thuốc:
-
-                        </span>
-
-                        <div className="mt-2 whitespace-pre-wrap">
-
-                            {prescriptionNotes ||
-                                "........................................................"}
-
+                                </thead>
+                                <tbody>
+                                    {prescriptionItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="border p-8 text-center text-gray-400">
+                                                Chưa kê đơn thuốc
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        prescriptionItems.map((item, index) => (
+                                            <tr key={index}>
+                                                <td className="border p-2 text-center">{index + 1}</td>
+                                                <td className="border p-2 font-medium">{item.medicineName}</td>
+                                                <td className="border p-2 text-center">{item.unit}</td>
+                                                <td className="border p-2 text-center">{item.quantity}</td>
+                                                <td className="border p-2">{item.dosage}</td>
+                                                <td className="border p-2">{item.notes || "-"}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                            <div className="border-t p-3 bg-gray-50/50 mt-2">
+                                <span className="font-semibold text-gray-700">Hướng dẫn sử dụng thuốc:</span>
+                                <div className="mt-1 whitespace-pre-wrap text-gray-800">
+                                    {prescriptionNotes || "........................................................"}
+                                </div>
+                            </div>
                         </div>
 
+                        {followUpDate && (
+                            <div className="pt-2 border-t border-dashed border-gray-200 flex items-center gap-2">
+                                <span className="font-semibold text-gray-700">Hẹn tái khám vào ngày:</span>
+                                <span className="text-gray-800 font-medium">
+                                    {new Date(followUpDate).toLocaleDateString("vi-VN")}
+                                </span>
+                            </div>
+                        )}
                     </div>
-
                 </div>
 
-                {/* ================= Điều trị ================= */}
-
+                {/* ================= VI. Ghi chú của bác sĩ ================= */}
                 <div className="mt-7 border">
-
                     <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        VII. Điều trị
-
+                        VI. Ghi chú của bác sĩ
                     </div>
-
-                    <div className="p-5 min-h-[90px] whitespace-pre-wrap">
-
-                        {treatment ||
-                            "........................................................"}
-
+                    <div className="p-5 min-h-[90px] whitespace-pre-wrap text-gray-800">
+                        {examinationNotes || "........................................................"}
                     </div>
-
-                </div>
-
-                {/* ================= Ghi chú ================= */}
-
-                <div className="mt-7 border">
-
-                    <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-
-                        VIII. Ghi chú của bác sĩ
-
-                    </div>
-
-                    <div className="p-5 min-h-[90px] whitespace-pre-wrap">
-
-                        {examinationNotes ||
-                            "........................................................"}
-
-                    </div>
-
                 </div>
                 {/* ================= Footer ================= */}
 
@@ -491,7 +381,13 @@ export default function ExaminationPrintPreview({
 
                         <div className="text-center">
 
-                            <p className="font-semibold uppercase">
+                            <p className="invisible">
+
+                                {formattedDate}
+
+                            </p>
+
+                            <p className="font-semibold uppercase mt-2">
 
                                 Bệnh nhân
 
@@ -505,8 +401,6 @@ export default function ExaminationPrintPreview({
 
                             <div className="h-24"></div>
 
-                            <div className="border-t border-black w-52 mx-auto"></div>
-
                         </div>
 
                         {/* Bác sĩ */}
@@ -515,7 +409,7 @@ export default function ExaminationPrintPreview({
 
                             <p>
 
-                                Ngày ...... tháng ...... năm ......
+                                {formattedDate}
 
                             </p>
 
@@ -532,8 +426,6 @@ export default function ExaminationPrintPreview({
                             </p>
 
                             <div className="h-24"></div>
-
-                            <div className="border-t border-black w-52 mx-auto"></div>
 
                         </div>
 

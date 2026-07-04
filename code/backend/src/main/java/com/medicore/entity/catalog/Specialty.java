@@ -2,8 +2,11 @@ package com.medicore.entity.catalog;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "specialties")
@@ -21,4 +24,8 @@ public class Specialty {
 
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "exam_template", columnDefinition = "jsonb")
+    private Map<String, Object> examTemplate;
 }

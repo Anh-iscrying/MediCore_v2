@@ -1,3 +1,17 @@
+export type SpecialtyExamFieldType = "text" | "textarea" | "number" | "select" | "checkbox"
+
+export interface SpecialtyExamTemplateField {
+  id: string
+  label: string
+  type: SpecialtyExamFieldType
+  required?: boolean
+  options?: string[]
+}
+
+export interface SpecialtyExamTemplate {
+  fields: SpecialtyExamTemplateField[]
+}
+
 export interface Specialty {
   id: string
   name: string
@@ -5,6 +19,7 @@ export interface Specialty {
   description: string
   doctorCount: number
   status: "active" | "inactive"
+  examTemplate?: SpecialtyExamTemplate
 }
 
 export interface Doctor {
@@ -131,18 +146,22 @@ export interface ExaminationRecord {
   treatment: string
   followUpDate?: string
   notes?: string
+  specialtyExamValues?: Record<string, unknown>
+  specialtyExamTemplate?: SpecialtyExamTemplate
   createdAt: string
 }
 
 
 export interface SpecialtyRequest {
   name: string
+  examTemplate?: SpecialtyExamTemplate
 }
 
 export interface SpecialtyResponse {
   id: number
   name: string
   doctorCount: number
+  examTemplate?: SpecialtyExamTemplate
 }
 
 export interface DoctorRequest {
@@ -312,4 +331,43 @@ export interface AppointmentResponse {
   status?: AppointmentStatus
   icdCode?: string
   mainDiagnosis?: string
+}
+
+export interface MedicalRecordRequest {
+  appointmentId: number
+  symptoms?: string
+  physicalExamination?: string
+  testResults?: string
+  mainDiagnosis?: string
+  clinicalNote?: string
+  historySummary?: string
+  careAdvice?: string
+  followUpDate?: string
+  additionalData?: Record<string, unknown>
+  diagnoses?: {
+    icd10Code: string
+    isPrimary?: boolean
+  }[]
+  medicines?: {
+    medicineId: number
+    quantity: number
+    dosageInstruction: string
+  }[]
+}
+
+export interface MedicalRecordResponse extends MedicalRecordRequest {
+  id: number
+  emrCode: string
+  patientId?: string
+  patientName?: string
+  doctorId?: number
+  doctorName?: string
+  appointmentDate?: string
+  timeSlot?: string
+  diagnosisIcd10?: string
+  diagnosisName?: string
+  pdfUrl?: string | null
+  pdfStoragePath?: string | null
+  pdfGeneratedAt?: string | null
+  createdAt?: string
 }

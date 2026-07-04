@@ -1,8 +1,16 @@
 package com.medicore.service;
 
 import com.medicore.dto.request.MedicalRecordRequest;
+import com.medicore.dto.response.MedicalRecordResponse;
+
+import java.util.List;
 
 public interface MedicalRecordService {
-    // Hàm xử lý lưu toàn bộ hồ sơ, bệnh và đơn thuốc
-    void createMedicalRecord(MedicalRecordRequest request);
+    MedicalRecordResponse createMedicalRecord(MedicalRecordRequest request);
+
+    MedicalRecordResponse getRecordByAppointment(Integer appointmentId, String email);
+
+    List<MedicalRecordResponse> getCurrentPatientRecords(String email);
+
+    void uploadPdf(Integer appointmentId, byte[] pdfBytes);
 }

@@ -40,6 +40,11 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
 
+                .requestMatchers(HttpMethod.GET, "/clinical/medical-records/me").hasRole("PATIENT")
+                .requestMatchers(HttpMethod.GET, "/clinical/medical-records/appointment/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT")
+                .requestMatchers(HttpMethod.POST, "/clinical/medical-records").hasAnyRole("ADMIN", "DOCTOR")
+                .requestMatchers(HttpMethod.POST, "/clinical/medical-records/appointment/*/upload-pdf").hasAnyRole("ADMIN", "DOCTOR")
+
                 // API Hàng chờ/Hồ sơ bệnh án: Chỉ ADMIN hoặc DOCTOR mới được xem danh sách tổng
                 .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
 
