@@ -7,6 +7,7 @@ import { Button } from "@/components/base/ui/button"
 import { Card } from "@/components/base/ui/card"
 import { Badge } from "@/components/base/ui/badge"
 import { Input } from "@/components/base/ui/input"
+import { Textarea } from "@/components/base/ui/textarea"
 import { PatientProfileModal } from "./patient-profile-modal"
 import { Search, Clock, FileText } from "lucide-react"
 import type { Patient, Appointment } from "@/types/medical"
@@ -17,12 +18,23 @@ interface WaitingItem {
   sortKey: string
 }
 
+const cancellationReasonOptions = [
+  "Bác sĩ có lịch việc đột xuất",
+  "Bệnh viện cần điều chỉnh lịch khám",
+  "Bệnh nhân cần đổi lịch khám",
+]
+
 export function WaitingPatientsList() {
   const router = useRouter()
   const { patients, getWaitingPatients, appointments, loadWaitingAppointments, updateAppointment, updatePatient } = useData()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelAppointment, setCancelAppointment] = useState<Appointment | null>(null)
+  const [selectedCancelReason, setSelectedCancelReason] = useState("")
+  const [customCancelReason, setCustomCancelReason] = useState("")
+  const [cancelError, setCancelError] = useState("")
 
   useEffect(() => {
     loadWaitingAppointments()
@@ -68,18 +80,41 @@ export function WaitingPatientsList() {
 
   const selectedPatient = selectedPatientId ? patients.find((p) => p.id === selectedPatientId) : null
 
-  const handleCancelAppointment = async (appointment: Appointment | null) => {
+  const handleOpenCancelModal = (appointment: Appointment | null) => {
     if (!appointment) return
-    if (!confirm("Bạn có chắc muốn hủy lịch hẹn này?")) return
+    setCancelAppointment(appointment)
+    setSelectedCancelReason("")
+    setCustomCancelReason("")
+    setCancelError("")
+    setShowCancelModal(true)
+  }
+
+  const handleConfirmCancelAppointment = async () => {
+    if (!cancelAppointment) return
+
+    const reason = selectedCancelReason === "custom"
+      ? customCancelReason.trim()
+      : selectedCancelReason.trim()
+
+    if (!reason) {
+      setCancelError("Vui lòng chọn một lý do hoặc nhập lý do hủy.")
+      return
+    }
 
     try {
-      await updateAppointment(appointment.id, {
-        ...appointment,
+      await updateAppointment(cancelAppointment.id, {
+        ...cancelAppointment,
         status: "CANCELLED",
+        cancellationReason: reason,
       })
+      setShowCancelModal(false)
+      setCancelAppointment(null)
+      setSelectedCancelReason("")
+      setCustomCancelReason("")
+      setCancelError("")
     } catch (error) {
       console.error("Không thể hủy lịch hẹn", error)
-      alert("Không thể hủy lịch hẹn. Vui lòng thử lại.")
+      setCancelError("Không thể hủy lịch hẹn. Vui lòng thử lại.")
     }
   }
 
@@ -190,7 +225,7 @@ export function WaitingPatientsList() {
                       variant="outline"
                       className="text-destructive hover:text-destructive"
                       disabled={!appointment}
-                      onClick={() => handleCancelAppointment(appointment)}
+                      onClick={() => handleOpenCancelModal(appointment)}
                     >
                       Hủy lịch hẹn
                     </Button>
@@ -205,6 +240,86 @@ export function WaitingPatientsList() {
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {showCancelModal && cancelAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-lg rounded-xl border bg-background p-6 shadow-xl">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Xác nhận hủy lịch</p>
+              <h3 className="text-xl font-semibold text-foreground">Bạn có chắc chắn muốn hủy lịch hẹn này?</h3>
+              <p className="text-sm text-muted-foreground">
+                Lịch hẹn của bệnh nhân sẽ được gửi thông báo cùng lý do hủy bạn chọn bên dưới.
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Chọn lý do hủy</p>
+                <div className="space-y-2">
+                  {cancellationReasonOptions.map((reason) => (
+                    <label key={reason} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="cancel-reason"
+                        checked={selectedCancelReason === reason}
+                        onChange={() => {
+                          setSelectedCancelReason(reason)
+                          setCancelError("")
+                        }}
+                      />
+                      <span>{reason}</span>
+                    </label>
+                  ))}
+                  <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+                    <input
+                      type="radio"
+                      name="cancel-reason"
+                      checked={selectedCancelReason === "custom"}
+                      onChange={() => {
+                        setSelectedCancelReason("custom")
+                        setCancelError("")
+                      }}
+                    />
+                    <span>Lý do khác</span>
+                  </label>
+                </div>
+              </div>
+
+              {selectedCancelReason === "custom" && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Nhập lý do hủy</p>
+                  <Textarea
+                    value={customCancelReason}
+                    onChange={(e) => {
+                      setCustomCancelReason(e.target.value)
+                      setCancelError("")
+                    }}
+                    placeholder="Nhập lý do hủy lịch hẹn..."
+                    className="min-h-[96px]"
+                  />
+                </div>
+              )}
+
+              {cancelError && <p className="text-sm text-destructive">{cancelError}</p>}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => {
+                setShowCancelModal(false)
+                setCancelAppointment(null)
+                setSelectedCancelReason("")
+                setCustomCancelReason("")
+                setCancelError("")
+              }}>
+                Đóng
+              </Button>
+              <Button className="text-destructive hover:text-destructive" onClick={handleConfirmCancelAppointment}>
+                Xác nhận hủy
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
