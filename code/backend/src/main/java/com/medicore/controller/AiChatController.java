@@ -22,8 +22,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ai")
@@ -39,6 +44,26 @@ public class AiChatController {
     public ResponseEntity<ApiResponse<AiChatResponse>> chat(@Valid @RequestBody AiChatRequest request) {
         AiChatResponse response = aiChatService.chat(getAuthenticatedEmail(), request);
         return ResponseEntity.ok(ApiResponse.success("Tư vấn AI thành công", response));
+    }
+
+    @PostMapping(value = "/chat/stream", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<StreamingResponseBody> streamChat(@Valid @RequestBody AiChatRequest request) {
+        String email = getAuthenticatedEmail();
+        StreamingResponseBody body = outputStream -> {
+            try {
+                AiChatResponse response = aiChatService.streamChat(email, request, chunk -> writeSse(outputStream, "chunk", Map.of("content", chunk)));
+                writeSse(outputStream, "done", Map.of(
+                        "consultationLogId", response.getConsultationLogId(),
+                        "createdAt", response.getCreatedAt()
+                ));
+            } catch (Exception ex) {
+                writeSse(outputStream, "error", Map.of("message", ex.getMessage() == null ? "AI đang bận. Vui lòng thử lại sau." : ex.getMessage()));
+            }
+        };
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .body(body);
     }
 
     @PostMapping(value = "/doctor/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -62,6 +87,16 @@ public class AiChatController {
                 images
         );
         return ResponseEntity.ok(ApiResponse.success("Tư vấn AI thành công", response));
+    }
+
+    private void writeSse(OutputStream outputStream, String event, Object data) {
+        try {
+            String payload = "event: " + event + "\n" + "data: " + objectMapper.writeValueAsString(data) + "\n\n";
+            outputStream.write(payload.getBytes(StandardCharsets.UTF_8));
+            outputStream.flush();
+        } catch (IOException ex) {
+            throw new CustomBusinessException(ErrorCodes.INTERNAL_SERVER_ERROR, "Kết nối AI stream bị gián đoạn");
+        }
     }
 
     private String getAuthenticatedEmail() {

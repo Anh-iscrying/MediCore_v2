@@ -193,3 +193,90 @@ body::-webkit-scrollbar {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    scrollbar-width: auto;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .prescriptions-page,
+  .prescriptions-page * {
+    visibility: visible !important;
+  }
+
+  .prescriptions-page {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .prescriptions-summary,
+  .prescription-actions {
+    display: none !important;
+  }
+
+  .prescriptions-page section {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .prescription-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 0 0 18px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .prescription-print-card h2 {
+    margin-bottom: 6px !important;
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+  }
+
+  .prescription-print-card p {
+    color: #111111 !important;
+  }
+
+  .prescription-medicine {
+    margin-top: 10px !important;
+    padding: 10px 0 !important;
+    border-width: 1px 0 0 0 !important;
+    border-color: #111111 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .prescription-medicine > div {
+    display: grid !important;
+    grid-template-columns: 2fr 1fr 2fr !important;
+    gap: 16px !important;
+  }
+
+  .prescription-medicine p {
+    font-size: 12px !important;
+  }
+
+  .prescription-medicine p:first-child {
+    color: #555555 !important;
+    font-size: 10px !important;
+  }
+}

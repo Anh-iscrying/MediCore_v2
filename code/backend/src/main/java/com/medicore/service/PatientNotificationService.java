@@ -180,7 +180,6 @@ public class PatientNotificationService {
         log.info("Created patient notification {} type {} for appointment {} and patient {}", notification.getId(), type, appointment.getId(), credentials.getEmail());
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
-<<<<<<< HEAD
         notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
         return response;
     }

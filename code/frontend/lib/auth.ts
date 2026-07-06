@@ -87,6 +87,13 @@ export function resetPassword(email: string, resetToken: string, newPassword: st
   })
 }
 
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<void>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
 export function getMe() {
   return apiFetch<AuthUser>("/auth/me")
 }

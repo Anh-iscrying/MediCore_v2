@@ -107,12 +107,15 @@ export default function DashboardPage() {
     return `${dateLabel} ${startTime}`
   }
 
-  // 5. Tính số việc cần làm (nhắc nhở y tế)
-  let remindersCount = 0
-  if (isIncomplete) remindersCount++
-  if (nearestAppointment) remindersCount++
+  // 5. Tính nhắc nhở y tế từ ngày tái khám trong hồ sơ bệnh án
+  const upcomingFollowUps = medicalRecords.filter((record) => {
+    if (!record.followUpDate) return false
+    return record.followUpDate.split("T")[0] >= todayStr
+  })
 
-  const remindersText = remindersCount > 0 ? `${remindersCount} việc cần làm` : "Không có nhắc nhở"
+  const remindersText = upcomingFollowUps.length > 0
+    ? `${upcomingFollowUps.length} nhắc tái khám`
+    : "Không có nhắc nhở"
 
   const appointmentMeta = nearestAppointment
     ? `Lịch hẹn: ${formatAppointmentDisplay(nearestAppointment)}`
@@ -145,6 +148,11 @@ export default function DashboardPage() {
     ? `Khám gần nhất: ${formatMedicalRecordDate(latestMedicalRecord.appointmentDate || latestMedicalRecord.createdAt)}`
     : "Chưa có hồ sơ khám"
 
+  const prescriptionRecords = medicalRecords.filter((record) => record.medicines && record.medicines.length > 0)
+  const prescriptionMeta = prescriptionRecords.length > 0
+    ? `${prescriptionRecords.length} đơn thuốc`
+    : "Chưa có đơn thuốc"
+
   const overviewCards = [
     {
       title: "Hồ sơ bệnh nhân",
@@ -167,9 +175,9 @@ export default function DashboardPage() {
     },
     {
       title: "Đơn thuốc điện tử",
-      description: "Xem chi tiết các thuốc được kê theo đợt khám, tải file PDF hoặc in đơn thuốc.",
+      description: "Xem chi tiết các thuốc được kê theo đợt khám, xem PDF hoặc in đơn thuốc.",
       href: "/dashboard/prescriptions",
-      meta: "2 đơn thuốc đang dùng"
+      meta: prescriptionMeta
     },
     {
       title: "Trợ lý sức khỏe AI",
