@@ -26,4 +26,8 @@ public class DoctorAiContext {
 
     @Builder.Default
     private List<DoctorAiPrescriptionItem> prescriptions = List.of();
+
+    /** Ghi nhận kết quả từng truy vấn dữ liệu — audit cho final AI */
+    @Builder.Default
+    private List<AiContextRetrievalAttempt> retrievalAttempts = List.of();
 }

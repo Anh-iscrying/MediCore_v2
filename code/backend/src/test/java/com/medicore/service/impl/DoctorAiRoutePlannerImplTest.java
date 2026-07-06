@@ -52,6 +52,47 @@ class DoctorAiRoutePlannerImplTest {
                 .hasMessageContaining("Doctor AI route planner failed");
     }
 
+    @Test
+    void planParsesNewFieldsTargetTextStrictAnswerFocus() {
+        aiGatewayClient.response = """
+                {
+                  "actions": [
+                    {"type":"VISIT_DETAIL","emrCode":"EMR001","strict":true,"targetText":"chi tiết EMR001","reason":"bác sĩ hỏi chi tiết EMR cụ thể"}
+                  ],
+                  "answerFocus": "xét nghiệm của lần khám EMR001"
+                }
+                """;
+
+        DoctorAiRoutePlan plan = planner.plan("Chi tiết EMR001, tập trung xét nghiệm", List.of());
+
+        assertThat(plan.getActions()).hasSize(1);
+        var action = plan.getActions().get(0);
+        assertThat(action.getType()).isEqualTo(DoctorAiContextActionType.VISIT_DETAIL);
+        assertThat(action.getEmrCode()).isEqualTo("EMR001");
+        assertThat(action.getStrict()).isTrue();
+        assertThat(action.getTargetText()).isEqualTo("chi tiết EMR001");
+        assertThat(action.getReason()).isEqualTo("bác sĩ hỏi chi tiết EMR cụ thể");
+        assertThat(plan.getAnswerFocus()).isEqualTo("xét nghiệm của lần khám EMR001");
+    }
+
+    @Test
+    void dedupeKeepsSameTypeWithDifferentOffset() {
+        aiGatewayClient.response = """
+                {
+                  "actions": [
+                    {"type":"RECENT_VISITS","offset":0,"sortAsc":true,"limit":1},
+                    {"type":"RECENT_VISITS","offset":2,"sortAsc":true,"limit":1}
+                  ]
+                }
+                """;
+
+        DoctorAiRoutePlan plan = planner.plan("lần khám 1 và 3", List.of());
+
+        assertThat(plan.getActions()).hasSize(2);
+        assertThat(plan.getActions().get(0).getOffset()).isEqualTo(0);
+        assertThat(plan.getActions().get(1).getOffset()).isEqualTo(2);
+    }
+
     private static class TestAiGatewayClient extends AiGatewayClient {
         private String response;
 

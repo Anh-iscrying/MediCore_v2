@@ -1,5 +1,6 @@
 package com.medicore.service.impl;
 
+import com.medicore.dto.ai.AiContextRetrievalAttempt;
 import com.medicore.dto.ai.DoctorAiAuthorizedTarget;
 import com.medicore.dto.ai.DoctorAiAppointmentSummary;
 import com.medicore.dto.ai.DoctorAiContext;
@@ -8,6 +9,7 @@ import com.medicore.dto.ai.DoctorAiRoutePlan;
 import com.medicore.dto.ai.DoctorAiPrescriptionItem;
 import com.medicore.dto.ai.DoctorAiVisitDetail;
 import com.medicore.dto.ai.DoctorAiVisitSummary;
+import com.medicore.dto.ai.RetrievalStatus;
 import com.medicore.service.DoctorAiContextExecutor;
 import com.medicore.service.DoctorAiContextService;
 import lombok.RequiredArgsConstructor;
@@ -55,12 +57,17 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
         List<DoctorAiVisitSummary> recentVisits = new ArrayList<>();
         List<DoctorAiVisitDetail> visitDetails = new ArrayList<>();
         List<DoctorAiPrescriptionItem> prescriptions = new ArrayList<>();
+        List<AiContextRetrievalAttempt> retrievalAttempts = new ArrayList<>();
 
         if (plan != null && plan.getActions() != null) {
             for (DoctorAiContextAction action : plan.getActions()) {
                 if (action == null || action.getType() == null) {
                     continue;
                 }
+                boolean isStrict = Boolean.TRUE.equals(action.getStrict());
+                boolean hasSelector = action.getEmrCode() != null || action.getOffset() != null
+                        || action.getSortAsc() != null || action.getDateFrom() != null || action.getDateTo() != null;
+
                 switch (action.getType()) {
                     case RECENT_VISITS -> {
                         if (action.getOffset() != null || action.getSortAsc() != null) {
@@ -70,34 +77,48 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
                                     action.getOffset() != null ? action.getOffset() : 0,
                                     action.getSortAsc() != null ? action.getSortAsc() : false
                             );
-                            List<DoctorAiVisitSummary> fallbackVisits = doctorAiContextService.getRecentVisits(
-                                    patientCode,
-                                    DEFAULT_VISITS
-                            );
-                            List<DoctorAiVisitSummary> merged = new ArrayList<>(targetVisits);
-                            Set<String> seenEmrs = new HashSet<>();
-                            for (DoctorAiVisitSummary v : targetVisits) {
-                                if (v.getEmrCode() != null) {
-                                    seenEmrs.add(v.getEmrCode().toLowerCase(Locale.ROOT));
+
+                            if (isStrict || hasSelector) {
+                                // Strict mode: chỉ trả target, KHÔNG merge fallback
+                                recentVisits = targetVisits;
+                                retrievalAttempts.add(buildAttempt(action, targetVisits.size()));
+                            } else {
+                                // Broad mode: merge target + fallback
+                                List<DoctorAiVisitSummary> fallbackVisits = doctorAiContextService.getRecentVisits(
+                                        patientCode,
+                                        DEFAULT_VISITS
+                                );
+                                List<DoctorAiVisitSummary> merged = new ArrayList<>(targetVisits);
+                                Set<String> seenEmrs = new HashSet<>();
+                                for (DoctorAiVisitSummary v : targetVisits) {
+                                    if (v.getEmrCode() != null) {
+                                        seenEmrs.add(v.getEmrCode().toLowerCase(Locale.ROOT));
+                                    }
                                 }
-                            }
-                            for (DoctorAiVisitSummary v : fallbackVisits) {
-                                if (v.getEmrCode() != null && seenEmrs.add(v.getEmrCode().toLowerCase(Locale.ROOT))) {
-                                    merged.add(v);
+                                for (DoctorAiVisitSummary v : fallbackVisits) {
+                                    if (v.getEmrCode() != null && seenEmrs.add(v.getEmrCode().toLowerCase(Locale.ROOT))) {
+                                        merged.add(v);
+                                    }
                                 }
+                                recentVisits = merged;
+                                retrievalAttempts.add(buildAttempt(action, targetVisits.size(),
+                                        targetVisits.isEmpty() ? RetrievalStatus.FALLBACK_USED : RetrievalStatus.FOUND,
+                                        targetVisits.isEmpty() ? "Target rỗng, đã thêm recent visits làm nền" : null));
                             }
-                            recentVisits = merged;
                         } else {
                             recentVisits = doctorAiContextService.getRecentVisits(
                                     patientCode,
                                     limit(action.getLimit(), DEFAULT_VISITS, MAX_VISITS)
                             );
+                            retrievalAttempts.add(buildAttempt(action, recentVisits.size()));
                         }
                     }
                     case VISIT_DETAIL -> {
                         String emrCode = clean(action.getEmrCode(), 64);
                         if (StringUtils.hasText(emrCode)) {
-                            doctorAiContextService.getVisitDetail(patientCode, emrCode).ifPresent(visitDetails::add);
+                            var detail = doctorAiContextService.getVisitDetail(patientCode, emrCode);
+                            detail.ifPresent(visitDetails::add);
+                            retrievalAttempts.add(buildAttempt(action, detail.isPresent() ? 1 : 0));
                         } else {
                             List<DoctorAiVisitSummary> targets;
                             if (action.getOffset() != null || action.getSortAsc() != null) {
@@ -110,21 +131,41 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
                             } else {
                                 targets = doctorAiContextService.getRecentVisits(patientCode, 1);
                             }
+                            int detailCount = 0;
                             for (DoctorAiVisitSummary summary : targets) {
                                 if (StringUtils.hasText(summary.getEmrCode())) {
-                                    doctorAiContextService.getVisitDetail(patientCode, summary.getEmrCode())
-                                            .ifPresent(visitDetails::add);
+                                    var detail = doctorAiContextService.getVisitDetail(patientCode, summary.getEmrCode());
+                                    detail.ifPresent(visitDetails::add);
+                                    if (detail.isPresent()) {
+                                        detailCount++;
+                                    }
                                 }
                             }
+                            retrievalAttempts.add(buildAttempt(action, detailCount));
                         }
                     }
                     case PRESCRIPTIONS -> {
                         String emrCode = clean(action.getEmrCode(), 64);
+
+                        // Resolve emrCode từ position nếu cần
+                        if (!StringUtils.hasText(emrCode) && (action.getOffset() != null || action.getSortAsc() != null)) {
+                            List<DoctorAiVisitSummary> targets = doctorAiContextService.getVisitsByPosition(
+                                    patientCode,
+                                    1,
+                                    action.getOffset() != null ? action.getOffset() : 0,
+                                    action.getSortAsc() != null ? action.getSortAsc() : false
+                            );
+                            if (!targets.isEmpty() && StringUtils.hasText(targets.get(0).getEmrCode())) {
+                                emrCode = targets.get(0).getEmrCode();
+                            }
+                        }
+
                         prescriptions = doctorAiContextService.getPrescriptions(
                                 patientCode,
                                 emrCode,
                                 limit(action.getLimit(), DEFAULT_PRESCRIPTIONS, MAX_PRESCRIPTIONS)
                         );
+                        retrievalAttempts.add(buildAttempt(action, prescriptions.size()));
                     }
                     case APPOINTMENT_HISTORY -> {
                         if (doctorId != null) {
@@ -133,6 +174,15 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
                                     patientCode,
                                     limit(action.getLimit(), DEFAULT_APPOINTMENTS, MAX_APPOINTMENTS)
                             );
+                            retrievalAttempts.add(buildAttempt(action, appHistory.size()));
+                        } else {
+                            retrievalAttempts.add(AiContextRetrievalAttempt.builder()
+                                    .actionType(action.getType().name())
+                                    .targetText(action.getTargetText())
+                                    .status(RetrievalStatus.SKIPPED_MISSING_INPUT)
+                                    .resultCount(0)
+                                    .note("Không có doctorId")
+                                    .build());
                         }
                     }
                     default -> {
@@ -148,6 +198,7 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
                 .recentVisits(recentVisits)
                 .visitDetails(visitDetails)
                 .prescriptions(prescriptions)
+                .retrievalAttempts(retrievalAttempts)
                 .build();
     }
 
@@ -179,6 +230,29 @@ public class DoctorAiContextExecutorImpl implements DoctorAiContextExecutor {
                 .appointmentHistory(appHistory)
                 .recentVisits(recentVisits)
                 .prescriptions(prescriptions)
+                .build();
+    }
+
+    private AiContextRetrievalAttempt buildAttempt(DoctorAiContextAction action, int resultCount) {
+        RetrievalStatus status = resultCount > 0 ? RetrievalStatus.FOUND : RetrievalStatus.NOT_FOUND;
+        return buildAttempt(action, resultCount, status, null);
+    }
+
+    private AiContextRetrievalAttempt buildAttempt(DoctorAiContextAction action, int resultCount,
+            RetrievalStatus status, String note) {
+        return AiContextRetrievalAttempt.builder()
+                .actionType(action.getType().name())
+                .targetText(action.getTargetText())
+                .emrCode(action.getEmrCode())
+                .keyword(action.getKeyword())
+                .limit(action.getLimit())
+                .offset(action.getOffset())
+                .sortAsc(action.getSortAsc())
+                .dateFrom(action.getDateFrom())
+                .dateTo(action.getDateTo())
+                .status(status)
+                .resultCount(resultCount)
+                .note(note)
                 .build();
     }
 

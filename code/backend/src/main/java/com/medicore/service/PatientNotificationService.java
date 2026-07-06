@@ -40,7 +40,8 @@ public class PatientNotificationService {
 
     @Transactional(readOnly = true)
     public NotificationListResponse getCurrentPatientNotifications(String email) {
-        List<NotificationResponse> notifications = notificationRepository.findTop20ByRecipientEmailOrderByCreatedAtDesc(email).stream()
+        List<NotificationResponse> notifications = notificationRepository
+                .findTop20ByRecipientEmailOrderByCreatedAtDesc(email).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
         long unreadCount = notificationRepository.countByRecipientEmailAndReadAtIsNull(email);
@@ -74,7 +75,8 @@ public class PatientNotificationService {
     }
 
     @Transactional
-    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {
+    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus,
+            AppointmentStatus newStatus) {
         if (oldStatus == newStatus) {
             return;
         }
@@ -153,8 +155,10 @@ public class PatientNotificationService {
             log.warn("Skip patient notification: patient {} has no auth credentials", appointment.getPatient().getId());
             return null;
         }
-        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(), appointment.getId(), type)) {
-            log.info("Skip patient notification: type {} already exists for appointment {} and patient {}", type, appointment.getId(), credentials.getEmail());
+        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(),
+                appointment.getId(), type)) {
+            log.info("Skip patient notification: type {} already exists for appointment {} and patient {}", type,
+                    appointment.getId(), credentials.getEmail());
             return null;
         }
 
@@ -177,10 +181,11 @@ public class PatientNotificationService {
                 .build();
 
         notification = notificationRepository.save(notification);
-        log.info("Created patient notification {} type {} for appointment {} and patient {}", notification.getId(), type, appointment.getId(), credentials.getEmail());
+        log.info("Created patient notification {} type {} for appointment {} and patient {}", notification.getId(),
+                type, appointment.getId(), credentials.getEmail());
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
-<<<<<<< HEAD
+
         notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
         return response;
     }
@@ -189,9 +194,11 @@ public class PatientNotificationService {
         if (appointment.getDoctor() == null) {
             return;
         }
-        AuthCredentials doctorCredentials = authCredentialsRepository.findByDoctorId(appointment.getDoctor().getId()).orElse(null);
+        AuthCredentials doctorCredentials = authCredentialsRepository.findByDoctorId(appointment.getDoctor().getId())
+                .orElse(null);
         if (doctorCredentials == null) {
-            log.warn("Skip doctor confirmation notification: doctor {} has no auth credentials", appointment.getDoctor().getId());
+            log.warn("Skip doctor confirmation notification: doctor {} has no auth credentials",
+                    appointment.getDoctor().getId());
             return;
         }
         Map<String, Object> data = buildAppointmentNotificationData(appointment, "/doctor/appointments");
@@ -209,7 +216,8 @@ public class PatientNotificationService {
         data.put("doctorId", appointment.getDoctor() != null ? appointment.getDoctor().getId() : null);
         data.put("doctorName", appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null);
         data.put("patientId", appointment.getPatient() != null ? appointment.getPatient().getId() : null);
-        data.put("appointmentDate", appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : null);
+        data.put("appointmentDate",
+                appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : null);
         data.put("timeSlot", appointment.getTimeSlot());
         data.put("redirectUrl", redirectUrl);
         return data;
@@ -221,58 +229,74 @@ public class PatientNotificationService {
             String patientName = appointment.getPatient() != null ? appointment.getPatient().getFullName() : "N/A";
             String patientCode = appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : "N/A";
             String doctorName = appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : "N/A";
-            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null
+                    ? appointment.getAppointmentDate().toString()
+                    : "N/A";
             String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
             String diagnosis = record.getMainDiagnosis() != null && !record.getMainDiagnosis().isBlank()
                     ? record.getMainDiagnosis()
                     : "Xem chi tiết trong hồ sơ sức khỏe";
 
             String subject = "[MediCore] Hồ sơ khám và đơn thuốc PDF đã sẵn sàng";
-            String htmlContent = buildMedicalRecordReadyEmailTemplate(patientName, patientCode, doctorName, appointmentDate, timeSlot, diagnosis);
+            String htmlContent = buildMedicalRecordReadyEmailTemplate(patientName, patientCode, doctorName,
+                    appointmentDate, timeSlot, diagnosis);
             emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
         } catch (Exception e) {
-            Integer appointmentId = record != null && record.getAppointment() != null ? record.getAppointment().getId() : null;
+            Integer appointmentId = record != null && record.getAppointment() != null ? record.getAppointment().getId()
+                    : null;
             log.error("Lỗi khi gửi email thông báo hồ sơ khám cho lịch hẹn {}", appointmentId, e);
         }
     }
 
-    private String buildMedicalRecordReadyEmailTemplate(String patientName, String patientCode, String doctorName, String appointmentDate, String timeSlot, String diagnosis) {
+    private String buildMedicalRecordReadyEmailTemplate(String patientName, String patientCode, String doctorName,
+            String appointmentDate, String timeSlot, String diagnosis) {
         return "<!DOCTYPE html>\n" +
                 "<html>\n" +
                 "<head>\n" +
                 "    <meta charset=\"utf-8\">\n" +
                 "    <title>Hồ sơ khám đã sẵn sàng - MediCore</title>\n" +
                 "</head>\n" +
-                "<body style=\"font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:24px; color:#0f172a;\">\n" +
-                "  <div style=\"max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;\">\n" +
+                "<body style=\"font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:24px; color:#0f172a;\">\n"
+                +
+                "  <div style=\"max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;\">\n"
+                +
                 "    <div style=\"background:#0f172a; color:#ffffff; padding:24px; text-align:center;\">\n" +
                 "      <h1 style=\"margin:0; font-size:22px;\">MediCore EMR</h1>\n" +
                 "      <p style=\"margin:6px 0 0; color:#cbd5e1;\">Hồ sơ khám và đơn thuốc PDF đã sẵn sàng</p>\n" +
                 "    </div>\n" +
                 "    <div style=\"padding:28px;\">\n" +
                 "      <p style=\"font-size:17px; font-weight:700;\">Kính chào Ông/Bà " + patientName + ",</p>\n" +
-                "      <p style=\"line-height:1.6;\">Phiếu khám và đơn thuốc PDF của Ông/Bà đã được cập nhật trong Hồ sơ sức khỏe. Vui lòng đăng nhập MediCore để xem hoặc tải file khi cần.</p>\n" +
-                "      <div style=\"background:#f0fdf4; border-left:4px solid #22c55e; padding:14px 16px; margin:20px 0; border-radius:6px;\">\n" +
+                "      <p style=\"line-height:1.6;\">Phiếu khám và đơn thuốc PDF của Ông/Bà đã được cập nhật trong Hồ sơ sức khỏe. Vui lòng đăng nhập MediCore để xem hoặc tải file khi cần.</p>\n"
+                +
+                "      <div style=\"background:#f0fdf4; border-left:4px solid #22c55e; padding:14px 16px; margin:20px 0; border-radius:6px;\">\n"
+                +
                 "        <strong>Chẩn đoán chính:</strong> " + diagnosis + "\n" +
                 "      </div>\n" +
                 "      <table style=\"width:100%; border-collapse:collapse; font-size:14px;\">\n" +
-                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Mã bệnh nhân</td><td style=\"padding:8px 0; font-weight:700;\">" + patientCode + "</td></tr>\n" +
-                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Bác sĩ khám</td><td style=\"padding:8px 0; font-weight:700;\">" + doctorName + "</td></tr>\n" +
-                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Ngày khám</td><td style=\"padding:8px 0; font-weight:700;\">" + appointmentDate + "</td></tr>\n" +
-                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Khung giờ</td><td style=\"padding:8px 0; font-weight:700;\">" + timeSlot + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Mã bệnh nhân</td><td style=\"padding:8px 0; font-weight:700;\">"
+                + patientCode + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Bác sĩ khám</td><td style=\"padding:8px 0; font-weight:700;\">"
+                + doctorName + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Ngày khám</td><td style=\"padding:8px 0; font-weight:700;\">"
+                + appointmentDate + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Khung giờ</td><td style=\"padding:8px 0; font-weight:700;\">"
+                + timeSlot + "</td></tr>\n" +
                 "      </table>\n" +
                 "      <div style=\"text-align:center; margin-top:24px;\">\n" +
-                "        <a href=\"http://localhost:3000/dashboard/history\" style=\"display:inline-block; background:#2563eb; color:#ffffff; padding:12px 22px; border-radius:8px; text-decoration:none; font-weight:700;\">Xem Hồ sơ sức khỏe</a>\n" +
+                "        <a href=\"http://localhost:3000/dashboard/history\" style=\"display:inline-block; background:#2563eb; color:#ffffff; padding:12px 22px; border-radius:8px; text-decoration:none; font-weight:700;\">Xem Hồ sơ sức khỏe</a>\n"
+                +
                 "      </div>\n" +
                 "    </div>\n" +
-                "    <div style=\"background:#f8fafc; color:#64748b; text-align:center; padding:16px; font-size:12px;\">Email này được gửi tự động từ MediCore.</div>\n" +
+                "    <div style=\"background:#f8fafc; color:#64748b; text-align:center; padding:16px; font-size:12px;\">Email này được gửi tự động từ MediCore.</div>\n"
+                +
                 "  </div>\n" +
                 "</body>\n" +
                 "</html>";
     }
 
     @Transactional
-    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus, String cancellationReason) {
+    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus,
+            AppointmentStatus newStatus, String cancellationReason) {
         if (newStatus == null || oldStatus == newStatus) {
             return;
         }
@@ -287,13 +311,16 @@ public class PatientNotificationService {
         AuthCredentials credentials = authCredentialsRepository.findByPatientId(appointment.getPatient().getId())
                 .orElse(null);
         if (credentials == null) {
-            log.warn("Skip appointment status notification: patient {} has no auth credentials", appointment.getPatient().getId());
+            log.warn("Skip appointment status notification: patient {} has no auth credentials",
+                    appointment.getPatient().getId());
             return;
         }
 
         String type = newStatus == AppointmentStatus.CANCELLED ? APPOINTMENT_CANCELLED : APPOINTMENT_COMPLETED;
-        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(), appointment.getId(), type)) {
-            log.info("Skip appointment status notification: already exists for appointment {} and patient {}", appointment.getId(), credentials.getEmail());
+        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(),
+                appointment.getId(), type)) {
+            log.info("Skip appointment status notification: already exists for appointment {} and patient {}",
+                    appointment.getId(), credentials.getEmail());
             return;
         }
 
@@ -322,7 +349,8 @@ public class PatientNotificationService {
                 .build();
 
         notification = notificationRepository.save(notification);
-        log.info("Created {} notification {} for appointment {} and patient {}", type, notification.getId(), appointment.getId(), credentials.getEmail());
+        log.info("Created {} notification {} for appointment {} and patient {}", type, notification.getId(),
+                appointment.getId(), credentials.getEmail());
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
         notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
@@ -337,11 +365,14 @@ public class PatientNotificationService {
             String specialtyName = (appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null)
                     ? appointment.getDoctor().getSpecialty().getSpecialtyName()
                     : "N/A";
-            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null
+                    ? appointment.getAppointmentDate().toString()
+                    : "N/A";
             String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
 
             String subject = "[MediCore] Mời vào phòng khám - Bệnh nhân " + patientName;
-            String htmlContent = buildExamStartedEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot);
+            String htmlContent = buildExamStartedEmailTemplate(patientName, patientCode, doctorName, specialtyName,
+                    appointmentDate, timeSlot);
 
             emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
         } catch (Exception e) {
@@ -349,7 +380,8 @@ public class PatientNotificationService {
         }
     }
 
-    private void sendAppointmentStatusEmail(Appointment appointment, String recipientEmail, AppointmentStatus newStatus, String cancellationReason) {
+    private void sendAppointmentStatusEmail(Appointment appointment, String recipientEmail, AppointmentStatus newStatus,
+            String cancellationReason) {
         try {
             String patientName = appointment.getPatient() != null ? appointment.getPatient().getFullName() : "N/A";
             String patientCode = appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : "N/A";
@@ -357,19 +389,24 @@ public class PatientNotificationService {
             String specialtyName = (appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null)
                     ? appointment.getDoctor().getSpecialty().getSpecialtyName()
                     : "N/A";
-            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null
+                    ? appointment.getAppointmentDate().toString()
+                    : "N/A";
             String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
 
             String subject = newStatus == AppointmentStatus.CANCELLED
                     ? "[MediCore] Lịch khám đã bị hủy - Bệnh nhân " + patientName
                     : "[MediCore] Hoàn tất khám bệnh - Bệnh nhân " + patientName;
             String htmlContent = newStatus == AppointmentStatus.CANCELLED
-                    ? buildCancellationEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot, cancellationReason)
-                    : buildCompletionEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate, timeSlot);
+                    ? buildCancellationEmailTemplate(patientName, patientCode, doctorName, specialtyName,
+                            appointmentDate, timeSlot, cancellationReason)
+                    : buildCompletionEmailTemplate(patientName, patientCode, doctorName, specialtyName, appointmentDate,
+                            timeSlot);
 
             emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
         } catch (Exception e) {
-            log.error("Lỗi khi gửi email thông báo trạng thái lịch hẹn {} cho lịch hẹn {}", newStatus, appointment.getId(), e);
+            log.error("Lỗi khi gửi email thông báo trạng thái lịch hẹn {} cho lịch hẹn {}", newStatus,
+                    appointment.getId(), e);
         }
     }
 
@@ -377,39 +414,53 @@ public class PatientNotificationService {
         String baseReason = (cancellationReason != null && !cancellationReason.isBlank())
                 ? "Lý do: " + cancellationReason + "."
                 : "Lý do: bác sĩ cần điều chỉnh lịch làm việc.";
-        return "Lịch khám của bạn đã bị hủy. " + baseReason + " Chúng tôi xin lỗi vì sự bất tiện này. Vui lòng đặt lại lịch khám khác nếu cần.";
+        return "Lịch khám của bạn đã bị hủy. " + baseReason
+                + " Chúng tôi xin lỗi vì sự bất tiện này. Vui lòng đặt lại lịch khám khác nếu cần.";
     }
 
-    private String buildCancellationEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot, String cancellationReason) {
+    private String buildCancellationEmailTemplate(String patientName, String patientCode, String doctorName,
+            String specialtyName, String appointmentDate, String timeSlot, String cancellationReason) {
         String reasonText = (cancellationReason != null && !cancellationReason.isBlank())
                 ? cancellationReason
                 : "Bác sĩ cần điều chỉnh lịch làm việc.";
         return "<!DOCTYPE html>" +
-                "<html><head><meta charset=\"utf-8\"><title>Hủy lịch hẹn - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">" +
-                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">" +
+                "<html><head><meta charset=\"utf-8\"><title>Hủy lịch hẹn - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">"
+                +
+                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">"
+                +
                 "<h2 style=\"color:#0f172a;margin-top:0;\">Lịch khám đã bị hủy</h2>" +
                 "<p>Kính chào Ông/Bà " + patientName + ",</p>" +
                 "<p>Lịch khám của bạn đã bị hủy bởi bác sĩ phụ trách.</p>" +
                 "<p><strong>Lý do:</strong> " + reasonText + "</p>" +
-                "<p>Chúng tôi xin lỗi vì sự bất tiện này. Nếu cần, quý khách có thể đặt lại lịch khám khác tại hệ thống MediCore.</p>" +
-                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot + "</p>" +
+                "<p>Chúng tôi xin lỗi vì sự bất tiện này. Nếu cần, quý khách có thể đặt lại lịch khám khác tại hệ thống MediCore.</p>"
+                +
+                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName
+                + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot
+                + "</p>" +
                 "<p>Trân trọng,<br/>MediCore</p>" +
                 "</div></body></html>";
     }
 
-    private String buildCompletionEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot) {
+    private String buildCompletionEmailTemplate(String patientName, String patientCode, String doctorName,
+            String specialtyName, String appointmentDate, String timeSlot) {
         return "<!DOCTYPE html>" +
-                "<html><head><meta charset=\"utf-8\"><title>Hoàn tất khám bệnh - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">" +
-                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">" +
+                "<html><head><meta charset=\"utf-8\"><title>Hoàn tất khám bệnh - MediCore</title></head><body style=\"font-family:Arial,sans-serif;background:#f4f6f8;padding:24px;\">"
+                +
+                "<div style=\"max-width:620px;margin:auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);\">"
+                +
                 "<h2 style=\"color:#0f172a;margin-top:0;\">Khám bệnh đã hoàn tất</h2>" +
                 "<p>Kính chào Ông/Bà " + patientName + ",</p>" +
-                "<p>Buổi khám của bạn đã được ghi nhận hoàn tất. Hồ sơ bệnh án và đơn thuốc đã được lưu trong hệ thống.</p>" +
-                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot + "</p>" +
+                "<p>Buổi khám của bạn đã được ghi nhận hoàn tất. Hồ sơ bệnh án và đơn thuốc đã được lưu trong hệ thống.</p>"
+                +
+                "<p><strong>Bác sĩ:</strong> " + doctorName + "<br/><strong>Chuyên khoa:</strong> " + specialtyName
+                + "<br/><strong>Ngày:</strong> " + appointmentDate + "<br/><strong>Khung giờ:</strong> " + timeSlot
+                + "</p>" +
                 "<p>Trân trọng,<br/>MediCore</p>" +
                 "</div></body></html>";
     }
 
-    private String buildExamStartedEmailTemplate(String patientName, String patientCode, String doctorName, String specialtyName, String appointmentDate, String timeSlot) {
+    private String buildExamStartedEmailTemplate(String patientName, String patientCode, String doctorName,
+            String specialtyName, String appointmentDate, String timeSlot) {
         return "<!DOCTYPE html>\n" +
                 "<html>\n" +
                 "<head>\n" +
@@ -531,7 +582,8 @@ public class PatientNotificationService {
                 "        <div class=\"content\">\n" +
                 "            <div class=\"greeting\">Kính chào Ông/Bà " + patientName + ",</div>\n" +
                 "            <div class=\"invitation-box\">\n" +
-                "                Bác sĩ phụ trách đã bắt đầu phiên khám cho lịch hẹn của Ông/Bà. Kính mời Ông/Bà di chuyển vào phòng khám để được bác sĩ trực tiếp thăm khám.\n" +
+                "                Bác sĩ phụ trách đã bắt đầu phiên khám cho lịch hẹn của Ông/Bà. Kính mời Ông/Bà di chuyển vào phòng khám để được bác sĩ trực tiếp thăm khám.\n"
+                +
                 "            </div>\n" +
                 "            \n" +
                 "            <div class=\"section-title\">Thông tin bệnh nhân</div>\n" +
@@ -567,7 +619,8 @@ public class PatientNotificationService {
                 "            </table>\n" +
                 "            \n" +
                 "            <div style=\"text-align: center; margin-top: 10px;\">\n" +
-                "                <a href=\"http://localhost:3000/dashboard/appointments\" class=\"btn\">Xem chi tiết lịch hẹn</a>\n" +
+                "                <a href=\"http://localhost:3000/dashboard/appointments\" class=\"btn\">Xem chi tiết lịch hẹn</a>\n"
+                +
                 "            </div>\n" +
                 "        </div>\n" +
                 "        <div class=\"footer\">\n" +

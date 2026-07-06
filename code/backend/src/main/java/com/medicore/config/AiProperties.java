@@ -27,4 +27,6 @@ public class AiProperties {
     private int maxImagesPerMessage;
     private long maxImageBytes;
     private List<String> allowedImageMimeTypes;
+    private boolean contextRetryEnabled = true;
+    private int contextRetryMaxAttempts = 1;
 }

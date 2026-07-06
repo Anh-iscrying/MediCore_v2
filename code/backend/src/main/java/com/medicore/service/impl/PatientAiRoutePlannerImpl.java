@@ -30,7 +30,7 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
     private static final int MAX_TEXT_LENGTH = 600;
 
     private static final String PLANNER_PROMPT = """
-            Bạn là bộ định tuyến context cho trợ lý sức khỏe MediCore. Nhiệm vụ duy nhất: chọn dữ liệu hệ thống cần lấy trước khi AI trả lời.
+            Bạn là bộ định tuyến context cho trợ lý sức khỏe MediCore. Nhiệm vụ duy nhất: phân tích câu hỏi và xác định chính xác dữ liệu cần lấy.
             Không trả lời tư vấn y tế. Chỉ trả JSON hợp lệ, không markdown, không giải thích.
 
             Action được phép:
@@ -41,6 +41,11 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
             - DOCTORS_SEEN: khi người dùng hỏi bác sĩ/chuyên khoa đã từng khám trực tiếp trước đó.
             - DOCTORS_SEARCH: khi người dùng muốn tìm bác sĩ mới, gợi ý bác sĩ khám bệnh, tìm chuyên khoa thích hợp, hoặc hỏi nên đặt lịch với bác sĩ nào cho triệu chứng/bệnh cụ thể (ví dụ: hen suyễn, tim mạch, đau đầu). Đặt `keyword` là tên chuyên khoa, tên bệnh hoặc triệu chứng có liên quan (ví dụ: "hen", "tim mạch", "gout").
 
+            Quy tắc exact-retrieval:
+            - Nếu câu hỏi chỉ định target cụ thể (EMR code, lần thứ N, ngày cụ thể) → đặt strict=true, thường limit=1. KHÔNG thêm action RECENT_RECORDS nền.
+            - Nếu câu hỏi nói "lần đó", "hồ sơ đó", "lần khám vừa nói" nhưng lịch sử chat không đủ resolve → đặt clarificationQuestion.
+            - PRESCRIPTIONS theo lần khám cụ thể phải mang cùng selector: emrCode nếu biết, hoặc offset/sortAsc giống action RECORD_DETAIL/RECENT_RECORDS tương ứng.
+
             Quy tắc bảo mật:
             - Không dùng, không trả patientCode, patientId, email hoặc định danh bệnh nhân.
             - Chỉ chọn loại dữ liệu; backend tự xác thực bệnh nhân đang đăng nhập.
@@ -50,14 +55,14 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
 
             Xử lý câu hỏi kiểu thứ tự/vị trí (RECENT_RECORDS hoặc RECORD_DETAIL):
             - Dùng `sortAsc`: true để sắp xếp từ cũ nhất trước (ví dụ: "lần khám đầu tiên/thứ 1/buổi khám 1"), false hoặc null để sắp xếp từ mới nhất (mặc định).
-            - Dùng `offset`: số nguyên 0-indexed để bỏ qua N hồ sơ. 
-              Ví dụ: 
+            - Dùng `offset`: số nguyên 0-indexed để bỏ qua N hồ sơ.
+              Ví dụ:
               * "lần khám thứ 1" hoặc "lần khám đầu tiên": sortAsc=true, offset=0, limit=1
               * "lần khám thứ 3" hoặc "buổi khám 3": sortAsc=true, offset=2, limit=1
               * "lần khám kế trước lần gần nhất" hoặc "lần khám thứ 2 tính từ gần nhất": sortAsc=false, offset=1, limit=1
-            
+
             JSON schema mong muốn:
-            {"actions":[{"type":"RECENT_RECORDS|RECORD_DETAIL|PRESCRIPTIONS|MEDICINE_SEARCH|DOCTORS_SEEN|DOCTORS_SEARCH","emrCode":"EMR... hoặc null","keyword":"từ khóa thuốc/bệnh/chuyên khoa hoặc null","limit":số hoặc null,"sortAsc":boolean hoặc null,"offset":số hoặc null}],"clarificationQuestion":null hoặc "..."}
+            {"actions":[{"type":"...", "emrCode":null, "keyword":null, "limit":null, "sortAsc":null, "offset":null, "targetText":"mô tả ngắn user muốn lấy gì", "strict":boolean, "reason":"lý do chọn action", "dateFrom":null, "dateTo":null}], "clarificationQuestion":null, "answerFocus":"trọng tâm trả lời, VD: đơn thuốc của lần khám này"}
             """;
 
     private final AiGatewayClient aiGatewayClient;
@@ -92,8 +97,7 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
 
         return List.of(
                 Map.of("role", "system", "content", PLANNER_PROMPT),
-                Map.of("role", "user", "content", userContent.toString())
-        );
+                Map.of("role", "user", "content", userContent.toString()));
     }
 
     private PatientAiRoutePlan parsePlan(String rawResponse) throws Exception {
@@ -114,7 +118,7 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
                 if (action == null || action.getType() == null) {
                     continue;
                 }
-                String key = action.getType() + ":" + safe(action.getEmrCode()) + ":" + safe(action.getKeyword());
+                String key = buildDedupeKey(action);
                 if (seen.add(key)) {
                     actions.add(action);
                 }
@@ -122,10 +126,22 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
         }
 
         String clarificationQuestion = textOrNull(root.path("clarificationQuestion"));
+        String answerFocus = textOrNull(root.path("answerFocus"));
         return PatientAiRoutePlan.builder()
                 .actions(actions)
                 .clarificationQuestion(clarificationQuestion)
+                .answerFocus(answerFocus)
                 .build();
+    }
+
+    private String buildDedupeKey(PatientAiContextAction action) {
+        return action.getType()
+                + ":" + safe(action.getEmrCode())
+                + ":" + safe(action.getKeyword())
+                + ":" + (action.getOffset() != null ? action.getOffset() : "")
+                + ":" + (action.getSortAsc() != null ? action.getSortAsc() : "")
+                + ":" + safe(action.getDateFrom())
+                + ":" + safe(action.getDateTo());
     }
 
     private PatientAiContextAction parseAction(JsonNode node) {
@@ -138,8 +154,14 @@ public class PatientAiRoutePlannerImpl implements PatientAiRoutePlanner {
                 .emrCode(textOrNull(node.path("emrCode")))
                 .keyword(textOrNull(node.path("keyword")))
                 .limit(node.path("limit").isInt() ? node.path("limit").asInt() : null)
-                .sortAsc(node.has("sortAsc") && node.path("sortAsc").isBoolean() ? node.path("sortAsc").asBoolean() : null)
+                .sortAsc(node.has("sortAsc") && node.path("sortAsc").isBoolean() ? node.path("sortAsc").asBoolean()
+                        : null)
                 .offset(node.has("offset") && node.path("offset").isInt() ? node.path("offset").asInt() : null)
+                .targetText(textOrNull(node.path("targetText")))
+                .dateFrom(textOrNull(node.path("dateFrom")))
+                .dateTo(textOrNull(node.path("dateTo")))
+                .strict(node.has("strict") && node.path("strict").isBoolean() ? node.path("strict").asBoolean() : null)
+                .reason(textOrNull(node.path("reason")))
                 .build();
     }
 

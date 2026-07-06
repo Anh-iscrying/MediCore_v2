@@ -15,4 +15,9 @@ public class AiChatResponse {
     private String reply;
     private Integer consultationLogId;
     private OffsetDateTime createdAt;
+
+    /** Thông tin debug hỗ trợ F12 check Action của Planner */
+    private Object debugRoutePlan;
+    /** Thông tin debug hỗ trợ F12 check Context của Executor */
+    private Object debugContext;
 }

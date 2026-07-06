@@ -18,6 +18,8 @@ import com.medicore.repository.MedicalRecordRepository;
 import com.medicore.repository.MedicineRepository;
 import com.medicore.repository.PrescriptionDetailRepository;
 import com.medicore.repository.DoctorRepository;
+import com.medicore.repository.SpecialtyRepository;
+import com.medicore.entity.catalog.Specialty;
 import com.medicore.service.PatientAiContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -52,6 +54,7 @@ public class PatientAiContextServiceImpl implements PatientAiContextService {
     private final MedicineRepository medicineRepository;
     private final AppointmentRepository appointmentRepository;
     private final DoctorRepository doctorRepository;
+    private final SpecialtyRepository specialtyRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -117,16 +120,12 @@ public class PatientAiContextServiceImpl implements PatientAiContextService {
         int pageSize = clamp(limit, 1, MAX_RECORDS);
         int pageOffset = Math.max(0, offset);
         
-        // Spring Data Pageable page numbers are 0-indexed, and page size represents size.
-        // If we want offset = 2, limit = 1, PageRequest.of(2, 1) is exactly offset 2 (skips first 2 rows) and returns 1 row!
-        // So we can use PageRequest.of(pageOffset, pageSize, sort) if we treat pageOffset as page number when pageSize is 1.
-        // Wait, what if pageSize > 1 and we want a custom offset? 
-        // In most cases for ordinal search, the user asks for a single specific index (e.g. 1st, 3rd) so limit/pageSize = 1.
-        // Let's implement it generally: if pageSize is 1, pageOffset works directly as the page index.
-        // If pageSize > 1, we can query starting from pageOffset/pageSize page index, or use offset directly via PageRequest.
-        // Let's do page = pageOffset, size = pageSize. This means pageOffset acts as page index when size = 1. 
-        // That is perfect for getRecordsByPosition(patientCode, limit=1, offset=2, ascending=true) which fetches the 3rd oldest record.
-        return medicalRecordRepository.findPagedByPatientCode(patientCode, PageRequest.of(pageOffset, pageSize, sort)).stream()
+        // Query page 0 với size = offset + limit, rồi Java stream skip/limit
+        // để tránh bug: PageRequest.of(offset, size) coi offset là page index khi size > 1
+        int fetchSize = Math.min(pageOffset + pageSize, MAX_RECORDS + pageOffset);
+        return medicalRecordRepository.findPagedByPatientCode(patientCode, PageRequest.of(0, fetchSize, sort)).stream()
+                .skip(pageOffset)
+                .limit(pageSize)
                 .map(this::toRecordSummary)
                 .toList();
     }
@@ -271,6 +270,7 @@ public class PatientAiContextServiceImpl implements PatientAiContextService {
                 .specialtyName(doctor.getSpecialty() == null ? null : doctor.getSpecialty().getSpecialtyName())
                 .degree(doctor.getDegree())
                 .experienceYears(doctor.getExperienceYears())
+                .achievements(doctor.getAchievements())
                 .build();
     }
 
@@ -361,5 +361,14 @@ public class PatientAiContextServiceImpl implements PatientAiContextService {
         boolean hasPersonalDataIntent() {
             return records || prescriptions || doctors;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getClinicSpecialties() {
+        return specialtyRepository.findAll().stream()
+                .map(Specialty::getSpecialtyName)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 }

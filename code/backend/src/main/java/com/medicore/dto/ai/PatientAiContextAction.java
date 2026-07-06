@@ -18,4 +18,15 @@ public class PatientAiContextAction {
     private Boolean sortAsc;
     /** Bỏ qua N bản ghi đầu tiên (0-indexed). Ví dụ: offset=2 + sortAsc=true → lấy từ lần khám thứ 3 */
     private Integer offset;
+
+    /** Mô tả target mà user muốn lấy, VD: "lần khám thứ 3 tính từ cũ nhất" */
+    private String targetText;
+    /** Lọc ngày bắt đầu (ISO format, nullable) */
+    private String dateFrom;
+    /** Lọc ngày kết thúc (ISO format, nullable) */
+    private String dateTo;
+    /** true khi câu hỏi chỉ định target cụ thể (EMR/thứ tự/ngày) — executor không merge fallback */
+    private Boolean strict;
+    /** Lý do planner chọn action (phục vụ debug) */
+    private String reason;
 }

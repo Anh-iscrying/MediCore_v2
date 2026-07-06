@@ -17,6 +17,9 @@ public class PatientAiRoutePlan {
 
     private String clarificationQuestion;
 
+    /** Trọng tâm trả lời, VD: "đơn thuốc của lần khám này" */
+    private String answerFocus;
+
     public static PatientAiRoutePlan empty() {
         return PatientAiRoutePlan.builder().build();
     }

@@ -100,7 +100,11 @@ public class DoctorAiContextServiceImpl implements DoctorAiContextService {
                 : Sort.by(Sort.Direction.DESC, "createdAt");
         int pageSize = clamp(limit, 1, MAX_RECORDS);
         int pageOffset = Math.max(0, offset);
-        return medicalRecordRepository.findPagedByPatientCode(patientCode, PageRequest.of(pageOffset, pageSize, sort)).stream()
+        // Query page 0 với size = offset + limit, rồi Java stream skip/limit
+        int fetchSize = Math.min(pageOffset + pageSize, MAX_RECORDS + pageOffset);
+        return medicalRecordRepository.findPagedByPatientCode(patientCode, PageRequest.of(0, fetchSize, sort)).stream()
+                .skip(pageOffset)
+                .limit(pageSize)
                 .map(this::toVisitSummary)
                 .toList();
     }

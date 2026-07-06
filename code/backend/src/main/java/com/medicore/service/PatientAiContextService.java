@@ -28,4 +28,6 @@ public interface PatientAiContextService {
     List<PatientAiDoctorInfo> getDoctorsSeen(String patientCode, int limit);
 
     List<PatientAiDoctorInfo> searchDoctors(String keyword, int limit);
+
+    List<String> getClinicSpecialties();
 }

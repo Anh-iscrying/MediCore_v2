@@ -3,6 +3,8 @@ package com.medicore.service.impl;
 import com.medicore.common.constants.ErrorCodes;
 import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.config.AiProperties;
+import com.medicore.dto.ai.AiContextRetrievalAttempt;
+import com.medicore.dto.ai.RetrievalStatus;
 import com.medicore.dto.ai.DoctorAiAuthorizedTarget;
 import com.medicore.dto.ai.DoctorAiContext;
 import com.medicore.dto.ai.DoctorAiAppointmentSummary;
@@ -82,34 +84,75 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
             }
         }
 
-        // Context builder
+        // Context builder with retry
         DoctorAiContext context;
         if (routePlan != null) {
             context = doctorAiContextExecutor.execute(target, routePlan);
+
+            // One-shot planner retry: broad plan trả rỗng và chưa có exact strict miss
+            if (!hasSubstantiveVisitData(context)
+                    && aiProperties.isContextRetryEnabled()
+                    && routePlan.getActions() != null
+                    && !routePlan.getActions().isEmpty()
+                    && !StringUtils.hasText(routePlan.getClarificationQuestion())
+                    && !hasStrictNotFound(context)) {
+                String retrySummary = buildRetrySummary(context);
+                try {
+                    DoctorAiRoutePlan retryPlan = doctorAiRoutePlanner.plan(
+                            message + "\n\n[HỆ THỐNG] Kết quả truy vấn lần 1: " + retrySummary
+                                    + ". Hãy đưa alternative action hoặc clarificationQuestion.",
+                            history);
+                    if (retryPlan != null) {
+                        if (StringUtils.hasText(retryPlan.getClarificationQuestion())
+                                && (retryPlan.getActions() == null || retryPlan.getActions().isEmpty())) {
+                            routePlan = retryPlan; // dùng clarification từ retry
+                        } else {
+                            DoctorAiContext retryContext = doctorAiContextExecutor.execute(target, retryPlan);
+                            if (hasSubstantiveVisitData(retryContext)) {
+                                // Merge retrieval attempts
+                                List<AiContextRetrievalAttempt> mergedAttempts = new ArrayList<>(context.getRetrievalAttempts());
+                                mergedAttempts.addAll(retryContext.getRetrievalAttempts());
+                                context = DoctorAiContext.builder()
+                                        .patientProfile(retryContext.getPatientProfile() != null ? retryContext.getPatientProfile() : context.getPatientProfile())
+                                        .currentAppointment(retryContext.getCurrentAppointment() != null ? retryContext.getCurrentAppointment() : context.getCurrentAppointment())
+                                        .appointmentHistory(retryContext.getAppointmentHistory())
+                                        .recentVisits(retryContext.getRecentVisits())
+                                        .visitDetails(retryContext.getVisitDetails())
+                                        .prescriptions(retryContext.getPrescriptions())
+                                        .retrievalAttempts(mergedAttempts)
+                                        .build();
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.debug("Doctor planner retry failed: {}", ex.getMessage());
+                }
+            }
         } else {
             context = doctorAiContextExecutor.buildDefaultContext(target);
         }
 
         // Clarification check
         if (routePlan != null && StringUtils.hasText(routePlan.getClarificationQuestion()) && !hasContext(context)) {
-            return saveAndReturn(target, message, routePlan.getClarificationQuestion());
+            return saveAndReturn(target, message, routePlan.getClarificationQuestion(), routePlan, context);
         }
 
         // Call Gateway
         List<Map<String, Object>> gatewayMessages = buildMessages(history, message, context);
         String reply = aiGatewayClient.completeChat(gatewayMessages);
 
-        return saveAndReturn(target, message, reply);
+        return saveAndReturn(target, message, reply, routePlan, context);
     }
 
-    private List<Map<String, Object>> buildMessages(List<AiChatMessageRequest> history, String currentMessage, DoctorAiContext context) {
+    private List<Map<String, Object>> buildMessages(List<AiChatMessageRequest> history, String currentMessage,
+            DoctorAiContext context) {
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
-
         String contextBlock = formatDoctorContext(context);
+        String finalSystemPrompt = SYSTEM_PROMPT;
         if (StringUtils.hasText(contextBlock)) {
-            messages.add(Map.of("role", "system", "content", contextBlock));
+            finalSystemPrompt = SYSTEM_PROMPT + "\n\n" + contextBlock;
         }
+        messages.add(Map.of("role", "system", "content", finalSystemPrompt));
 
         int start = Math.max(0, history.size() - aiProperties.getMaxHistoryMessages());
         for (AiChatMessageRequest item : history.subList(start, history.size())) {
@@ -135,18 +178,23 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
             DoctorAiPatientProfile p = context.getPatientProfile();
             builder.append("### THÔNG TIN CÁ NHÂN BỆNH NHÂN\n");
             builder.append("- Họ và tên: ").append(value(p.getFullName())).append("\n");
-            builder.append("- Ngày sinh: ").append(p.getDob() != null ? p.getDob().toString() : "không có dữ liệu").append("\n");
+            builder.append("- Ngày sinh: ").append(p.getDob() != null ? p.getDob().toString() : "không có dữ liệu")
+                    .append("\n");
             builder.append("- Tuổi: ").append(p.getAge() != null ? p.getAge() : "không có dữ liệu").append("\n");
-            builder.append("- Giới tính: ").append(p.getGender() != null ? p.getGender().name() : "không có dữ liệu").append("\n\n");
+            builder.append("- Giới tính: ").append(p.getGender() != null ? p.getGender().name() : "không có dữ liệu")
+                    .append("\n\n");
         }
 
         // 2. Current Appointment
         if (context.getCurrentAppointment() != null) {
             DoctorAiAppointmentSummary app = context.getCurrentAppointment();
             builder.append("### LỊCH HẸN HIỆN TẠI (ĐANG KHÁM)\n");
-            builder.append("- Ngày khám: ").append(app.getAppointmentDate() != null ? app.getAppointmentDate().toString() : "không có dữ liệu").append("\n");
+            builder.append("- Ngày khám: ")
+                    .append(app.getAppointmentDate() != null ? app.getAppointmentDate().toString() : "không có dữ liệu")
+                    .append("\n");
             builder.append("- Khung giờ: ").append(value(app.getTimeSlot())).append("\n");
-            builder.append("- Trạng thái: ").append(app.getStatus() != null ? app.getStatus().name() : "không có dữ liệu").append("\n");
+            builder.append("- Trạng thái: ")
+                    .append(app.getStatus() != null ? app.getStatus().name() : "không có dữ liệu").append("\n");
             builder.append("- Triệu chứng ban đầu: ").append(value(app.getSymptomsInitial())).append("\n");
             builder.append("- Bác sĩ phụ trách: ").append(value(app.getDoctorName())).append("\n");
             builder.append("- Chuyên khoa: ").append(value(app.getSpecialtyName())).append("\n\n");
@@ -163,10 +211,15 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
                 builder.append("Danh sách tóm tắt các lần khám gần đây:\n");
                 for (int i = 0; i < records.size(); i++) {
                     DoctorAiVisitSummary visit = records.get(i);
-                    builder.append("- Lần khám ").append(i + 1).append(" (EMR: ").append(value(visit.getEmrCode())).append("):\n");
-                    builder.append("  * Ngày khám: ").append(visit.getCreatedAt() != null ? visit.getCreatedAt().toString() : "không có dữ liệu").append("\n");
-                    builder.append("  * Bác sĩ: ").append(value(visit.getDoctorName())).append(" | Chuyên khoa: ").append(value(visit.getSpecialtyName())).append("\n");
-                    builder.append("  * ICD-10: ").append(value(visit.getDiagnosisIcd10())).append(" | Chẩn đoán: ").append(value(visit.getDiagnosisName())).append("\n");
+                    builder.append("- Lần khám ").append(i + 1).append(" (EMR: ").append(value(visit.getEmrCode()))
+                            .append("):\n");
+                    builder.append("  * Ngày khám: ")
+                            .append(visit.getCreatedAt() != null ? visit.getCreatedAt().toString() : "không có dữ liệu")
+                            .append("\n");
+                    builder.append("  * Bác sĩ: ").append(value(visit.getDoctorName())).append(" | Chuyên khoa: ")
+                            .append(value(visit.getSpecialtyName())).append("\n");
+                    builder.append("  * ICD-10: ").append(value(visit.getDiagnosisIcd10())).append(" | Chẩn đoán: ")
+                            .append(value(visit.getDiagnosisName())).append("\n");
                     builder.append("  * Triệu chứng: ").append(value(visit.getSymptoms())).append("\n");
                     builder.append("  * Lời dặn: ").append(value(visit.getCareAdvice())).append("\n");
                     if (visit.getFollowUpDate() != null) {
@@ -185,10 +238,15 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
                 builder.append("Chi tiết bệnh án lâm sàng:\n");
                 for (int i = 0; i < details.size(); i++) {
                     DoctorAiVisitDetail detail = details.get(i);
-                    builder.append("- Bệnh án ").append(i + 1).append(" (EMR: ").append(value(detail.getEmrCode())).append("):\n");
-                    builder.append("  * Ngày khám: ").append(detail.getCreatedAt() != null ? detail.getCreatedAt().toString() : "không có dữ liệu").append("\n");
-                    builder.append("  * Bác sĩ: ").append(value(detail.getDoctorName())).append(" | Chuyên khoa: ").append(value(detail.getSpecialtyName())).append("\n");
-                    builder.append("  * ICD-10: ").append(value(detail.getDiagnosisIcd10())).append(" | Chẩn đoán: ").append(value(detail.getDiagnosisName())).append("\n");
+                    builder.append("- Bệnh án ").append(i + 1).append(" (EMR: ").append(value(detail.getEmrCode()))
+                            .append("):\n");
+                    builder.append("  * Ngày khám: ").append(
+                            detail.getCreatedAt() != null ? detail.getCreatedAt().toString() : "không có dữ liệu")
+                            .append("\n");
+                    builder.append("  * Bác sĩ: ").append(value(detail.getDoctorName())).append(" | Chuyên khoa: ")
+                            .append(value(detail.getSpecialtyName())).append("\n");
+                    builder.append("  * ICD-10: ").append(value(detail.getDiagnosisIcd10())).append(" | Chẩn đoán: ")
+                            .append(value(detail.getDiagnosisName())).append("\n");
                     builder.append("  * Triệu chứng: ").append(value(detail.getSymptoms())).append("\n");
                     builder.append("  * Khám lâm sàng: ").append(value(detail.getPhysicalExamination())).append("\n");
                     builder.append("  * Cận lâm sàng/Xét nghiệm: ").append(value(detail.getTestResults())).append("\n");
@@ -208,13 +266,16 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
             }
         }
 
-        // 4. Standalone prescriptions (prescriptions that don't match EMR of displayed records)
+        // 4. Standalone prescriptions (prescriptions that don't match EMR of displayed
+        // records)
         Set<String> matchedEmrs = new HashSet<>();
         for (DoctorAiVisitSummary r : records) {
-            if (r.getEmrCode() != null) matchedEmrs.add(r.getEmrCode().toLowerCase(Locale.ROOT));
+            if (r.getEmrCode() != null)
+                matchedEmrs.add(r.getEmrCode().toLowerCase(Locale.ROOT));
         }
         for (DoctorAiVisitDetail r : details) {
-            if (r.getEmrCode() != null) matchedEmrs.add(r.getEmrCode().toLowerCase(Locale.ROOT));
+            if (r.getEmrCode() != null)
+                matchedEmrs.add(r.getEmrCode().toLowerCase(Locale.ROOT));
         }
 
         List<DoctorAiPrescriptionItem> standalone = new ArrayList<>();
@@ -228,7 +289,8 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
             builder.append("### CÁC ĐƠN THUỐC KHÁC\n");
             for (var item : standalone) {
                 builder.append("- EMR liên quan: ").append(value(item.getEmrCode()))
-                        .append(" | Ngày kê: ").append(item.getPrescribedAt() != null ? item.getPrescribedAt().toString() : "không có dữ liệu")
+                        .append(" | Ngày kê: ")
+                        .append(item.getPrescribedAt() != null ? item.getPrescribedAt().toString() : "không có dữ liệu")
                         .append(" | Tên thuốc: ").append(value(item.getMedicineName()))
                         .append(" | Số lượng: ").append(item.getQuantity() != null ? item.getQuantity() : 0)
                         .append(" ").append(value(item.getUnit()))
@@ -242,9 +304,12 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
         if (!context.getAppointmentHistory().isEmpty()) {
             builder.append("### LỊCH SỬ ĐẶT LỊCH HẸN VỚI BÁC SĨ (Bao gồm các trạng thái)\n");
             for (DoctorAiAppointmentSummary app : context.getAppointmentHistory()) {
-                builder.append("- Ngày hẹn: ").append(app.getAppointmentDate() != null ? app.getAppointmentDate().toString() : "không có dữ liệu")
+                builder.append("- Ngày hẹn: ")
+                        .append(app.getAppointmentDate() != null ? app.getAppointmentDate().toString()
+                                : "không có dữ liệu")
                         .append(" | Khung giờ: ").append(value(app.getTimeSlot()))
-                        .append(" | Trạng thái: ").append(app.getStatus() != null ? app.getStatus().name() : "không có dữ liệu")
+                        .append(" | Trạng thái: ")
+                        .append(app.getStatus() != null ? app.getStatus().name() : "không có dữ liệu")
                         .append(" | Bác sĩ: ").append(value(app.getDoctorName()))
                         .append(" | Chuyên khoa: ").append(value(app.getSpecialtyName()))
                         .append("\n");
@@ -276,13 +341,47 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
         if (context == null) {
             return false;
         }
+        return context.getPatientProfile() != null
+                || context.getCurrentAppointment() != null
+                || hasSubstantiveVisitData(context);
+    }
+
+    private boolean hasSubstantiveVisitData(DoctorAiContext context) {
+        if (context == null) {
+            return false;
+        }
         return (context.getRecentVisits() != null && !context.getRecentVisits().isEmpty())
                 || (context.getVisitDetails() != null && !context.getVisitDetails().isEmpty())
                 || (context.getPrescriptions() != null && !context.getPrescriptions().isEmpty())
                 || (context.getAppointmentHistory() != null && !context.getAppointmentHistory().isEmpty());
     }
 
-    private AiChatResponse saveAndReturn(DoctorAiAuthorizedTarget target, String message, String reply) {
+    private boolean hasStrictNotFound(DoctorAiContext context) {
+        if (context == null || context.getRetrievalAttempts() == null) {
+            return false;
+        }
+        return context.getRetrievalAttempts().stream()
+                .anyMatch(a -> a.getStatus() == RetrievalStatus.NOT_FOUND
+                        && a.getOffset() != null);
+    }
+
+    private String buildRetrySummary(DoctorAiContext context) {
+        if (context == null || context.getRetrievalAttempts() == null || context.getRetrievalAttempts().isEmpty()) {
+            return "không có dữ liệu";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (AiContextRetrievalAttempt attempt : context.getRetrievalAttempts()) {
+            if (sb.length() > 0) {
+                sb.append("; ");
+            }
+            sb.append(attempt.getActionType()).append("=").append(attempt.getStatus().name())
+                    .append("(").append(attempt.getResultCount()).append(" rows)");
+        }
+        return sb.toString();
+    }
+
+
+    private AiChatResponse saveAndReturn(DoctorAiAuthorizedTarget target, String message, String reply, Object debugRoutePlan, Object debugContext) {
         OffsetDateTime now = OffsetDateTime.now();
         DoctorAiConsultationLog logEntity = DoctorAiConsultationLog.builder()
                 .doctor(target.getDoctor())
@@ -298,6 +397,8 @@ public class DoctorAiChatServiceImpl implements DoctorAiChatService {
                 .reply(reply)
                 .consultationLogId(logEntity.getId())
                 .createdAt(logEntity.getCreatedAt())
+                .debugRoutePlan(debugRoutePlan)
+                .debugContext(debugContext)
                 .build();
     }
 

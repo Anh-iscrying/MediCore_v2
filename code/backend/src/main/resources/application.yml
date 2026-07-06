@@ -75,6 +75,8 @@ app:
     max-images-per-message: ${AI_MAX_IMAGES_PER_MESSAGE:3}
     max-image-bytes: ${AI_MAX_IMAGE_BYTES:5242880}
     allowed-image-mime-types: ${AI_ALLOWED_IMAGE_MIME_TYPES:image/png,image/jpeg,image/webp}
+    context-retry-enabled: ${AI_CONTEXT_RETRY_ENABLED:true}
+    context-retry-max-attempts: ${AI_CONTEXT_RETRY_MAX_ATTEMPTS:1}
   appointment:
     min-hours-before-booking: ${APPOINTMENT_MIN_HOURS_BEFORE_BOOKING:0}
     min-hours-before-cancellation: ${APPOINTMENT_MIN_HOURS_BEFORE_CANCELLATION:0}

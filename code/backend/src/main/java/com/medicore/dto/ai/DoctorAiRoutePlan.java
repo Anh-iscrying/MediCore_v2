@@ -17,6 +17,9 @@ public class DoctorAiRoutePlan {
 
     private String clarificationQuestion;
 
+    /** Trọng tâm trả lời, VD: "xét nghiệm của lần khám EMR001" */
+    private String answerFocus;
+
     public static DoctorAiRoutePlan empty() {
         return DoctorAiRoutePlan.builder().build();
     }

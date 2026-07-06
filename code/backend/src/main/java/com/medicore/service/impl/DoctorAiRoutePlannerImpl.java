@@ -30,7 +30,7 @@ public class DoctorAiRoutePlannerImpl implements DoctorAiRoutePlanner {
     private static final int MAX_TEXT_LENGTH = 600;
 
     private static final String PLANNER_PROMPT = """
-            Bạn là bộ định tuyến context cho trợ lý bác sĩ MediCore. Nhiệm vụ duy nhất: chọn dữ liệu hệ thống cần lấy trước khi AI trả lời.
+            Bạn là bộ định tuyến context cho trợ lý bác sĩ MediCore. Nhiệm vụ duy nhất: phân tích câu hỏi và xác định chính xác dữ liệu cần lấy.
             Không trả lời tư vấn y tế. Chỉ trả JSON hợp lệ, không markdown, không giải thích.
 
             Action được phép:
@@ -41,16 +41,21 @@ public class DoctorAiRoutePlannerImpl implements DoctorAiRoutePlanner {
             - PRESCRIPTIONS: Đơn thuốc đã kê gần đây hoặc của lần khám cụ thể.
             - APPOINTMENT_HISTORY: Lịch sử đặt lịch khám của bệnh nhân (tất cả các trạng thái).
 
+            Quy tắc exact-retrieval:
+            - Nếu bác sĩ hỏi "tóm tắt trước khi khám", "thông tin quan trọng", xem tổng quan → broad context: PATIENT_PROFILE, CURRENT_APPOINTMENT, RECENT_VISITS, PRESCRIPTIONS. strict=false.
+            - Nếu hỏi chi tiết EMR cụ thể hoặc "lần khám thứ N" → strict=true, chỉ VISIT_DETAIL + PRESCRIPTIONS liên quan. KHÔNG thêm RECENT_VISITS nền.
+            - Nếu nói "lần đó", "bệnh án đó" nhưng lịch sử chat không đủ resolve → đặt clarificationQuestion.
+            - PRESCRIPTIONS theo lần khám cụ thể phải mang cùng emrCode hoặc offset/sortAsc.
+
             Quy tắc bảo mật & lập kế hoạch:
             - Không dùng, không trả patientCode, appointmentId, doctorId hoặc email bệnh nhân/bác sĩ.
-            - Nếu bác sĩ hỏi "bệnh nhân này", "tóm tắt trước khi khám", "thông tin quan trọng" hoặc cần xem tổng quan để chuẩn bị khám, hãy chọn: PATIENT_PROFILE, CURRENT_APPOINTMENT, RECENT_VISITS, PRESCRIPTIONS.
             - Nếu câu hỏi chung không cần dữ liệu cụ thể của bệnh nhân (ví dụ: tư vấn lý thuyết bệnh học), trả actions rỗng.
             - Nếu cần xem chi tiết lần khám cụ thể nhưng thiếu mã EMR hoặc ngữ cảnh chưa rõ, đặt clarificationQuestion bằng câu hỏi tiếng Việt ngắn gọn.
             - Dùng `sortAsc`: true để sắp xếp từ cũ nhất trước, false hoặc null để sắp xếp từ mới nhất (mặc định).
             - Dùng `offset`: số nguyên 0-indexed để bỏ qua N bản ghi.
             
             JSON schema mong muốn:
-            {"actions":[{"type":"PATIENT_PROFILE|CURRENT_APPOINTMENT|RECENT_VISITS|VISIT_DETAIL|PRESCRIPTIONS|APPOINTMENT_HISTORY","emrCode":"EMR... hoặc null","keyword":"từ khóa hoặc null","limit":số hoặc null,"sortAsc":boolean hoặc null,"offset":số hoặc null}],"clarificationQuestion":null hoặc "..."}
+            {"actions":[{"type":"...", "emrCode":null, "keyword":null, "limit":null, "sortAsc":null, "offset":null, "targetText":"mô tả ngắn", "strict":boolean, "reason":"lý do", "dateFrom":null, "dateTo":null}], "clarificationQuestion":null, "answerFocus":"trọng tâm trả lời"}
             """;
 
     private final AiGatewayClient aiGatewayClient;
@@ -107,7 +112,7 @@ public class DoctorAiRoutePlannerImpl implements DoctorAiRoutePlanner {
                 if (action == null || action.getType() == null) {
                     continue;
                 }
-                String key = action.getType() + ":" + safe(action.getEmrCode()) + ":" + safe(action.getKeyword());
+                String key = buildDedupeKey(action);
                 if (seen.add(key)) {
                     actions.add(action);
                 }
@@ -115,10 +120,22 @@ public class DoctorAiRoutePlannerImpl implements DoctorAiRoutePlanner {
         }
 
         String clarificationQuestion = textOrNull(root.path("clarificationQuestion"));
+        String answerFocus = textOrNull(root.path("answerFocus"));
         return DoctorAiRoutePlan.builder()
                 .actions(actions)
                 .clarificationQuestion(clarificationQuestion)
+                .answerFocus(answerFocus)
                 .build();
+    }
+
+    private String buildDedupeKey(DoctorAiContextAction action) {
+        return action.getType()
+                + ":" + safe(action.getEmrCode())
+                + ":" + safe(action.getKeyword())
+                + ":" + (action.getOffset() != null ? action.getOffset() : "")
+                + ":" + (action.getSortAsc() != null ? action.getSortAsc() : "")
+                + ":" + safe(action.getDateFrom())
+                + ":" + safe(action.getDateTo());
     }
 
     private DoctorAiContextAction parseAction(JsonNode node) {
@@ -133,6 +150,11 @@ public class DoctorAiRoutePlannerImpl implements DoctorAiRoutePlanner {
                 .limit(node.path("limit").isInt() ? node.path("limit").asInt() : null)
                 .sortAsc(node.has("sortAsc") && node.path("sortAsc").isBoolean() ? node.path("sortAsc").asBoolean() : null)
                 .offset(node.has("offset") && node.path("offset").isInt() ? node.path("offset").asInt() : null)
+                .targetText(textOrNull(node.path("targetText")))
+                .dateFrom(textOrNull(node.path("dateFrom")))
+                .dateTo(textOrNull(node.path("dateTo")))
+                .strict(node.has("strict") && node.path("strict").isBoolean() ? node.path("strict").asBoolean() : null)
+                .reason(textOrNull(node.path("reason")))
                 .build();
     }
 

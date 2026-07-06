@@ -26,4 +26,11 @@ public class PatientAiContext {
 
     @Builder.Default
     private List<PatientAiDoctorInfo> doctorsSeen = List.of();
+
+    @Builder.Default
+    private List<String> clinicSpecialties = List.of();
+
+    /** Ghi nhận kết quả từng truy vấn dữ liệu — audit cho final AI */
+    @Builder.Default
+    private List<AiContextRetrievalAttempt> retrievalAttempts = List.of();
 }

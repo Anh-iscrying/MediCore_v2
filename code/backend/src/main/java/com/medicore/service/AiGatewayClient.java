@@ -69,6 +69,7 @@ public class AiGatewayClient {
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMillis(aiProperties.getTimeoutMs()))
+                    .version(HttpClient.Version.HTTP_1_1)
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

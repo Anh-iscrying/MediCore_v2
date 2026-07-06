@@ -52,6 +52,67 @@ class PatientAiRoutePlannerImplTest {
                 .hasMessageContaining("AI route planner failed");
     }
 
+    @Test
+    void planParsesNewFieldsTargetTextStrictAnswerFocus() {
+        aiGatewayClient.response = """
+                {
+                  "actions": [
+                    {"type":"RECORD_DETAIL","offset":2,"sortAsc":true,"limit":1,"strict":true,"targetText":"lần khám thứ 3 tính từ cũ nhất","reason":"user hỏi lần khám thứ 3","dateFrom":"2025-01-01","dateTo":"2025-12-31"}
+                  ],
+                  "clarificationQuestion": null,
+                  "answerFocus": "đơn thuốc của lần khám này"
+                }
+                """;
+
+        PatientAiRoutePlan plan = planner.plan("Cho tôi xem lần khám thứ 3", List.of());
+
+        assertThat(plan.getActions()).hasSize(1);
+        var action = plan.getActions().get(0);
+        assertThat(action.getType()).isEqualTo(PatientAiContextActionType.RECORD_DETAIL);
+        assertThat(action.getOffset()).isEqualTo(2);
+        assertThat(action.getSortAsc()).isTrue();
+        assertThat(action.getStrict()).isTrue();
+        assertThat(action.getTargetText()).isEqualTo("lần khám thứ 3 tính từ cũ nhất");
+        assertThat(action.getReason()).isEqualTo("user hỏi lần khám thứ 3");
+        assertThat(action.getDateFrom()).isEqualTo("2025-01-01");
+        assertThat(action.getDateTo()).isEqualTo("2025-12-31");
+        assertThat(plan.getAnswerFocus()).isEqualTo("đơn thuốc của lần khám này");
+    }
+
+    @Test
+    void dedupeKeepsSameTypeWithDifferentOffset() {
+        aiGatewayClient.response = """
+                {
+                  "actions": [
+                    {"type":"RECENT_RECORDS","offset":0,"sortAsc":true,"limit":1},
+                    {"type":"RECENT_RECORDS","offset":2,"sortAsc":true,"limit":1}
+                  ]
+                }
+                """;
+
+        PatientAiRoutePlan plan = planner.plan("lần khám 1 và 3", List.of());
+
+        assertThat(plan.getActions()).hasSize(2);
+        assertThat(plan.getActions().get(0).getOffset()).isEqualTo(0);
+        assertThat(plan.getActions().get(1).getOffset()).isEqualTo(2);
+    }
+
+    @Test
+    void dedupeRemovesTrueDuplicate() {
+        aiGatewayClient.response = """
+                {
+                  "actions": [
+                    {"type":"RECENT_RECORDS","offset":2,"sortAsc":true,"limit":1},
+                    {"type":"RECENT_RECORDS","offset":2,"sortAsc":true,"limit":1}
+                  ]
+                }
+                """;
+
+        PatientAiRoutePlan plan = planner.plan("lần khám thứ 3", List.of());
+
+        assertThat(plan.getActions()).hasSize(1);
+    }
+
     private static class TestAiGatewayClient extends AiGatewayClient {
         private String response;
 
