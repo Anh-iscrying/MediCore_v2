@@ -119,6 +119,106 @@ const formatBytes = (bytes: number) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 };
 
+const parseBoldAndArrows = (text: string): React.ReactNode[] => {
+    const cleanText = text.replace(/->/g, "→");
+    const parts = cleanText.split(/\*\*([^*]+)\*\*/g);
+    return parts.map((part, index) => {
+        if (index % 2 === 1) {
+            return (
+                <strong key={index} className="font-bold">
+                    {part}
+                </strong>
+            );
+        }
+        return part;
+    });
+};
+
+const renderMessageText = (text: string): React.ReactNode => {
+    if (!text) return null;
+
+    const lines = text.split("\n");
+    const renderedElements: React.ReactNode[] = [];
+    let currentListItems: { type: "ordered" | "unordered"; content: React.ReactNode; key: number }[] = [];
+
+    const flushList = (key: number) => {
+        if (currentListItems.length > 0) {
+            const listType = currentListItems[0].type;
+            if (listType === "unordered") {
+                renderedElements.push(
+                    <ul key={`ul-${key}`} className="list-disc pl-5 my-1 space-y-0.5">
+                        {currentListItems.map((item) => (
+                            <li key={item.key} className="text-sm leading-relaxed">
+                                {item.content}
+                            </li>
+                        ))}
+                    </ul>
+                );
+            } else {
+                renderedElements.push(
+                    <ol key={`ol-${key}`} className="list-decimal pl-5 my-1 space-y-0.5">
+                        {currentListItems.map((item) => (
+                            <li key={item.key} className="text-sm leading-relaxed">
+                                {item.content}
+                            </li>
+                        ))}
+                    </ol>
+                );
+            }
+            currentListItems = [];
+        }
+    };
+
+    lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+            flushList(index);
+            renderedElements.push(<div key={`empty-${index}`} className="h-2" />);
+            return;
+        }
+
+        // Check for unordered list: starts with "- " or "* "
+        const unorderedMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+        if (unorderedMatch) {
+            const content = parseBoldAndArrows(unorderedMatch[2]);
+            currentListItems.push({ type: "unordered", content, key: index });
+            return;
+        }
+
+        // Check for ordered list: starts with "1. ", "2. ", etc.
+        const orderedMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+        if (orderedMatch) {
+            const content = parseBoldAndArrows(orderedMatch[2]);
+            currentListItems.push({ type: "ordered", content, key: index });
+            return;
+        }
+
+        // If it's a regular line, flush any active list first
+        flushList(index);
+
+        // Check if the entire trimmed line is a bold heading (e.g. "**Title:**" or "**Title**")
+        const headerMatch = trimmed.match(/^\*\*(.*)\*\*$/);
+        if (headerMatch) {
+            renderedElements.push(
+                <p key={`header-${index}`} className="font-bold text-sm mt-3 mb-1 first:mt-0">
+                    {parseBoldAndArrows(headerMatch[1])}
+                </p>
+            );
+        } else {
+            renderedElements.push(
+                <p key={`p-${index}`} className="text-sm leading-relaxed">
+                    {parseBoldAndArrows(line)}
+                </p>
+            );
+        }
+    });
+
+    // Flush any remaining list items at the end
+    flushList(lines.length);
+
+    return <div className="space-y-1">{renderedElements}</div>;
+};
+
 export function MedicalAiChat() {
     const [value, setValue] = useState("");
     const [messages, setMessages] = useState<Message[]>([]);
@@ -375,7 +475,7 @@ export function MedicalAiChat() {
                                                 ))}
                                             </div>
                                         )}
-                                        <div>{msg.text}</div>
+                                        <div>{renderMessageText(msg.text)}</div>
                                     </div>
                                     <span className="text-[9px] text-muted-foreground px-1">
                                         {msg.time}

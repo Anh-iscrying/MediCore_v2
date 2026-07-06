@@ -41,8 +41,107 @@ import { useAuth } from "@/providers/auth-provider"
 import type { Appointment, Patient, Specialty, SpecialtyExamTemplateField } from "@/types/medical"
 import { useReactToPrint } from "react-to-print"
 import { useRef } from "react"
-import { medicalRecordsApi } from "@/lib/api"
+import { medicalRecordsApi, aiApi } from "@/lib/api"
 import { generateMedicalRecordPdf } from "@/lib/generate-medical-record-pdf"
+
+const parseBoldItalicAndArrows = (text: string): React.ReactNode[] => {
+  const cleanText = text.replace(/->/g, "→");
+  const boldParts = cleanText.split(/\*\*([^*]+)\*\*/g);
+  return boldParts.flatMap((boldPart, boldIndex) => {
+    const isBold = boldIndex % 2 === 1;
+    const italicParts = boldPart.split(/\*([^*]+)\*/g);
+    const renderedItalics = italicParts.map((italicPart, italicIndex) => {
+      const isItalic = italicIndex % 2 === 1;
+      if (isItalic) {
+        return (
+          <em key={`italic-${italicIndex}`} className="italic not-bold font-normal">
+            {italicPart}
+          </em>
+        );
+      }
+      return italicPart;
+    });
+    if (isBold) {
+      return (
+        <strong key={`bold-${boldIndex}`} className="font-bold text-foreground">
+          {renderedItalics}
+        </strong>
+      );
+    }
+    return renderedItalics;
+  });
+};
+
+const renderMessageText = (text: string): React.ReactNode => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const renderedElements: React.ReactNode[] = [];
+  let currentListItems: { type: "ordered" | "unordered"; content: React.ReactNode; key: number }[] = [];
+  const flushList = (key: number) => {
+    if (currentListItems.length > 0) {
+      const listType = currentListItems[0].type;
+      if (listType === "unordered") {
+        renderedElements.push(
+          <ul key={`ul-${key}`} className="list-disc pl-5 my-1 space-y-0.5">
+            {currentListItems.map((item) => (
+              <li key={item.key} className="text-sm leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ul>
+        );
+      } else {
+        renderedElements.push(
+          <ol key={`ol-${key}`} className="list-decimal pl-5 my-1 space-y-0.5">
+            {currentListItems.map((item) => (
+              <li key={item.key} className="text-sm leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+      currentListItems = [];
+    }
+  };
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushList(index);
+      renderedElements.push(<div key={`empty-${index}`} className="h-2" />);
+      return;
+    }
+    const unorderedMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+    if (unorderedMatch) {
+      const content = parseBoldItalicAndArrows(unorderedMatch[2]);
+      currentListItems.push({ type: "unordered", content, key: index });
+      return;
+    }
+    const orderedMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+    if (orderedMatch) {
+      const content = parseBoldItalicAndArrows(orderedMatch[2]);
+      currentListItems.push({ type: "ordered", content, key: index });
+      return;
+    }
+    flushList(index);
+    const headerMatch = trimmed.match(/^\*\*(.*)\*\*$/);
+    if (headerMatch) {
+      renderedElements.push(
+        <p key={`header-${index}`} className="font-bold text-sm mt-3 mb-1 first:mt-0">
+          {parseBoldItalicAndArrows(headerMatch[1])}
+        </p>
+      );
+    } else {
+      renderedElements.push(
+        <p key={`p-${index}`} className="text-sm leading-relaxed">
+          {parseBoldItalicAndArrows(line)}
+        </p>
+      );
+    }
+  });
+  flushList(lines.length);
+  return <div className="space-y-1">{renderedElements}</div>;
+};
 
 interface ExaminationPageProps {
   patient: Patient
@@ -84,6 +183,8 @@ export function ExaminationPage({ patient, appointment, specialty }: Examination
 
   const [previewMode, setPreviewMode] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+
   const [treatment, setTreatment] = useState("")
   const [followUpDate, setFollowUpDate] = useState("")
   const [examinationNotes, setExaminationNotes] = useState("")
@@ -98,12 +199,24 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
 • Cung cấp tài liệu y khoa tham khảo nhanh`,
     },
   ]);
-
   const [input, setInput] = useState("");
-  const handleSendMessage = () => {
-    if (!input.trim()) return;
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
-    const question = input;
+  // Auto scroll to bottom of chat when new message or chunk arrives (local scroll only)
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  }, [messages, isAiLoading]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isAiLoading) return;
+
+    const question = input.trim();
+    setInput("");
 
     setMessages((prev) => [
       ...prev,
@@ -113,21 +226,80 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
       },
     ]);
 
-    setInput("");
+    setIsAiLoading(true);
 
-    setTimeout(() => {
+    try {
+      const historyPayload = messages
+        .filter((_, idx) => idx > 0)
+        .map((m) => ({
+          role: m.sender === "doctor" ? "user" : "assistant",
+          content: m.text,
+        }))
+        .slice(-10);
+
+      const res = await aiApi.doctorChat({
+        message: question,
+        history: historyPayload,
+        appointmentId: appointment?.id ? parseInt(appointment.id, 10) : undefined,
+        patientCode: patient?.patientCode,
+      });
+
+      const replyText = res.reply || "AI không phản hồi.";
       setMessages((prev) => [
         ...prev,
         {
           sender: "ai",
-          text: `Đây là thông tin y khoa tham khảo giả lập từ hệ thống.\n\nYêu cầu tra cứu: "${question}"\n\nHướng dẫn tham khảo:\n- Xem xét các chỉ định tương tác thuốc theo hướng dẫn của nhà sản xuất.\n- Đối chiếu phác đồ điều trị tiêu chuẩn của Bộ Y tế cho mã bệnh lý liên quan.\n\n*Khuyến cáo: Các thông tin trên chỉ mang tính chất tham khảo học thuật hỗ trợ quy trình khám, bác sĩ chịu trách nhiệm đưa ra quyết định lâm sàng cuối cùng.*`,
+          text: "",
         },
       ]);
-    }, 800);
+
+      let currentLength = 0;
+      const speed = 10; // ms per tick
+      const charsPerTick = 3; // chars printed per tick
+      const timer = setInterval(() => {
+        currentLength += charsPerTick;
+        if (currentLength >= replyText.length) {
+          clearInterval(timer);
+          setMessages((prev) => {
+            const copy = [...prev];
+            if (copy.length > 0) {
+              copy[copy.length - 1] = {
+                ...copy[copy.length - 1],
+                text: replyText,
+              };
+            }
+            return copy;
+          });
+        } else {
+          const part = replyText.substring(0, currentLength);
+          setMessages((prev) => {
+            const copy = [...prev];
+            if (copy.length > 0) {
+              copy[copy.length - 1] = {
+                ...copy[copy.length - 1],
+                text: part,
+              };
+            }
+            return copy;
+          });
+        }
+      }, speed);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: `❌ Đã xảy ra lỗi: ${err.message || "Không thể kết nối tới dịch vụ AI."}`,
+        },
+      ]);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
+
   const sendQuickQuestion = (question: string) => {
-    setInput(question)
-  }
+    setInput(question);
+  };
   const [prescriptionItems, setPrescriptionItems] = useState<
     Array<{ medicineId: string; medicineName: string; quantity: number; unit: string; dosage: string; notes?: string }>
   >([])
@@ -1175,7 +1347,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
             </div>
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
               {messages.map((message, index) => {
                 const isDoctor = message.sender === "doctor";
                 return (
@@ -1189,11 +1361,20 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
                         : "bg-white border border-border text-foreground rounded-tl-none"
                         }`}
                     >
-                      {message.text}
+                      {renderMessageText(message.text)}
                     </div>
                   </div>
                 );
               })}
+              {isAiLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-border text-foreground max-w-[80%] rounded-2xl rounded-tl-none px-3.5 py-2.5 text-sm shadow-sm flex items-center gap-1.5">
+                    <span className="h-2 w-2 bg-emerald-600 rounded-full animate-bounce [animation-duration:1s]"></span>
+                    <span className="h-2 w-2 bg-emerald-600 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.2s]"></span>
+                    <span className="h-2 w-2 bg-emerald-600 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.4s]"></span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Chat Input Area */}

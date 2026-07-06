@@ -65,6 +65,11 @@ app:
     model: ${AI_GATEWAY_MODEL:cx/gpt-5.5}
     timeout-ms: ${AI_GATEWAY_TIMEOUT_MS:30000}
     temperature: ${AI_GATEWAY_TEMPERATURE:0.4}
+    route-planner-enabled: ${AI_ROUTE_PLANNER_ENABLED:true}
+    keyword-fallback-enabled: ${AI_KEYWORD_FALLBACK_ENABLED:true}
+    planner-temperature: ${AI_PLANNER_TEMPERATURE:0.0}
+    planner-max-tokens: ${AI_PLANNER_MAX_TOKENS:500}
+    json-response-format-enabled: ${AI_JSON_RESPONSE_FORMAT_ENABLED:false}
     max-input-chars: ${AI_MAX_INPUT_CHARS:4000}
     max-history-messages: ${AI_MAX_HISTORY_MESSAGES:10}
     max-images-per-message: ${AI_MAX_IMAGES_PER_MESSAGE:3}

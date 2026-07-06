@@ -264,3 +264,11 @@ export const schedulesApi = {
       body: JSON.stringify(data),
     }),
 }
+
+export const aiApi = {
+  doctorChat: (data: { message: string; history?: any[]; appointmentId?: number; patientCode?: string }) =>
+    request<any>("/ai/doctor/chat", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}

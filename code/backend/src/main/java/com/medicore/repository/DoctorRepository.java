@@ -17,4 +17,16 @@ public interface DoctorRepository extends JpaRepository<Doctor, Integer> {
 
     @Query("SELECT d.specialty.id, COUNT(d) FROM Doctor d WHERE d.specialty IS NOT NULL GROUP BY d.specialty.id")
     List<Object[]> countGroupBySpecialtyId();
+
+    @Query("SELECT d FROM Doctor d LEFT JOIN FETCH d.specialty s " +
+           "WHERE d.isActive = true AND (" +
+           "LOWER(d.doctorName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(s.specialtyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(d.bio) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(d.degree) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           ")")
+    List<Doctor> searchActiveDoctors(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT d FROM Doctor d LEFT JOIN FETCH d.specialty WHERE d.isActive = true")
+    List<Doctor> findAllActiveDoctors(org.springframework.data.domain.Pageable pageable);
 }

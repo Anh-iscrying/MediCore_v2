@@ -41,7 +41,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @Value("${app.otp.secret:${jwt.secret:change-me-before-running-very-long-secret-key-32-chars-long}}")
+    @Value("${app.otp.secret:${jwt.secret}}")
     private String otpSecret;
 
     @Override

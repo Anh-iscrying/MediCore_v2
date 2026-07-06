@@ -14,10 +14,10 @@ import java.util.Map;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret:change-me-before-running-very-long-secret-key-32-chars-long}")
+    @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:86400000}")
+    @Value("${jwt.expiration}")
     private long jwtExpirationInMs;
 
     private final ObjectMapper objectMapper = new ObjectMapper();

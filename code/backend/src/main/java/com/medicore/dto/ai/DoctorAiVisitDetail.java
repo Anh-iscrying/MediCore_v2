@@ -1,0 +1,18 @@
+package com.medicore.dto.ai;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class DoctorAiVisitDetail extends DoctorAiVisitSummary {
+    private String physicalExamination;
+    private String testResults;
+    private String clinicalNote;
+}

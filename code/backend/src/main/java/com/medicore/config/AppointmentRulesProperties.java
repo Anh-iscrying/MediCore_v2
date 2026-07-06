@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.appointment")
 public class AppointmentRulesProperties {
-    private int minHoursBeforeBooking = 2;
-    private int minHoursBeforeCancellation = 2;
-    private int maxActivePerPatient = 3;
-    private int maxCreatedPerPatientPerDay = 3;
+    private int minHoursBeforeBooking;
+    private int minHoursBeforeCancellation;
+    private int maxActivePerPatient;
+    private int maxCreatedPerPatientPerDay;
 }

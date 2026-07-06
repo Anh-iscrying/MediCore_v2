@@ -12,6 +12,6 @@ import org.springframework.stereotype.Component;
 public class SupabaseStorageProperties {
     private String url;
     private String serviceRoleKey;
-    private String medicalRecordsBucket = "medical-records";
-    private long signedUrlTtlSeconds = 900;
+    private String medicalRecordsBucket;
+    private long signedUrlTtlSeconds;
 }

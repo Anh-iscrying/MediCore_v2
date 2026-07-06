@@ -31,6 +31,7 @@ import java.util.List;
 public class AiChatController {
 
     private final AiChatService aiChatService;
+    private final com.medicore.service.DoctorAiChatService doctorAiChatService;
     private final ObjectMapper objectMapper;
 
     @PostMapping(value = "/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -38,6 +39,13 @@ public class AiChatController {
     public ResponseEntity<ApiResponse<AiChatResponse>> chat(@Valid @RequestBody AiChatRequest request) {
         AiChatResponse response = aiChatService.chat(getAuthenticatedEmail(), request);
         return ResponseEntity.ok(ApiResponse.success("Tư vấn AI thành công", response));
+    }
+
+    @PostMapping(value = "/doctor/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<ApiResponse<AiChatResponse>> doctorChat(@Valid @RequestBody com.medicore.dto.request.DoctorAiChatRequest request) {
+        AiChatResponse response = doctorAiChatService.chat(getAuthenticatedEmail(), request);
+        return ResponseEntity.ok(ApiResponse.success("Bác sĩ tư vấn AI thành công", response));
     }
 
     @PostMapping(value = "/chat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -27,17 +27,36 @@ public class AiGatewayClient {
     private final ObjectMapper objectMapper;
 
     public String completeChat(List<Map<String, Object>> messages) {
+        return completeChat(messages, aiProperties.getTemperature(), null, false);
+    }
+
+    public String completePlannerChat(List<Map<String, Object>> messages) {
+        return completeChat(
+                messages,
+                aiProperties.getPlannerTemperature(),
+                aiProperties.getPlannerMaxTokens(),
+                aiProperties.isJsonResponseFormatEnabled()
+        );
+    }
+
+    private String completeChat(List<Map<String, Object>> messages, double temperature, Integer maxTokens, boolean jsonResponseFormat) {
         if (!StringUtils.hasText(aiProperties.getBaseUrl()) || !StringUtils.hasText(aiProperties.getApiKey())) {
             throw new CustomBusinessException(ErrorCodes.INTERNAL_SERVER_ERROR, "Cấu hình AI chưa sẵn sàng");
         }
 
         try {
             String baseUrl = aiProperties.getBaseUrl().replaceAll("/+$", "");
-            String requestBody = objectMapper.writeValueAsString(Map.of(
-                    "model", aiProperties.getModel(),
-                    "messages", messages,
-                    "temperature", aiProperties.getTemperature()
-            ));
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("model", aiProperties.getModel());
+            body.put("messages", messages);
+            body.put("temperature", temperature);
+            if (maxTokens != null && maxTokens > 0) {
+                body.put("max_tokens", maxTokens);
+            }
+            if (jsonResponseFormat) {
+                body.put("response_format", Map.of("type", "json_object"));
+            }
+            String requestBody = objectMapper.writeValueAsString(body);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/chat/completions"))
