@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api";
-import { sendAiChat, sendAiChatWithImages, type AiChatMessage } from "@/lib/ai-chat";
+import { sendAiChatStream, sendAiChatWithImages, type AiChatMessage } from "@/lib/ai-chat";
 import {
     ArrowUpIcon,
     ImageIcon,
@@ -107,6 +107,10 @@ const getErrorMessage = (error: unknown) => {
             return error.message;
         }
         return "AI đang bận. Vui lòng thử lại sau.";
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
     }
 
     return "AI đang bận. Vui lòng thử lại sau.";
@@ -225,6 +229,7 @@ export function MedicalAiChat() {
     const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [isTyping, setIsTyping] = useState(false);
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previewUrlsRef = useRef<Set<string>>(new Set());
@@ -335,7 +340,6 @@ export function MedicalAiChat() {
             images: messageImages,
         };
 
-        setMessages(prev => [...prev, userMsg]);
         if (textToSend === undefined) {
             setValue("");
             setSelectedImages([]);
@@ -343,36 +347,82 @@ export function MedicalAiChat() {
         }
         setIsTyping(true);
 
-        try {
-            const response = imagesToSend.length > 0
-                ? await sendAiChatWithImages({
+        if (imagesToSend.length > 0) {
+            setMessages(prev => [...prev, userMsg]);
+            try {
+                const response = await sendAiChatWithImages({
                     message: messageForApi,
                     history,
                     images: imagesToSend.map(image => image.file),
-                })
-                : await sendAiChat({
-                    message: userMsg.text,
-                    history,
                 });
 
-            const aiMsg: Message = {
-                id: createMessageId(),
-                sender: "ai",
-                text: response.reply,
-                time: getCurrentTime()
-            };
+                const aiMsg: Message = {
+                    id: createMessageId(),
+                    sender: "ai",
+                    text: response.reply,
+                    time: getCurrentTime()
+                };
 
-            setMessages(prev => [...prev, aiMsg]);
+                setMessages(prev => [...prev, aiMsg]);
+            } catch (error) {
+                const aiMsg: Message = {
+                    id: createMessageId(),
+                    sender: "ai",
+                    text: getErrorMessage(error),
+                    time: getCurrentTime()
+                };
+
+                setMessages(prev => [...prev, aiMsg]);
+            } finally {
+                setIsTyping(false);
+            }
+            return;
+        }
+
+        const aiMsg: Message = {
+            id: createMessageId(),
+            sender: "ai",
+            text: "",
+            time: getCurrentTime()
+        };
+        setStreamingMessageId(aiMsg.id);
+        setMessages(prev => [...prev, userMsg, aiMsg]);
+
+        try {
+            let replyText = "";
+            await sendAiChatStream({
+                message: userMsg.text,
+                history,
+            }, (fullReply) => {
+                replyText = fullReply;
+            });
+
+            // Thực hiện hiệu ứng chạy chữ (Typewriter) mượt mà
+            await new Promise<void>((resolve) => {
+                let currentLength = 0;
+                const speed = 10; // Tốc độ chạy chữ: 10ms mỗi tick
+                const charsPerTick = 3; // In 3 ký tự mỗi tick
+                const timer = setInterval(() => {
+                    currentLength += charsPerTick;
+                    if (currentLength >= replyText.length) {
+                        clearInterval(timer);
+                        setMessages(prev => prev.map(msg =>
+                            msg.id === aiMsg.id ? { ...msg, text: replyText } : msg
+                        ));
+                        resolve();
+                    } else {
+                        setMessages(prev => prev.map(msg =>
+                            msg.id === aiMsg.id ? { ...msg, text: replyText.substring(0, currentLength) } : msg
+                        ));
+                    }
+                }, speed);
+            });
         } catch (error) {
-            const aiMsg: Message = {
-                id: createMessageId(),
-                sender: "ai",
-                text: getErrorMessage(error),
-                time: getCurrentTime()
-            };
-
-            setMessages(prev => [...prev, aiMsg]);
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMsg.id ? { ...msg, text: getErrorMessage(error) } : msg
+            ));
         } finally {
+            setStreamingMessageId(null);
             setIsTyping(false);
         }
     };
@@ -415,6 +465,8 @@ export function MedicalAiChat() {
     ];
 
     const hasMessages = messages.length > 0;
+    const streamingMessage = streamingMessageId ? messages.find(msg => msg.id === streamingMessageId) : null;
+    const showTypingIndicator = isTyping && (!streamingMessage || streamingMessage.text.length === 0);
     const canSend = (value.trim().length > 0 || selectedImages.length > 0) && !isTyping;
 
     return (
@@ -436,8 +488,10 @@ export function MedicalAiChat() {
             {/* 2. Chat History View (Chat Mode Only) */}
             {hasMessages && (
                 <div className="flex-grow flex-1 min-h-0 w-full overflow-y-auto space-y-6 pr-2 mb-4 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {messages.map((msg) => {
-                        const isAI = msg.sender === "ai";
+                    {messages
+                        .filter((msg) => msg.id !== streamingMessageId || msg.text.length > 0)
+                        .map((msg) => {
+                            const isAI = msg.sender === "ai";
                         return (
                             <div
                                 key={msg.id}
@@ -490,7 +544,7 @@ export function MedicalAiChat() {
                         );
                     })}
 
-                    {isTyping && (
+                    {showTypingIndicator && (
                         <div className="flex items-start gap-4">
                             <div className="w-8 h-8 rounded-full bg-primary/10 text-[#0e0f0c] border border-primary/20 flex items-center justify-center text-xs font-bold shrink-0">
                                 <span>AI</span>

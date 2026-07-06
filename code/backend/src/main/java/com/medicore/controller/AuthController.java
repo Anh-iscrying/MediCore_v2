@@ -6,6 +6,7 @@ import com.medicore.common.constants.GenderType;
 import com.medicore.common.constants.UserRole;
 import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.config.JwtTokenProvider;
+import com.medicore.dto.request.ChangePasswordRequest;
 import com.medicore.dto.request.LoginRequest;
 import com.medicore.dto.request.RegisterRequest;
 import com.medicore.dto.request.RequestOtpRequest;
@@ -195,6 +196,29 @@ public class AuthController {
     @PostMapping("/patient/password-reset/reset")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         emailOtpService.resetPatientPassword(request.getEmail(), request.getResetToken(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
+    }
+
+    @PostMapping("/change-password")
+    @Transactional
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new CustomBusinessException(ErrorCodes.UNAUTHORIZED);
+        }
+
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), credentials.getPasswordHash())) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), credentials.getPasswordHash())) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Mật khẩu mới không được trùng mật khẩu hiện tại");
+        }
+
+        credentials.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        authCredentialsRepository.save(credentials);
         return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
     }
 

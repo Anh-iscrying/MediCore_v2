@@ -185,7 +185,6 @@ public class PatientNotificationService {
                 type, appointment.getId(), credentials.getEmail());
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
-
         notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
         return response;
     }

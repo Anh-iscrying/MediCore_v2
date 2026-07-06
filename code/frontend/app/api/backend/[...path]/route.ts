@@ -19,7 +19,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   const authorization = request.headers.get("authorization")
   const accessToken = request.cookies.get("accessToken")?.value
 
-  headers.set("Accept", "application/json")
+  headers.set("Accept", request.headers.get("accept") || "application/json")
   if (contentType) {
     headers.set("Content-Type", contentType)
   }
@@ -46,6 +46,15 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   }
   if (setCookie) {
     responseHeaders.set("set-cookie", setCookie)
+  }
+
+  if (responseContentType?.includes("text/event-stream")) {
+    responseHeaders.set("cache-control", "no-cache")
+    return new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+      headers: responseHeaders,
+    })
   }
 
   return new NextResponse(await backendResponse.text(), {

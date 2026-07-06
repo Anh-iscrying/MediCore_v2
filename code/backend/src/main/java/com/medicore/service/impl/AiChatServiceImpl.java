@@ -38,6 +38,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -92,6 +93,14 @@ public class AiChatServiceImpl implements AiChatService {
                 images == null ? List.of() : images);
     }
 
+    @Override
+    @Transactional
+    public AiChatResponse streamChat(String email, AiChatRequest request, Consumer<String> onChunk) {
+        String message = cleanContent(request.getMessage());
+        List<AiChatMessageRequest> history = request.getHistory() == null ? List.of() : request.getHistory();
+        return processTextStream(email, message, history, onChunk);
+    }
+
     private AiChatResponse processChat(String email, String message, List<AiChatMessageRequest> history,
             List<MultipartFile> images) {
         AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
@@ -122,6 +131,36 @@ public class AiChatServiceImpl implements AiChatService {
         String reply = aiGatewayClient.completeChat(gatewayMessages);
 
         return saveAndReturn(patient, message, imagePayloads.size(), reply, routePlan, patientContext);
+    }
+
+    private AiChatResponse processTextStream(String email, String message, List<AiChatMessageRequest> history, Consumer<String> onChunk) {
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+        Patient patient = credentials.getPatient();
+        if (patient == null) {
+            throw new CustomBusinessException(ErrorCodes.FORBIDDEN, "Tài khoản này không phải bệnh nhân");
+        }
+
+        if (!StringUtils.hasText(message)) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Nội dung cần tư vấn không được để trống");
+        }
+        if (message.length() > aiProperties.getMaxInputChars()) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Nội dung cần tư vấn quá dài");
+        }
+
+        PatientAiRoutePlan routePlan = routePlan(message, history);
+        PatientAiContext patientContext = buildPatientContext(patient, message, history, routePlan);
+        if (routePlan != null && !hasContext(patientContext) && StringUtils.hasText(routePlan.getClarificationQuestion())) {
+            String clarification = routePlan.getClarificationQuestion();
+            if (onChunk != null) {
+                onChunk.accept(clarification);
+            }
+            return saveAndReturn(patient, message, 0, clarification, routePlan, patientContext);
+        }
+
+        List<Map<String, Object>> gatewayMessages = buildMessages(history, message, List.of(), patientContext);
+        String reply = aiGatewayClient.streamChat(gatewayMessages, onChunk);
+        return saveAndReturn(patient, message, 0, reply, routePlan, patientContext);
     }
 
     private PatientAiRoutePlan routePlan(String message, List<AiChatMessageRequest> history) {

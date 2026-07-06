@@ -157,14 +157,14 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
               <span>Hồ sơ bệnh nhân</span>
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
-            <button
-              type="button"
+            <Link
+              href="/dashboard/settings"
               className="flex w-full items-center justify-between rounded p-2.5 text-left transition-colors hover:bg-muted hover:text-foreground"
               onClick={handleLinkClick}
             >
               <span>Cài đặt</span>
               <Settings className="h-3.5 w-3.5" />
-            </button>
+            </Link>
             <div className="my-1 h-px bg-border" />
             <button
               type="button"

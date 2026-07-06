@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BookingSuccessToast } from "@/components/dashboard/booking-success-toast"
 import { getMedicalRecordByAppointment, type MedicalRecord } from "@/lib/medical-records"
@@ -134,7 +133,7 @@ export default function AppointmentsPage() {
   const [toastTitle, setToastTitle] = useState<string | undefined>(undefined)
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null)
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
-  const [isRecordLoading, setIsRecordLoading] = useState(false)
+  const [loadingRecordAppointmentId, setLoadingRecordAppointmentId] = useState<Appointment["id"] | null>(null)
 
   const triggerToast = useCallback((message: string, variant: "success" | "danger" = "success", title?: string) => {
     setToastTitle(title)
@@ -460,7 +459,7 @@ export default function AppointmentsPage() {
   }
 
   const handleViewRecord = async (appointment: Appointment) => {
-    setIsRecordLoading(true)
+    setLoadingRecordAppointmentId(appointment.id)
     try {
       const record = await getMedicalRecordByAppointment(appointment.id)
       setSelectedRecord(record)
@@ -468,7 +467,7 @@ export default function AppointmentsPage() {
       console.error("Failed to load medical record:", err)
       triggerToast(err instanceof Error ? err.message : "Không thể tải hồ sơ khám.", "danger", "Lỗi hồ sơ")
     } finally {
-      setIsRecordLoading(false)
+      setLoadingRecordAppointmentId(null)
     }
   }
 
@@ -888,10 +887,11 @@ export default function AppointmentsPage() {
                     Đang tải lịch hẹn của bạn...
                   </div>
                 ) : sortedAppointments.length > 0 ? (
-                  sortedAppointments.map((appointment, idx) => {
+                  sortedAppointments.map((appointment) => {
                     const statusMeta = getAppointmentStatusMeta(appointment.status)
+                    const isThisRecordLoading = loadingRecordAppointmentId === appointment.id
                     return (
-                    <div key={`${appointment.id}-${idx}`} className="rounded-xl border border-border bg-background p-4 shrink-0">
+                    <div key={appointment.id} className="rounded-xl border border-border bg-background p-4 shrink-0">
                       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-start gap-3">
                           <div>
@@ -910,10 +910,10 @@ export default function AppointmentsPage() {
                           {isCompletedStatus(appointment.status) && (
                             <button
                               onClick={() => handleViewRecord(appointment)}
-                              disabled={isRecordLoading}
+                              disabled={isThisRecordLoading}
                               className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors disabled:opacity-60"
                             >
-                              {isRecordLoading ? "Đang tải" : "Xem hồ sơ khám"}
+                              {isThisRecordLoading ? "Đang tải" : "Xem hồ sơ khám"}
                             </button>
                           )}
                           {isPatientCancellableStatus(appointment.status) && isAppointmentCancellable(appointment) && (

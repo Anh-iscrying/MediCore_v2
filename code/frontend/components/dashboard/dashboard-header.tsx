@@ -34,6 +34,11 @@ export function DashboardHeader() {
           title: "Trợ lý sức khỏe AI",
           subtitle: "Tra cứu khoa khám & hướng dẫn chăm sóc sức khỏe"
         }
+      case "/dashboard/settings":
+        return {
+          title: "Cài đặt",
+          subtitle: "Đổi mật khẩu tài khoản bệnh nhân"
+        }
       case "/dashboard":
       default:
         return {

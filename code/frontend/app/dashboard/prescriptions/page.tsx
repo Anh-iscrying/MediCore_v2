@@ -1,64 +1,74 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
-import { useEffect, useState } from "react"
+import { getMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
 
-interface Medicine {
-  medicineId: number
-  medicineName: string
-  unit: string
-  quantity: number
-  dosageInstruction: string
+function formatRecordDate(value?: string) {
+  if (!value) return "Chưa có ngày khám"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date)
 }
 
-interface MedicalRecord {
-  id: number
-  createdAt: string
-  appointmentDate: string
-  doctorName: string
-  medicines: Medicine[]
+function getRecordTitle(record: MedicalRecord) {
+  const date = formatRecordDate(record.appointmentDate || record.createdAt)
+  const diagnosis = record.mainDiagnosis || record.diagnosisName || "Đơn thuốc điện tử"
+  return `${date} • ${diagnosis}`
 }
 
 export default function PrescriptionsPage() {
-  const [prescriptions, setPrescriptions] = useState<MedicalRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const [records, setRecords] = useState<MedicalRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchPrescriptions() {
+    let isMounted = true
+
+    async function loadPrescriptions() {
+      setIsLoading(true)
+      setError(null)
       try {
-        const res = await fetch("/api/backend/clinical/medical-records/me", {
-          credentials: "include"
-        })
-        if (res.ok) {
-          const result = await res.json()
-          const records: MedicalRecord[] = result.data || []
-          const withMedicines = records.filter((r) => r.medicines && r.medicines.length > 0)
-          
-          // Sort by newest first
-          withMedicines.sort((a, b) => {
-            const dateA = a.createdAt || a.appointmentDate
-            const dateB = b.createdAt || b.appointmentDate
-            return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime()
-          })
-          
-          setPrescriptions(withMedicines)
-        }
-      } catch (error) {
-        console.error("Failed to fetch prescriptions:", error)
+        const data = await getMyMedicalRecords()
+        if (!isMounted) return
+        setRecords(Array.isArray(data) ? data : [])
+      } catch (err) {
+        if (!isMounted) return
+        setError(err instanceof Error ? err.message : "Không thể tải đơn thuốc điện tử.")
       } finally {
-        setLoading(false)
+        if (isMounted) setIsLoading(false)
       }
     }
 
-    fetchPrescriptions()
+    loadPrescriptions()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
-  const activeCount = prescriptions.filter((p) => {
-    const dateStr = p.createdAt || p.appointmentDate
-    if (!dateStr) return false
-    const diff = Date.now() - new Date(dateStr).getTime()
-    return diff <= 30 * 24 * 60 * 60 * 1000
-  }).length
+  const prescriptionRecords = useMemo(() => {
+    return records
+      .filter((record) => record.medicines && record.medicines.length > 0)
+      .sort((a, b) => {
+        const aTime = new Date(a.appointmentDate || a.createdAt || "").getTime()
+        const bTime = new Date(b.appointmentDate || b.createdAt || "").getTime()
+        return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
+      })
+  }, [records])
+
+  const activeCount = useMemo(() => {
+    return prescriptionRecords.filter((p) => {
+      const dateStr = p.createdAt || p.appointmentDate
+      if (!dateStr) return false
+      const diff = Date.now() - new Date(dateStr).getTime()
+      return diff <= 30 * 24 * 60 * 60 * 1000
+    }).length
+  }, [prescriptionRecords])
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
@@ -77,7 +87,10 @@ export default function PrescriptionsPage() {
               <button className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer">
                 Tải PDF
               </button>
-              <button className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer">
+              <button 
+                onClick={() => window.print()}
+                className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer"
+              >
                 In đơn thuốc
               </button>
             </div>
@@ -86,24 +99,21 @@ export default function PrescriptionsPage() {
       </section>
 
       <section className="space-y-6">
-        {loading ? (
+        {isLoading ? (
           <p className="text-muted-foreground">Đang tải dữ liệu...</p>
-        ) : prescriptions.length === 0 ? (
+        ) : error ? (
+          <p className="text-destructive font-medium">{error}</p>
+        ) : prescriptionRecords.length === 0 ? (
           <p className="text-muted-foreground">Không tìm thấy đơn thuốc nào.</p>
         ) : (
-          prescriptions.map((prescription) => {
+          prescriptionRecords.map((prescription) => {
             const dateStr = prescription.createdAt || prescription.appointmentDate
             const dateObj = dateStr ? new Date(dateStr) : null
 
-            let formattedDate = "Đang cập nhật"
+            let formattedDate = getRecordTitle(prescription)
             let status = "LỊCH SỬ"
 
             if (dateObj) {
-              const day = String(dateObj.getDate()).padStart(2, '0')
-              const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-              const year = dateObj.getFullYear()
-              formattedDate = `Ngày ${day} tháng ${month}, ${year}`
-
               const diffDays = (Date.now() - dateObj.getTime()) / (1000 * 60 * 60 * 24)
               if (diffDays <= 30) {
                 status = "ĐANG DÙNG"
@@ -119,22 +129,48 @@ export default function PrescriptionsPage() {
                       <p className="mt-1 text-sm text-muted-foreground">
                         Bác sĩ kê toa: {prescription.doctorName || "Đang cập nhật"}
                       </p>
+                      {prescription.emrCode && (
+                        <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">Mã hồ sơ: {prescription.emrCode}</p>
+                      )}
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      "w-max rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                      status === "ĐANG DÙNG"
-                        ? "border-[#2ead4b]/20 bg-[#e2f6d5] text-[#054d28]"
-                        : "border-border bg-secondary text-muted-foreground"
+                  <div className="flex flex-wrap items-center gap-2">
+                    {prescription.pdfUrl ? (
+                      <a
+                        href={prescription.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors"
+                      >
+                        Xem PDF
+                      </a>
+                    ) : (
+                      <span className="rounded-xl border border-border bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Chưa có PDF
+                      </span>
                     )}
-                  >
-                    {status}
-                  </span>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors"
+                    >
+                      In đơn thuốc
+                    </button>
+                    <span
+                      className={cn(
+                        "w-max rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
+                        status === "ĐANG DÙNG"
+                          ? "border-[#2ead4b]/20 bg-[#e2f6d5] text-[#054d28]"
+                          : "border-border bg-secondary text-muted-foreground"
+                      )}
+                    >
+                      {status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  {prescription.medicines.map((medicine, index) => (
+                  {prescription.medicines?.map((medicine, index) => (
                     <div
                       key={medicine.medicineId || index}
                       className="rounded-xl border border-border bg-background p-4"
@@ -145,7 +181,7 @@ export default function PrescriptionsPage() {
                             Tên thuốc
                           </p>
                           <p className="mt-1 text-sm font-black text-foreground">
-                            {medicine.medicineName || "N/A"}
+                            {medicine.medicineName || "Chưa rõ tên thuốc"}
                           </p>
                         </div>
                         <div>
@@ -153,17 +189,15 @@ export default function PrescriptionsPage() {
                             Số lượng
                           </p>
                           <p className="mt-1 text-sm font-black text-foreground">
-                            {medicine.quantity != null
-                              ? `${medicine.quantity} ${medicine.unit || ""}`.trim()
-                              : "N/A"}
+                            {medicine.quantity ? `${medicine.quantity} ${medicine.unit || ""}`.trim() : medicine.unit || "Theo chỉ định"}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Hướng dẫn cách dùng/Liều lượng
+                            Hướng dẫn cách dùng
                           </p>
                           <p className="mt-1 text-sm font-black text-foreground">
-                            {medicine.dosageInstruction || "Đang cập nhật"}
+                            {medicine.dosageInstruction || "Theo hướng dẫn của bác sĩ"}
                           </p>
                         </div>
                       </div>
@@ -178,4 +212,3 @@ export default function PrescriptionsPage() {
     </div>
   )
 }
-
