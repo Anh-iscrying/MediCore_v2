@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { cn } from "@/lib/utils"
+import { flushSync } from "react-dom"
 import { getMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
 
 function formatRecordDate(value?: string) {
@@ -15,16 +15,20 @@ function formatRecordDate(value?: string) {
   }).format(date)
 }
 
+function getRecordDiagnosis(record: MedicalRecord) {
+  return record.mainDiagnosis || record.diagnosisName || "Đang cập nhật"
+}
+
 function getRecordTitle(record: MedicalRecord) {
   const date = formatRecordDate(record.appointmentDate || record.createdAt)
-  const diagnosis = record.mainDiagnosis || record.diagnosisName || "Đơn thuốc điện tử"
-  return `${date} • ${diagnosis}`
+  return `${date} • ${getRecordDiagnosis(record)}`
 }
 
 export default function PrescriptionsPage() {
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [printingPrescriptionId, setPrintingPrescriptionId] = useState<number | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -70,31 +74,26 @@ export default function PrescriptionsPage() {
     }).length
   }, [prescriptionRecords])
 
+  useEffect(() => {
+    const resetPrintingPrescription = () => setPrintingPrescriptionId(null)
+    window.addEventListener("afterprint", resetPrintingPrescription)
+
+    return () => {
+      window.removeEventListener("afterprint", resetPrintingPrescription)
+    }
+  }, [])
+
+  function printPrescription(prescriptionId: number) {
+    flushSync(() => setPrintingPrescriptionId(prescriptionId))
+    window.print()
+  }
+
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
+    <div className={`prescriptions-page mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none ${printingPrescriptionId ? "is-printing-single" : ""}`}>
+      <section className="prescriptions-summary grid grid-cols-1 gap-6 md:grid-cols-3">
         <article className="rounded-xl border border-border bg-card p-6">
           <h2 className="text-xl font-sans font-black text-foreground">{activeCount} đơn thuốc đang hoạt động</h2>
           <p className="mt-2 text-sm text-muted-foreground">Kê theo đợt khám gần đây nhất.</p>
-        </article>
-        <article className="rounded-xl border border-border bg-card p-6 md:col-span-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-sans font-black text-foreground">Thao tác đơn thuốc</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Tải file PDF hoặc in ấn đơn thuốc điện tử.</p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer">
-                Tải PDF
-              </button>
-              <button 
-                onClick={() => window.print()}
-                className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer"
-              >
-                In đơn thuốc
-              </button>
-            </div>
-          </div>
         </article>
       </section>
 
@@ -107,22 +106,16 @@ export default function PrescriptionsPage() {
           <p className="text-muted-foreground">Không tìm thấy đơn thuốc nào.</p>
         ) : (
           prescriptionRecords.map((prescription) => {
-            const dateStr = prescription.createdAt || prescription.appointmentDate
-            const dateObj = dateStr ? new Date(dateStr) : null
-
-            let formattedDate = getRecordTitle(prescription)
-            let status = "LỊCH SỬ"
-
-            if (dateObj) {
-              const diffDays = (Date.now() - dateObj.getTime()) / (1000 * 60 * 60 * 24)
-              if (diffDays <= 30) {
-                status = "ĐANG DÙNG"
-              }
-            }
+            const formattedDate = getRecordTitle(prescription)
+            const prescriptionDate = formatRecordDate(prescription.appointmentDate || prescription.createdAt)
+            const diagnosis = getRecordDiagnosis(prescription)
 
             return (
-              <article key={prescription.id} className="rounded-xl border border-border bg-card p-6">
-                <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <article
+                key={prescription.id}
+                className={`prescription-print-card rounded-xl border border-border bg-card p-6 ${printingPrescriptionId === prescription.id ? "is-selected-for-print" : ""}`}
+              >
+                <div className="screen-only mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-4">
                     <div>
                       <h2 className="text-2xl font-sans font-black text-foreground tracking-tight">{formattedDate}</h2>
@@ -134,7 +127,7 @@ export default function PrescriptionsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="prescription-actions flex flex-wrap items-center gap-2">
                     {prescription.pdfUrl ? (
                       <a
                         href={prescription.pdfUrl}
@@ -151,52 +144,86 @@ export default function PrescriptionsPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => window.print()}
+                      onClick={() => printPrescription(prescription.id)}
                       className="rounded-xl border border-[#0e0f0c] bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors"
                     >
                       In đơn thuốc
                     </button>
-                    <span
-                      className={cn(
-                        "w-max rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                        status === "ĐANG DÙNG"
-                          ? "border-[#2ead4b]/20 bg-[#e2f6d5] text-[#054d28]"
-                          : "border-border bg-secondary text-muted-foreground"
-                      )}
-                    >
-                      {status}
-                    </span>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="print-only prescription-sheet">
+                  <header className="prescription-letterhead">
+                    <div>
+                      <p className="prescription-brand">Medicore</p>
+                      <p>Hệ thống quản lý sức khỏe điện tử</p>
+                    </div>
+                    <div className="prescription-code">
+                      <span>Mã hồ sơ</span>
+                      <strong>{prescription.emrCode || "—"}</strong>
+                    </div>
+                  </header>
+
+                  <section className="prescription-title-block">
+                    <p>Đơn thuốc điện tử</p>
+                    <h1>{diagnosis}</h1>
+                  </section>
+
+                  <section className="prescription-info-grid">
+                    <div>
+                      <span>Người bệnh</span>
+                      <strong>{prescription.patientName || "Đang cập nhật"}</strong>
+                    </div>
+                    <div>
+                      <span>Ngày kê đơn</span>
+                      <strong>{prescriptionDate}</strong>
+                    </div>
+                    <div>
+                      <span>Bác sĩ kê toa</span>
+                      <strong>{prescription.doctorName || "Đang cập nhật"}</strong>
+                    </div>
+                    <div>
+                      <span>Chẩn đoán</span>
+                      <strong>{diagnosis}</strong>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="prescription-medicine-list space-y-3">
+                  <div className="print-only prescription-table-head">
+                    <span>STT</span>
+                    <span>Tên thuốc</span>
+                    <span>Số lượng</span>
+                    <span>Hướng dẫn sử dụng</span>
+                  </div>
                   {prescription.medicines?.map((medicine, index) => (
                     <div
                       key={medicine.medicineId || index}
-                      className="rounded-xl border border-border bg-background p-4"
+                      className="prescription-medicine rounded-xl border border-border bg-background p-4"
                     >
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="prescription-medicine-grid grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="print-only prescription-index">{index + 1}</div>
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          <p className="medicine-label text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             Tên thuốc
                           </p>
-                          <p className="mt-1 text-sm font-black text-foreground">
+                          <p className="medicine-value mt-1 text-sm font-black text-foreground">
                             {medicine.medicineName || "Chưa rõ tên thuốc"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          <p className="medicine-label text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             Số lượng
                           </p>
-                          <p className="mt-1 text-sm font-black text-foreground">
+                          <p className="medicine-value mt-1 text-sm font-black text-foreground">
                             {medicine.quantity ? `${medicine.quantity} ${medicine.unit || ""}`.trim() : medicine.unit || "Theo chỉ định"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          <p className="medicine-label text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             Hướng dẫn cách dùng
                           </p>
-                          <p className="mt-1 text-sm font-black text-foreground">
+                          <p className="medicine-value mt-1 text-sm font-black text-foreground">
                             {medicine.dosageInstruction || "Theo hướng dẫn của bác sĩ"}
                           </p>
                         </div>
@@ -204,6 +231,18 @@ export default function PrescriptionsPage() {
                     </div>
                   ))}
                 </div>
+
+                <footer className="print-only prescription-footer">
+                  <div className="prescription-note">
+                    <strong>Lưu ý</strong>
+                    <p>Dùng thuốc đúng liều lượng và liên hệ cơ sở y tế nếu có dấu hiệu bất thường.</p>
+                  </div>
+                  <div className="prescription-signature">
+                    <p>Ngày kê đơn: {prescriptionDate}</p>
+                    <strong>Bác sĩ kê toa</strong>
+                    <span>{prescription.doctorName || "Đang cập nhật"}</span>
+                  </div>
+                </footer>
               </article>
             )
           })
