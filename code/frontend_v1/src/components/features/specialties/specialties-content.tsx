@@ -30,7 +30,8 @@ import {
   AlertDialogTitle,
 } from "@/components/base/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/base/ui/select"
-import { Plus, Pencil, Trash2, FolderHeart, Users, Save, FilePlus2 } from "lucide-react"
+import { Plus, Pencil, Trash2, FolderHeart, Users, Save, FilePlus2, Eye, LayoutTemplate } from "lucide-react"
+import { ExamTemplateRenderer } from "@/components/shared/exam-template-renderer"
 
 const fieldTypes: Array<{ value: SpecialtyExamFieldType; label: string }> = [
   { value: "text", label: "Một dòng" },
@@ -90,11 +91,14 @@ function TemplateFieldItem({ field, index, updateField, removeField }: TemplateF
   }
 
   return (
-    <div className="rounded-lg border border-border p-3 space-y-3 bg-card shrink-0">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="md:col-span-2 space-y-1.5">
-          <Label>Tên mục</Label>
+    <div className="group relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md shrink-0">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Tên mục
+          </Label>
           <Input
+            className="border-slate-200 bg-slate-50/50 font-medium transition-colors focus:bg-white"
             value={field.label}
             onChange={(e) => {
               const label = e.target.value
@@ -106,8 +110,22 @@ function TemplateFieldItem({ field, index, updateField, removeField }: TemplateF
             placeholder="Ví dụ: Huyết áp"
           />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-slate-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+          onClick={() => removeField(index)}
+          title="Xóa mục"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Loại dữ liệu</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Loại dữ liệu
+          </Label>
           <Select
             value={field.type}
             onValueChange={(value) =>
@@ -117,7 +135,7 @@ function TemplateFieldItem({ field, index, updateField, removeField }: TemplateF
               })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className="border-slate-200 bg-slate-50/50 focus:bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -129,23 +147,26 @@ function TemplateFieldItem({ field, index, updateField, removeField }: TemplateF
             </SelectContent>
           </Select>
         </div>
+
+        <div className="flex items-center pt-6">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+            <Checkbox
+              className="border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
+              checked={!!field.required}
+              onCheckedChange={(checked) => updateField(index, { required: checked === true })}
+            />
+            Bắt buộc điền
+          </label>
+        </div>
       </div>
-      <div className="flex items-center justify-between pt-1">
-        <label className="flex items-center gap-2 text-sm select-none cursor-pointer">
-          <Checkbox
-            checked={!!field.required}
-            onCheckedChange={(checked) => updateField(index, { required: checked === true })}
-          />
-          Bắt buộc
-        </label>
-        <Button variant="ghost" className="text-destructive h-8 px-2 hover:bg-destructive/10" onClick={() => removeField(index)}>
-          Xóa mục
-        </Button>
-      </div>
+
       {field.type === "select" && (
-        <div className="space-y-1.5 pt-1">
-          <Label>Lựa chọn (cách nhau bằng dấu phẩy)</Label>
+        <div className="mt-4 space-y-1.5 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Lựa chọn (cách nhau bằng dấu phẩy)
+          </Label>
           <Input
+            className="border-slate-200 bg-white"
             value={optionsText}
             onChange={(e) => handleOptionsChange(e.target.value)}
             placeholder="Nhẹ, Trung bình, Nặng"
@@ -174,6 +195,7 @@ export function SpecialtiesContent() {
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string>("")
   const [templateDraft, setTemplateDraft] = useState<SpecialtyExamTemplate>(emptyTemplate)
   const [templateError, setTemplateError] = useState("")
+  const [viewMode, setViewMode] = useState<"builder" | "preview">("builder")
 
   useEffect(() => {
     ensureSpecialtiesLoaded()
@@ -408,7 +430,7 @@ export function SpecialtiesContent() {
                 </div>
               </div>
 
-              <div className="lg:col-span-2 rounded-lg border border-border p-4 flex flex-col h-full overflow-hidden">
+              <div className="lg:col-span-2 rounded-lg border border-border p-4 flex flex-col h-full overflow-hidden bg-white">
                 <div className="flex items-center justify-between gap-3 shrink-0 mb-4">
                   <div>
                     <h3 className="text-sm font-semibold">Template khám bệnh</h3>
@@ -416,34 +438,66 @@ export function SpecialtiesContent() {
                       Các mục này sẽ xuất hiện khi bác sĩ khám bệnh theo chuyên khoa.
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={addField} className="gap-2">
-                    <FilePlus2 className="w-4 h-4" />
-                    Thêm mục
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "builder" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                        onClick={() => setViewMode("builder")}
+                      >
+                        <LayoutTemplate className="w-3.5 h-3.5" />
+                        Cấu hình
+                      </button>
+                      <button
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === "preview" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                        onClick={() => setViewMode("preview")}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Xem trước
+                      </button>
+                    </div>
+                    {viewMode === "builder" && (
+                      <Button variant="outline" size="sm" onClick={addField} className="gap-2">
+                        <FilePlus2 className="w-4 h-4" />
+                        Thêm mục
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {templateError && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive shrink-0 mb-3">
+                  <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 shrink-0 mb-3">
                     {templateError}
                   </div>
                 )}
 
-                <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                  {templateDraft.fields.map((field, index) => (
-                    <TemplateFieldItem
-                      key={`field-item-${index}`}
-                      field={field}
-                      index={index}
-                      updateField={updateField}
-                      removeField={removeField}
-                    />
-                  ))}
-                  {templateDraft.fields.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-                      Chưa có mục khám riêng. Bấm “Thêm mục” để tạo template.
+                {viewMode === "builder" ? (
+                  <div className="space-y-4 overflow-y-auto flex-1 pr-2 pb-4">
+                    {templateDraft.fields.map((field, index) => (
+                      <TemplateFieldItem
+                        key={`field-item-${index}`}
+                        field={field}
+                        index={index}
+                        updateField={updateField}
+                        removeField={removeField}
+                      />
+                    ))}
+                    {templateDraft.fields.length === 0 && (
+                      <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-12 flex flex-col items-center justify-center gap-2 text-center">
+                        <FilePlus2 className="w-8 h-8 text-slate-400" />
+                        <p className="text-sm font-medium text-slate-600">Chưa có mục khám riêng</p>
+                        <p className="text-xs text-slate-500">Bấm “Thêm mục” để tạo template.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto flex-1 bg-slate-50 rounded-xl border border-slate-200 p-6">
+                    <div className="mb-6 border-b border-slate-200 pb-4">
+                      <h4 className="text-base font-semibold text-blue-800">Xem trước giao diện Bác sĩ</h4>
+                      <p className="text-xs text-slate-500 mt-1">Giao diện này sẽ hiển thị khi bác sĩ tạo bệnh án mới.</p>
                     </div>
-                  )}
-                </div>
+                    <ExamTemplateRenderer template={templateDraft} />
+                  </div>
+                )}
               </div>
             </div>
           </Card>

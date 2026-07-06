@@ -858,6 +858,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
                 prescriptionNotes={prescriptionNotes}
                 specialtyFields={specialtyFields}
                 specialtyExamValues={specialtyExamValues}
+                specialtyName={specialty?.name}
                 onBack={() => setPreviewMode(false)}
                 onPrint={handlePrint}
               />
