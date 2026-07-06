@@ -343,21 +343,36 @@ export default function MedicalRecordPdfDocument(props: MedicalRecordPdfProps) {
         {/* ==================== III. Khám chuyên khoa ==================== */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionHeaderText}>III. Khám chuyên khoa</Text>
+            <Text style={s.sectionHeaderText}>
+              III. Khám chuyên khoa{specialtyName ? `: ${specialtyName.toUpperCase()}` : ""}
+            </Text>
           </View>
           <View style={s.sectionBody}>
             {specialtyFields && specialtyFields.length > 0 ? (
               <View style={s.infoGrid}>
                 {specialtyFields.map((field) => {
                   const value = specialtyExamValues?.[field.id];
-                  let displayValue = "................................................";
-                  if (value !== undefined && value !== null && String(value).trim() !== "") {
+                  const isEmpty = value === undefined || value === null || String(value).trim() === "";
+                  let displayValue = "";
+                  if (!isEmpty) {
                     if (field.type === "checkbox") {
                       displayValue = value === true ? "Có" : "Không";
                     } else {
                       displayValue = String(value);
                     }
+                  } else {
+                    displayValue = field.type === "checkbox" ? "Không" : "................................................";
                   }
+
+                  if (field.type === "textarea") {
+                    return (
+                      <View key={field.id} style={{ width: "100%", marginTop: 4, marginBottom: 6 }}>
+                        <Text style={s.fieldLabel}>{field.label}:</Text>
+                        <Text style={s.fieldValue}>{isEmpty ? "................................................" : displayValue}</Text>
+                      </View>
+                    );
+                  }
+
                   return (
                     <View key={field.id} style={s.infoCell}>
                       <Text style={s.infoLabel}>{field.label}:</Text>

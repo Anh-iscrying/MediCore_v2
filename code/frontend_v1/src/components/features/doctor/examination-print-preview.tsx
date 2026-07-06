@@ -25,6 +25,8 @@ interface Props {
     prescriptionNotes: string;
     specialtyFields?: any[];
     specialtyExamValues?: Record<string, any>;
+    specialtyName?: string;
+
 
     onBack: () => void;
     onPrint: () => void;
@@ -43,6 +45,7 @@ export default function ExaminationPrintPreview({
     prescriptionNotes,
     specialtyFields = [],
     specialtyExamValues = {},
+    specialtyName = "",
     onBack,
     onPrint,
 }: Props) {
@@ -244,21 +247,36 @@ export default function ExaminationPrintPreview({
                 {/* ================= III. Khám chuyên khoa ================= */}
                 <div className="mt-7 border">
                     <div className="bg-gray-100 border-b px-4 py-2 font-bold uppercase">
-                        III. Khám chuyên khoa
+                        III. Khám chuyên khoa{specialtyName ? `: ${specialtyName.toUpperCase()}` : ""}
                     </div>
                     <div className="p-5">
                         {specialtyFields && specialtyFields.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-y-2 gap-x-8 text-sm">
+                            <div className="grid grid-cols-2 gap-y-3 gap-x-8 text-sm">
                                 {specialtyFields.map((field) => {
                                     const value = specialtyExamValues?.[field.id];
-                                    let displayValue = "................................................";
-                                    if (value !== undefined && value !== null && String(value).trim() !== "") {
+                                    const isEmpty = value === undefined || value === null || String(value).trim() === "";
+                                    let displayValue = "";
+                                    if (!isEmpty) {
                                         if (field.type === "checkbox") {
                                             displayValue = value === true ? "Có" : "Không";
                                         } else {
                                             displayValue = String(value);
                                         }
+                                    } else {
+                                        displayValue = field.type === "checkbox" ? "Không" : "................................................";
                                     }
+
+                                    if (field.type === "textarea") {
+                                        return (
+                                            <div key={field.id} className="col-span-2 mt-1">
+                                                <span className="font-semibold text-gray-700 block mb-1">{field.label}:</span>
+                                                <div className="whitespace-pre-wrap pl-3 border-l-2 border-gray-200 text-gray-800 py-1">
+                                                    {isEmpty ? "................................................" : displayValue}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
                                     return (
                                         <div key={field.id} className="flex gap-2 items-baseline">
                                             <span className="font-semibold text-gray-600 shrink-0">{field.label}:</span>
