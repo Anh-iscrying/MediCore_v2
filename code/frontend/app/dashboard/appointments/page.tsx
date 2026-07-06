@@ -440,7 +440,7 @@ export default function AppointmentsPage() {
       invalidateDoctorsCache(selectedDate, targetDoc.specialty)
 
       triggerToast(
-        `Đăng ký lịch hẹn thành công với ${targetDoc.doctor_name}`,
+        `Đăng ký lịch hẹn thành công với ${targetDoc.doctor_name}. Vui lòng chờ đến ca khám, hệ thống sẽ thông báo khi bác sĩ xác nhận hoặc bắt đầu khám.`,
         "success",
         "Đặt lịch thành công"
       )
@@ -528,9 +528,43 @@ export default function AppointmentsPage() {
 
   const isWaitingStatus = (status?: string) => status === "PENDING" || status === "WAITING"
   const isPatientCancellableStatus = isWaitingStatus
-  const isConfirmedStatus = (status?: string) => status === "CONFIRMED"
-  const isInProgressStatus = (status?: string) => status === "IN_PROGRESS"
   const isCompletedStatus = (status?: string) => status === "COMPLETED" || status === "DONE"
+
+  const getAppointmentStatusMeta = (status?: string) => {
+    if (status === "CONFIRMED") {
+      return {
+        label: "Bác sĩ đã xác nhận",
+        description: "Lịch khám đã được bác sĩ tiếp nhận. Vui lòng đến đúng ca khám.",
+        className: "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20",
+      }
+    }
+    if (status === "IN_PROGRESS") {
+      return {
+        label: "Đang khám",
+        description: "Bác sĩ đã bắt đầu khám. Bạn vui lòng vào phòng khám.",
+        className: "bg-blue-50 text-blue-700 border-blue-200",
+      }
+    }
+    if (isWaitingStatus(status)) {
+      return {
+        label: "Đang chờ đến ca khám",
+        description: "Bạn đã đặt lịch thành công. Hệ thống sẽ thông báo khi bác sĩ xác nhận hoặc bắt đầu khám.",
+        className: "bg-amber-50 text-amber-700 border-amber-200",
+      }
+    }
+    if (isCompletedStatus(status)) {
+      return {
+        label: "Đã khám",
+        description: "Hồ sơ khám và đơn thuốc sẽ hiển thị khi PDF được xuất xong.",
+        className: "bg-secondary text-muted-foreground border-border",
+      }
+    }
+    return {
+      label: "Đã hủy",
+      description: "Lịch hẹn này không còn hiệu lực.",
+      className: "bg-secondary text-muted-foreground border-border",
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
@@ -617,7 +651,7 @@ export default function AppointmentsPage() {
                   rel="noopener noreferrer"
                   className="rounded-xl bg-primary hover:bg-[#cdffad] px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors cursor-pointer border border-primary"
                 >
-                  Xem PDF
+                  Xem phiếu khám/đơn thuốc PDF
                 </a>
               ) : (
                 <span className="rounded-xl border border-border bg-background px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -854,27 +888,24 @@ export default function AppointmentsPage() {
                     Đang tải lịch hẹn của bạn...
                   </div>
                 ) : sortedAppointments.length > 0 ? (
-                  sortedAppointments.map((appointment, idx) => (
+                  sortedAppointments.map((appointment, idx) => {
+                    const statusMeta = getAppointmentStatusMeta(appointment.status)
+                    return (
                     <div key={`${appointment.id}-${idx}`} className="rounded-xl border border-border bg-background p-4 shrink-0">
                       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-start gap-3">
                           <div>
                             <p className="text-sm font-sans font-black text-foreground tracking-tight">{getAppointmentDoctor(appointment)}</p>
                             <p className="mt-1 text-xs text-muted-foreground">Khoa {getAppointmentSpecialty(appointment)} • {getAppointmentDate(appointment)} • {getAppointmentTime(appointment)}</p>
+                            <p className="mt-1 text-[11px] font-medium text-muted-foreground">{statusMeta.description}</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={cn(
                             "rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                            isConfirmedStatus(appointment.status) ? "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20" :
-                              isInProgressStatus(appointment.status) ? "bg-blue-50 text-blue-700 border-blue-200" :
-                                isWaitingStatus(appointment.status) ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                  "bg-secondary text-muted-foreground border-border"
+                            statusMeta.className
                           )}>
-                            {isConfirmedStatus(appointment.status) ? "ĐÃ XÁC NHẬN" :
-                              isInProgressStatus(appointment.status) ? "ĐANG KHÁM" :
-                                isWaitingStatus(appointment.status) ? "ĐANG CHỜ KHÁM" :
-                                  isCompletedStatus(appointment.status) ? "ĐÃ KHÁM" : "ĐÃ HỦY"}
+                            {statusMeta.label}
                           </span>
                           {isCompletedStatus(appointment.status) && (
                             <button
@@ -896,7 +927,8 @@ export default function AppointmentsPage() {
                         </div>
                       </div>
                     </div>
-                  ))
+                    )
+                  })
                 ) : (
                   <div className="text-center py-12 text-xs text-muted-foreground font-medium">
                     Bạn chưa có lịch hẹn khám nào được đăng ký.

@@ -25,6 +25,7 @@ export function useNotifications(user: AuthUser | null) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [examNotification, setExamNotification] = useState<NotificationItem | null>(null)
+  const [recordNotification, setRecordNotification] = useState<NotificationItem | null>(null)
 
   const refreshNotifications = useCallback(async () => {
     if (user?.role !== "PATIENT") return
@@ -75,6 +76,9 @@ export function useNotifications(user: AuthUser | null) {
             if (payload.eventType === "EXAM_STARTED") {
               setExamNotification(payload.data)
             }
+            if (payload.eventType === "MEDICAL_RECORD_READY") {
+              setRecordNotification(payload.data)
+            }
             setUnreadCount((count) => payload.data?.unreadCount ?? count + 1)
           })
         },
@@ -110,7 +114,9 @@ export function useNotifications(user: AuthUser | null) {
     unreadCount,
     isLoading,
     examNotification,
+    recordNotification,
     dismissExamNotification: () => setExamNotification(null),
+    dismissRecordNotification: () => setRecordNotification(null),
     refreshNotifications,
     markRead,
     markAllRead,

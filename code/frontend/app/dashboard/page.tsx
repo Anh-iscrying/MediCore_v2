@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { apiFetch } from "@/lib/api"
+import { getMyMedicalRecords, MedicalRecord } from "@/lib/medical-records"
 import { cn } from "@/lib/utils"
 
 type PatientProfile = {
@@ -30,17 +31,20 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<PatientProfile | null>(null)
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [profileData, appointmentsData] = await Promise.all([
+        const [profileData, appointmentsData, recordsData] = await Promise.all([
           apiFetch<PatientProfile>("/patients/me"),
-          apiFetch<AppointmentResponse[]>("/appointments/me")
+          apiFetch<AppointmentResponse[]>("/appointments/me"),
+          getMyMedicalRecords().catch(() => [] as MedicalRecord[])
         ])
         setProfile(profileData)
         setAppointments(appointmentsData)
+        setMedicalRecords(recordsData || [])
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu dashboard:", error)
       } finally {
@@ -114,6 +118,33 @@ export default function DashboardPage() {
     ? `Lịch hẹn: ${formatAppointmentDisplay(nearestAppointment)}`
     : "Chưa có lịch hẹn"
 
+  // 6. Tính lần khám gần nhất từ hồ sơ bệnh án
+  const latestMedicalRecord = medicalRecords.length > 0
+    ? [...medicalRecords].sort((a, b) => {
+        const dateA = a.appointmentDate || a.createdAt || ""
+        const dateB = b.appointmentDate || b.createdAt || ""
+        return dateB.localeCompare(dateA)
+      })[0]
+    : null
+
+  const formatMedicalRecordDate = (dateStr?: string) => {
+    if (!dateStr) return ""
+    const cleanDate = dateStr.split("T")[0]
+    const parts = cleanDate.split("-")
+    if (parts.length !== 3) return dateStr
+    const [y, m, d] = parts
+    const monthNames = ["Th01", "Th02", "Th03", "Th04", "Th05", "Th06", "Th07", "Th08", "Th09", "Th10", "Th11", "Th12"]
+    const mIndex = parseInt(m, 10) - 1
+    if (mIndex >= 0 && mIndex < 12) {
+      return `${d} ${monthNames[mIndex]} ${y}`
+    }
+    return `${d}/${m}/${y}`
+  }
+
+  const medicalRecordMeta = latestMedicalRecord
+    ? `Khám gần nhất: ${formatMedicalRecordDate(latestMedicalRecord.appointmentDate || latestMedicalRecord.createdAt)}`
+    : "Chưa có hồ sơ khám"
+
   const overviewCards = [
     {
       title: "Hồ sơ bệnh nhân",
@@ -132,7 +163,7 @@ export default function DashboardPage() {
       title: "Hồ sơ bệnh án",
       description: "Xem lại chi tiết các đợt khám bệnh trước, chẩn đoán và hướng điều trị.",
       href: "/dashboard/history",
-      meta: "Khám gần nhất: 18 Th06 2026"
+      meta: medicalRecordMeta
     },
     {
       title: "Đơn thuốc điện tử",
@@ -222,19 +253,7 @@ export default function DashboardPage() {
                 : "bg-card border-border text-foreground"
             )}
           >
-            <div className="flex items-start justify-end gap-4">
-              {!(card.href === "/dashboard/profile" || card.href === "/dashboard/appointments" || card.href === "/dashboard/ai-assistant") && (
-                <span className={cn("rounded-sm border px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
-                  card.highlight
-                    ? "border-[#9fe870]/20 bg-[#9fe870]/10 text-[#9fe870]"
-                    : "border-border bg-background text-[#868685]"
-                )}>
-                  Mô phỏng
-                </span>
-              )}
-            </div>
-
-            <h2 className={cn("mt-5 text-xl font-sans font-black tracking-tight", card.highlight ? "text-[#9fe870]" : "text-foreground")}>{card.title}</h2>
+            <h2 className={cn("text-xl font-sans font-black tracking-tight", card.highlight ? "text-[#9fe870]" : "text-foreground")}>{card.title}</h2>
             <p className={cn("mt-2 text-sm leading-relaxed",
               card.highlight ? "text-white/95" : "text-[#454745]"
             )}>{card.description}</p>

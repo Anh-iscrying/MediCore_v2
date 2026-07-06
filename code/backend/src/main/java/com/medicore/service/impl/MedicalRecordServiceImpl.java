@@ -23,6 +23,7 @@ import com.medicore.repository.PrescriptionRepository;
 import com.medicore.service.IdGeneratorService;
 import com.medicore.service.MedicalRecordPdfService;
 import com.medicore.service.MedicalRecordService;
+import com.medicore.service.PatientNotificationService;
 import com.medicore.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     private final IdGeneratorService idGeneratorService;
     private final MedicalRecordPdfService pdfService;
     private final SupabaseStorageService storageService;
+    private final PatientNotificationService patientNotificationService;
 
     @Override
     @Transactional
@@ -259,6 +261,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         record.setPdfStoragePath(storagePath);
         record.setPdfGeneratedAt(OffsetDateTime.now());
         record.setPdfUrl(null);
-        recordRepository.save(record);
+        record = recordRepository.save(record);
+        patientNotificationService.notifyMedicalRecordReady(record);
     }
 }

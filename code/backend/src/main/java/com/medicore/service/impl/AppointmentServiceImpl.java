@@ -240,7 +240,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         } catch (DataIntegrityViolationException e) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
         }
-        patientNotificationService.notifyExamStarted(appointment, oldStatus, status);
+        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, status);
         return mapToResponse(appointment);
     }
 
@@ -253,7 +253,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(AppointmentStatus.IN_PROGRESS);
         appointment.setUpdatedAt(LocalDateTime.now());
         appointment = appointmentRepository.save(appointment);
-        patientNotificationService.notifyExamStarted(appointment, oldStatus, AppointmentStatus.IN_PROGRESS);
+        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, AppointmentStatus.IN_PROGRESS);
         return mapToResponse(appointment);
     }
 

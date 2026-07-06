@@ -14,6 +14,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class NotificationResponse {
     private Integer id;
+    private String recipientEmail;
     private String type;
     private String title;
     private String message;
