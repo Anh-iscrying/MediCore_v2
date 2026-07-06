@@ -56,6 +56,15 @@ public class MedicalRecordController {
         return ResponseEntity.ok(ApiResponse.success(medicalRecordService.getCurrentPatientRecords(authentication.getName())));
     }
 
+    // 6. Lấy toàn bộ hồ sơ bệnh án do bác sĩ hiện tại lập (Dùng cho Bác sĩ)
+    @GetMapping("/doctor-records")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<ApiResponse<List<MedicalRecordResponse>>> getDoctorRecords() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        List<MedicalRecordResponse> response = medicalRecordService.getDoctorMedicalRecords(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // 5. Tải file PDF bệnh án lên (Từ nhánh MC-09-v1)
     @PostMapping("/appointment/{appointmentId}/upload-pdf")
     @PreAuthorize("hasRole('DOCTOR')")

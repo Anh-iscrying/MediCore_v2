@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useData } from "@/providers/data-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { Button } from "@/components/base/ui/button"
 import { Card } from "@/components/base/ui/card"
 import { Badge } from "@/components/base/ui/badge"
@@ -24,27 +25,28 @@ import {
 import { Search, Plus, Trash2 } from "lucide-react"
 
 export function PrescriptionManager() {
+  const { user } = useAuth()
   const {
     prescriptions,
     patients,
     medicines,
-    updatePrescription,
-    deletePrescription,
     addPrescription,
     ensureMedicinesLoaded,
     ensurePatientsLoaded,
     ensureAppointmentsLoaded,
+    ensurePrescriptionsLoaded,
   } = useData()
 
   useEffect(() => {
     ensureMedicinesLoaded()
     ensurePatientsLoaded()
     ensureAppointmentsLoaded()
-  }, [ensureAppointmentsLoaded, ensureMedicinesLoaded, ensurePatientsLoaded])
+    ensurePrescriptionsLoaded()
+  }, [ensureAppointmentsLoaded, ensureMedicinesLoaded, ensurePatientsLoaded, ensurePrescriptionsLoaded])
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "issued" | "dispensed">("all")
   const [showNewModal, setShowNewModal] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const filtered = prescriptions.filter((p) => {
     const patient = patients.find((pt) => pt.id === p.patientId)
@@ -52,12 +54,24 @@ export function PrescriptionManager() {
       !searchTerm ||
       patient?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchStatus = filterStatus === "all" || p.status === filterStatus
-    return matchSearch && matchStatus
+    return matchSearch
   })
+
+  // Chọn đơn đầu tiên nếu chưa chọn đơn nào
+  useEffect(() => {
+    if (filtered.length > 0 && !selectedId) {
+      setSelectedId(filtered[0].id)
+    }
+  }, [filtered, selectedId])
+
+  const selectedPrescription = prescriptions.find((p) => p.id === selectedId) || filtered[0]
+  const selectedPatient = selectedPrescription
+    ? patients.find((pt) => pt.id === selectedPrescription.patientId)
+    : null
 
   return (
     <div className="space-y-6">
+      {/* Tìm kiếm và nút kê đơn */}
       <div className="flex gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -68,147 +82,178 @@ export function PrescriptionManager() {
             className="pl-10"
           />
         </div>
-        <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="draft">Nháp</SelectItem>
-            <SelectItem value="issued">Đã cấp</SelectItem>
-            <SelectItem value="dispensed">Đã phát</SelectItem>
-          </SelectContent>
-        </Select>
         <Button onClick={() => setShowNewModal(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Kê đơn mới
         </Button>
       </div>
 
-      {filtered.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground">Không có đơn thuốc nào</p>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {filtered.map((prescription) => {
-            const patient = patients.find((p) => p.id === prescription.patientId)
-            return (
-              <Card key={prescription.id} className="p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{patient?.name}</h3>
-                    <p className="text-sm text-muted-foreground">Đơn: {prescription.id}</p>
+      {/* Grid Layout: Danh sách cuộn bên trái & Panel chi tiết cố định bên phải */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-240px)] overflow-hidden">
+        {/* Left Column: Danh sách đơn thuốc có thanh cuộn riêng */}
+        <div className="lg:col-span-4 flex flex-col h-full overflow-hidden border border-border rounded-lg bg-card p-4">
+          <h2 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Danh sách đơn thuốc</h2>
+          {filtered.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-center p-8">
+              <p className="text-sm text-muted-foreground">Không tìm thấy đơn thuốc nào</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              {filtered.map((prescription) => {
+                const patient = patients.find((p) => p.id === prescription.patientId)
+                const isSelected = selectedId === prescription.id || (!selectedId && filtered[0].id === prescription.id)
+                return (
+                  <div
+                    key={prescription.id}
+                    onClick={() => setSelectedId(prescription.id)}
+                    className={`p-3 rounded-lg border transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-semibold text-sm text-foreground truncate max-w-[150px]">{patient?.name || "N/A"}</h3>
+                      <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                        {prescription.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                      <span>{prescription.items.length} loại thuốc</span>
+                      <span>{new Date(prescription.prescriptionDate).toLocaleDateString("vi-VN")}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        prescription.status === "draft"
-                          ? "secondary"
-                          : prescription.status === "issued"
-                            ? "default"
-                            : "outline"
-                      }
-                      className="text-xs"
-                    >
-                      {prescription.status === "draft" && "Nháp"}
-                      {prescription.status === "issued" && "Đã cấp"}
-                      {prescription.status === "dispensed" && "Đã phát"}
-                    </Badge>
-                    <PrescriptionActions
-                      prescription={prescription}
-                      onUpdate={updatePrescription}
-                      onDelete={deletePrescription}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2 mb-3">
-                  <p className="text-sm text-muted-foreground">
-                    Ngày kê: {new Date(prescription.prescriptionDate).toLocaleDateString("vi-VN")}
-                  </p>
-                  <div className="space-y-1">
-                    {prescription.items.map((item, idx) => (
-                      <p key={idx} className="text-sm">
-                        • {item.medicineName} - {item.quantity} {item.unit} - {item.dosage}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-
-                {prescription.notes && (
-                  <p className="text-sm text-muted-foreground border-t pt-2">
-                    Ghi chú: {prescription.notes}
-                  </p>
-                )}
-              </Card>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right Column: Panel xem chi tiết cố định không bị đẩy lên */}
+        <div className="lg:col-span-8 h-full flex flex-col overflow-hidden">
+          {selectedPrescription ? (
+            <Card className="flex-1 flex flex-col overflow-hidden border border-border h-full bg-card">
+              {/* Vùng cuộn thông tin chi tiết */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Header phòng khám */}
+                <div className="flex justify-between items-start pb-4 border-b border-border">
+                  <div>
+                    <h2 className="text-sm font-extrabold text-primary uppercase tracking-wider">Medicore Clinic</h2>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống y tế kỹ thuật số hiện đại</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-bold text-slate-700 font-mono">Đơn thuốc: {selectedPrescription.id}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Ngày kê: {new Date(selectedPrescription.prescriptionDate).toLocaleDateString("vi-VN")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tiêu đề chính */}
+                <div className="text-center py-2">
+                  <h1 className="text-xl font-bold tracking-widest text-slate-800 uppercase">Đơn Thuốc</h1>
+                </div>
+
+                {/* Thông tin hành chính bệnh nhân */}
+                <div className="bg-muted/30 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Họ tên:</span>{" "}
+                    <span className="font-semibold text-foreground">{selectedPatient?.name || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Mã bệnh nhân:</span>{" "}
+                    <span className="font-mono text-foreground">{selectedPatient?.patientCode || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ngày sinh:</span>{" "}
+                    <span className="text-foreground">
+                      {selectedPatient?.dateOfBirth
+                        ? new Date(selectedPatient.dateOfBirth).toLocaleDateString("vi-VN")
+                        : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Giới tính:</span>{" "}
+                    <span className="text-foreground">
+                      {selectedPatient?.gender === "M" ? "Nam" : selectedPatient?.gender === "F" ? "Nữ" : "—"}
+                    </span>
+                  </div>
+                  <div className="md:col-span-2">
+                    <span className="text-muted-foreground">Địa chỉ:</span>{" "}
+                    <span className="text-foreground">{selectedPatient?.address || "—"}</span>
+                  </div>
+                </div>
+
+                {/* Bảng kê chỉ định thuốc */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Chỉ định sử dụng thuốc</h3>
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-muted text-muted-foreground text-xs uppercase font-semibold border-b border-border">
+                          <th className="p-3 w-[8%] text-center">STT</th>
+                          <th className="p-3 w-[42%]">Tên thuốc / Hàm lượng</th>
+                          <th className="p-3 w-[15%] text-center">SL</th>
+                          <th className="p-3 w-[15%] text-center">ĐVT</th>
+                          <th className="p-3 w-[20%]">Liều dùng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPrescription.items.map((item, idx) => (
+                          <tr key={idx} className="border-b border-border/60 hover:bg-muted/10 last:border-0">
+                            <td className="p-3 text-center text-muted-foreground font-mono">{idx + 1}</td>
+                            <td className="p-3 font-semibold text-slate-800">{item.medicineName}</td>
+                            <td className="p-3 text-center font-semibold text-slate-800">{item.quantity}</td>
+                            <td className="p-3 text-center text-muted-foreground">{item.unit}</td>
+                            <td className="p-3 text-muted-foreground">{item.dosage}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Lời dặn */}
+                {selectedPrescription.notes && (
+                  <div className="space-y-1.5 pt-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Lời dặn của bác sĩ</h3>
+                    <p className="text-sm bg-green-50/40 border border-green-100 rounded-lg p-3 text-slate-700 italic">
+                      "{selectedPrescription.notes}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Ký tên */}
+                <div className="flex justify-end pt-8">
+                  <div className="text-center w-[200px] space-y-1">
+                    <p className="text-xs text-muted-foreground italic">
+                      Ngày {new Date(selectedPrescription.prescriptionDate).getDate()} tháng{" "}
+                      {new Date(selectedPrescription.prescriptionDate).getMonth() + 1} năm{" "}
+                      {new Date(selectedPrescription.prescriptionDate).getFullYear()}
+                    </p>
+                    <p className="text-xs font-bold text-slate-700 uppercase">Bác sĩ điều trị</p>
+                    <div className="h-16" />
+                    <p className="text-sm font-semibold text-slate-800">
+                      {user?.name || "Bác sĩ điều trị"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="flex-1 flex flex-col items-center justify-center text-center p-12 border border-border h-full bg-card">
+              <p className="text-muted-foreground text-sm">Chọn một đơn thuốc từ danh sách để xem chi tiết</p>
+            </Card>
+          )}
+        </div>
+      </div>
 
       <NewPrescriptionModal open={showNewModal} onOpenChange={setShowNewModal} onSave={addPrescription} />
     </div>
   )
 }
 
-function PrescriptionActions({
-  prescription,
-  onUpdate,
-  onDelete,
-}: {
-  prescription: any
-  onUpdate: (id: string, data: any) => void
-  onDelete: (id: string) => void
-}) {
-  const [showMenu, setShowMenu] = useState(false)
-
-  return (
-    <div className="relative">
-      <Button variant="ghost" size="sm" onClick={() => setShowMenu(!showMenu)}>
-        •••
-      </Button>
-      {showMenu && (
-        <div className="absolute right-0 mt-1 w-48 bg-background border rounded-lg shadow-lg z-10">
-          {prescription.status === "draft" && (
-            <button
-              onClick={() => {
-                onUpdate(prescription.id, { ...prescription, status: "issued" })
-                setShowMenu(false)
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-muted"
-            >
-              Cấp đơn
-            </button>
-          )}
-          {prescription.status === "issued" && (
-            <button
-              onClick={() => {
-                onUpdate(prescription.id, { ...prescription, status: "dispensed" })
-                setShowMenu(false)
-              }}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-muted"
-            >
-              Đánh dấu đã phát
-            </button>
-          )}
-          <button
-            onClick={() => {
-              onDelete(prescription.id)
-              setShowMenu(false)
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-muted"
-          >
-            <div className="flex items-center gap-2">
-              <Trash2 className="w-4 h-4" />
-              Xóa
-            </div>
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
+// PrescriptionActions removed (no status badge or action menu needed)
 
 function NewPrescriptionModal({
   open,

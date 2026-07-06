@@ -49,31 +49,58 @@ public class MedicalRecordPdfService {
             document.add(title);
 
             addInfoTable(document, record, normalFont, boldFont);
+
+            // I. TRIỆU CHỨNG & KHÁM LÂM SÀNG
             addSection(document, "I. TRIEU CHUNG & KHAM LAM SANG", sectionFont);
-            addText(document, "Trieu chung", record.getSymptoms(), normalFont, boldFont);
-            addText(document, "Kham lam sang", record.getPhysicalExamination(), normalFont, boldFont);
+            addText(document, "Trieu chung chinh", record.getSymptoms(), normalFont, boldFont);
+            addText(document, "Kham lam sang the chat", record.getPhysicalExamination(), normalFont, boldFont);
             addText(document, "Ket qua can lam sang", record.getTestResults(), normalFont, boldFont);
 
-            addSection(document, "II. CHAN DOAN", sectionFont);
+            // II. KHÁM CHUYÊN KHOA
+            String specialtyName = "";
+            if (record.getDoctor() != null && record.getDoctor().getSpecialty() != null) {
+                specialtyName = record.getDoctor().getSpecialty().getSpecialtyName();
+            }
+            addSection(document, "II. KHAM CHUYEN KHOA" + (StringUtils.hasText(specialtyName) ? ": " + specialtyName.toUpperCase() : ""), sectionFont);
+            addSpecialtyData(document, record.getAdditionalData(), normalFont, boldFont);
+
+            // III. CHẨN ĐOÁN
+            addSection(document, "III. CHAN DOAN", sectionFont);
             String diagnosis = record.getDiagnosisIcd10() == null
                     ? record.getMainDiagnosis()
                     : record.getDiagnosisIcd10().getIcd10Code() + " - " + record.getDiagnosisIcd10().getDiseaseName();
             addText(document, "Ma ICD-10", diagnosis, normalFont, boldFont);
-            addText(document, "Chan doan chinh", record.getMainDiagnosis(), normalFont, boldFont);
+            addText(document, "Chan doan benh chinh", record.getMainDiagnosis(), normalFont, boldFont);
 
-            addSection(document, "III. DIEU TRI & TAI KHAM", sectionFont);
-            addText(document, "Loi dan / dieu tri", record.getCareAdvice(), normalFont, boldFont);
-            addText(document, "Ghi chu", record.getClinicalNote(), normalFont, boldFont);
-            addText(document, "Tom tat tien su", record.getHistorySummary(), normalFont, boldFont);
-            addText(document, "Ngay tai kham", record.getFollowUpDate() == null ? null : record.getFollowUpDate().format(DATE_FORMATTER), normalFont, boldFont);
-
-            addSection(document, "IV. DON THUOC", sectionFont);
+            // IV. ĐIỀU TRỊ & ĐƠN THUỐC
+            addSection(document, "IV. DIEU TRI & DON THUOC", sectionFont);
+            addText(document, "Chi dinh dieu tri & Loi dan", record.getCareAdvice(), normalFont, boldFont);
+            
+            // Đơn thuốc kèm theo
+            Paragraph prescLabel = new Paragraph("Don thuoc kem theo:", boldFont);
+            prescLabel.setSpacingBefore(4);
+            prescLabel.setSpacingAfter(4);
+            document.add(prescLabel);
+            
             addPrescriptionTable(document, details, normalFont, boldFont);
 
-            if (record.getAdditionalData() != null && !record.getAdditionalData().isEmpty()) {
-                addSection(document, "V. THONG TIN BO SUNG", sectionFont);
-                addAdditionalData(document, record.getAdditionalData(), normalFont, boldFont);
+            // Hướng dẫn sử dụng thuốc (prescriptionNotes)
+            String prescriptionNotes = "";
+            if (record.getAdditionalData() != null) {
+                Object notesObj = record.getAdditionalData().get("prescriptionNotes");
+                if (notesObj instanceof String) {
+                    prescriptionNotes = (String) notesObj;
+                }
             }
+            addText(document, "Huong dan su dung thuoc", prescriptionNotes, normalFont, boldFont);
+
+            // Hẹn tái khám
+            addText(document, "Hen tai kham vao ngay", record.getFollowUpDate() == null ? null : record.getFollowUpDate().format(DATE_FORMATTER), normalFont, boldFont);
+
+            // V. GHI CHÚ CỦA BÁC SĨ
+            addSection(document, "V. GHI CHU CUA BAC SI", sectionFont);
+            addText(document, "Ghi chu lam sang", record.getClinicalNote(), normalFont, boldFont);
+            addText(document, "Tom tat tien su", record.getHistorySummary(), normalFont, boldFont);
 
             document.close();
             return output.toByteArray();
@@ -143,9 +170,52 @@ public class MedicalRecordPdfService {
         document.add(table);
     }
 
-    private void addAdditionalData(Document document, Map<String, Object> data, Font normalFont, Font boldFont) throws Exception {
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            addText(document, entry.getKey(), entry.getValue() == null ? null : String.valueOf(entry.getValue()), normalFont, boldFont);
+    private void addSpecialtyData(Document document, Map<String, Object> additionalData, Font normalFont, Font boldFont) throws Exception {
+        Map<String, Object> specialtyExamValues = null;
+        List<Map<String, Object>> fields = null;
+
+        if (additionalData != null) {
+            Object valuesObj = additionalData.get("specialtyExamValues");
+            if (valuesObj instanceof Map) {
+                specialtyExamValues = (Map<String, Object>) valuesObj;
+            }
+
+            Object templateObj = additionalData.get("specialtyExamTemplate");
+            if (templateObj instanceof Map) {
+                Map<String, Object> templateMap = (Map<String, Object>) templateObj;
+                Object fieldsObj = templateMap.get("fields");
+                if (fieldsObj instanceof List) {
+                    fields = (List<Map<String, Object>>) fieldsObj;
+                }
+            }
+        }
+
+        if (fields != null && !fields.isEmpty()) {
+            for (Map<String, Object> field : fields) {
+                String fieldId = String.valueOf(field.get("id"));
+                String fieldLabel = String.valueOf(field.get("label"));
+                String fieldType = String.valueOf(field.get("type"));
+
+                Object value = specialtyExamValues != null ? specialtyExamValues.get(fieldId) : null;
+                boolean isEmpty = value == null || String.valueOf(value).trim().isEmpty();
+
+                String displayValue;
+                if (!isEmpty) {
+                    if ("checkbox".equalsIgnoreCase(fieldType)) {
+                        displayValue = (Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value))) ? "Co" : "Khong";
+                    } else {
+                        displayValue = String.valueOf(value);
+                    }
+                } else {
+                    displayValue = "checkbox".equalsIgnoreCase(fieldType) ? "Khong" : "................................................";
+                }
+
+                addText(document, fieldLabel, displayValue, normalFont, boldFont);
+            }
+        } else {
+            Paragraph noSpecialty = new Paragraph("Khong co chi dinh kham chuyen khoa rieng.", normalFont);
+            noSpecialty.setSpacingAfter(4);
+            document.add(noSpecialty);
         }
     }
 

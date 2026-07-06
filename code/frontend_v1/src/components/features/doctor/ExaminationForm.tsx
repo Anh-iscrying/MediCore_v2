@@ -200,7 +200,7 @@ export default function ExaminationForm({
 
                         <h1 className="text-3xl font-bold tracking-wider">
 
-                            PHIẾU KHÁM NGOẠI TRÚ
+                            PHIẾU KHÁM BỆNH
 
                         </h1>
 

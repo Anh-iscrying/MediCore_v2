@@ -77,6 +77,20 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                         .build());
         prescription = prescriptionRepository.save(prescription);
 
+        // Hoàn trả số lượng thuốc cũ về kho trước khi xóa chi tiết đơn thuốc cũ
+        List<PrescriptionDetail> oldDetails = prescriptionDetailRepository.findByPrescriptionId(prescription.getId());
+        if (oldDetails != null) {
+            for (PrescriptionDetail oldDetail : oldDetails) {
+                if (oldDetail.getMedicine() != null) {
+                    var medicine = oldDetail.getMedicine();
+                    int qty = oldDetail.getQuantity() == null ? 0 : oldDetail.getQuantity();
+                    int currentStock = medicine.getStock() == null ? 0 : medicine.getStock();
+                    medicine.setStock(currentStock + qty);
+                    medicineRepository.save(medicine);
+                }
+            }
+        }
+
         prescriptionDetailRepository.deleteByPrescriptionId(prescription.getId());
         List<PrescriptionDetail> details = savePrescriptionDetails(prescription, request.getMedicines());
 
@@ -157,10 +171,16 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
             var medicine = medicineRepository.findById(item.getMedicineId())
                     .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không thấy thuốc ID: " + item.getMedicineId()));
             
+            // Trừ số lượng thuốc đã kê khỏi kho
+            int quantityToPrescribe = item.getQuantity() == null ? 1 : item.getQuantity();
+            int currentStock = medicine.getStock() == null ? 0 : medicine.getStock();
+            medicine.setStock(Math.max(0, currentStock - quantityToPrescribe));
+            medicineRepository.save(medicine);
+
             PrescriptionDetail detail = PrescriptionDetail.builder()
                     .prescription(prescription)
                     .medicine(medicine)
-                    .quantity(item.getQuantity() == null ? 1 : item.getQuantity())
+                    .quantity(quantityToPrescribe)
                     .dosageInstruction(item.getDosageInstruction())
                     .isFromTemplate(item.getIsFromTemplate())
                     .createdAt(OffsetDateTime.now())
@@ -237,6 +257,20 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
             && credentials.getPatient().getPatientCode().equals(record.getPatient().getPatientCode())) return;
 
         throw new CustomBusinessException(ErrorCodes.FORBIDDEN);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicalRecordResponse> getDoctorMedicalRecords(String email) {
+        AuthCredentials credentials = findCredentials(email);
+        if (credentials.getRole() != UserRole.DOCTOR || credentials.getDoctor() == null) {
+            throw new CustomBusinessException(ErrorCodes.FORBIDDEN, "Tài khoản không phải là bác sĩ");
+        }
+        Integer doctorId = credentials.getDoctor().getId();
+        List<MedicalRecord> records = recordRepository.findByDoctorIdOrderByCreatedAtDesc(doctorId);
+        return records.stream()
+                .map(record -> toResponse(record, loadDetails(record)))
+                .toList();
     }
 
     @Override

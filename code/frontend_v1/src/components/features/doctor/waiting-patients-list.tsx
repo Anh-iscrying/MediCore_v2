@@ -9,7 +9,7 @@ import { Badge } from "@/components/base/ui/badge"
 import { Input } from "@/components/base/ui/input"
 import { Textarea } from "@/components/base/ui/textarea"
 import { PatientProfileModal } from "./patient-profile-modal"
-import { Search, Clock, FileText } from "lucide-react"
+import { Search, Clock, FileText, Calendar as CalendarIcon } from "lucide-react"
 import type { Patient, Appointment } from "@/types/medical"
 
 interface WaitingItem {
@@ -36,15 +36,19 @@ export function WaitingPatientsList() {
   const [customCancelReason, setCustomCancelReason] = useState("")
   const [cancelError, setCancelError] = useState("")
 
-  useEffect(() => {
-    loadWaitingAppointments()
-  }, [loadWaitingAppointments])
+  const today = useMemo(() => new Date().toISOString().split("T")[0], [])
+  const [selectedDate, setSelectedDate] = useState(today)
 
-  const waitingPatients = getWaitingPatients()
+  const activeDate = selectedDate || today
+
+  useEffect(() => {
+    loadWaitingAppointments(activeDate)
+  }, [loadWaitingAppointments, activeDate])
+
+  const waitingPatients = getWaitingPatients(activeDate)
 
   // Tạo danh sách theo APPOINTMENT (mỗi lịch hẹn = 1 thẻ), sắp xếp theo giờ sớm nhất
   const waitingItems = useMemo((): WaitingItem[] => {
-    const today = new Date().toISOString().split("T")[0]
     const waitingStatuses = new Set(["WAITING", "PENDING", "IN_PROGRESS"])
 
     const items: WaitingItem[] = waitingPatients.flatMap((patient): WaitingItem[] => {
@@ -52,7 +56,7 @@ export function WaitingPatientsList() {
         (a) =>
           (a.patientId === patient.id || (patient.patientCode && a.patientCode === patient.patientCode)) &&
           waitingStatuses.has(a.status) &&
-          a.appointmentDate === today
+          a.appointmentDate === activeDate
       )
 
       if (patientAppointments.length === 0) {
@@ -68,7 +72,7 @@ export function WaitingPatientsList() {
 
     // Sắp xếp theo giờ khám sớm nhất lên trước
     return items.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-  }, [waitingPatients, appointments])
+  }, [waitingPatients, appointments, activeDate])
 
   // Lọc theo từ khóa tìm kiếm
   const filtered = waitingItems.filter(({ patient }) =>
@@ -142,7 +146,7 @@ export function WaitingPatientsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
           <Input
@@ -151,6 +155,27 @@ export function WaitingPatientsList() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="relative flex items-center flex-1 sm:flex-initial">
+            <CalendarIcon className="absolute left-3 w-4.5 h-4.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="h-10 text-sm border border-input rounded-md pl-10 pr-3 py-2 bg-background outline-none focus:ring-1 focus:ring-ring w-full cursor-pointer"
+            />
+          </div>
+          {selectedDate !== today && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedDate(today)}
+              className="h-10 px-3 text-xs"
+            >
+              Hôm nay
+            </Button>
+          )}
         </div>
       </div>
 

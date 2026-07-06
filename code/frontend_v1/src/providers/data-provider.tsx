@@ -34,6 +34,7 @@ import {
   patientsApi,
   schedulesApi,
   specialtiesApi,
+  medicalRecordsApi,
 } from "@/lib/api"
 import { useAuth } from "@/providers/auth-provider"
 // Mock data seeds removed for production backend connection
@@ -82,7 +83,7 @@ interface DataContextValue {
   updateExaminationRecord: (id: string, e: Omit<ExaminationRecord, "id">) => void
   deleteExaminationRecord: (id: string) => void
   // Helper methods
-  getWaitingPatients: () => Patient[]
+  getWaitingPatients: (date?: string) => Patient[]
   getPatientPrescriptions: (patientId: string) => Prescription[]
   getPatientRecords: (patientId: string) => ExaminationRecord[]
   // Lazy loaders — gọi khi vào trang cần data
@@ -94,6 +95,7 @@ interface DataContextValue {
   ensureScheduleLoaded: () => Promise<void>
   ensureDoctorsLoaded: () => Promise<void>
   ensureSpecialtiesLoaded: () => Promise<void>
+  ensurePrescriptionsLoaded: () => Promise<void>
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
@@ -433,6 +435,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [token, doctors])
 
+  const ensurePrescriptionsLoaded = React.useCallback(async () => {
+    if (loadedRef.current.prescriptions || !token) return
+    loadedRef.current.prescriptions = true
+    try {
+      const res = await medicalRecordsApi.listDoctorRecords()
+      const mappedPrescriptions: Prescription[] = res
+        .filter((r: any) => r.medicines && r.medicines.length > 0)
+        .map((r: any): Prescription => ({
+          id: `EMR-${r.emrCode || r.id}`,
+          appointmentId: String(r.appointmentId),
+          patientId: String(r.patientId),
+          doctorId: String(r.doctorId),
+          prescriptionDate: r.createdAt || new Date().toISOString(),
+          items: r.medicines.map((m: any) => ({
+            medicineId: String(m.medicineId),
+            medicineName: m.medicineName,
+            quantity: m.quantity,
+            unit: m.unit,
+            dosage: m.dosageInstruction || m.dosage,
+            notes: "",
+          })),
+          notes: r.additionalData?.prescriptionNotes || "",
+          status: "issued",
+        }))
+
+      setPrescriptions(mappedPrescriptions)
+    } catch (e) {
+      loadedRef.current.prescriptions = false
+      console.error("Không thể tải danh sách đơn thuốc", e)
+    }
+  }, [token])
+
   // ── Initial load by role ──────────────────────────────────────────
   useEffect(() => {
     if (!token) return
@@ -749,14 +783,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateExaminationRecord: (id, e) => setExaminationRecords((prev) => prev.map((x) => (x.id === id ? { ...x, ...e } : x))),
     deleteExaminationRecord: (id) => setExaminationRecords((prev) => prev.filter((x) => x.id !== id)),
 
-    getWaitingPatients: () => {
+    getWaitingPatients: (date) => {
       // Nếu là bác sĩ: chỉ hiển thị bệnh nhân có lịch hẹn WAITING của bác sĩ này
       if (user?.role === "DOCTOR" && user?.doctorId) {
         const doctorIdStr = String(user.doctorId)
-        const today = new Date().toISOString().split("T")[0]
+        const targetDate = date ?? new Date().toISOString().split("T")[0]
         const waitingStatuses = new Set(["WAITING", "PENDING", "IN_PROGRESS"])
         const doctorWaitingAppointments = appointments.filter(
-          (a) => a.doctorId === doctorIdStr && waitingStatuses.has(a.status) && a.appointmentDate === today
+          (a) => a.doctorId === doctorIdStr && waitingStatuses.has(a.status) && a.appointmentDate === targetDate
         )
         const waitingPatientIds = new Set(
           doctorWaitingAppointments.map((a) => a.patientId)
@@ -782,6 +816,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ensureScheduleLoaded,
     ensureDoctorsLoaded,
     ensureSpecialtiesLoaded,
+    ensurePrescriptionsLoaded,
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

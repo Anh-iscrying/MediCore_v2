@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/base/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/base/ui/select"
-import { Plus, Pencil, Trash2, FolderHeart, Users, Save, FilePlus2, Eye, LayoutTemplate } from "lucide-react"
+import { Plus, Pencil, Trash2, FolderHeart, Users, Save, FilePlus2, Eye, LayoutTemplate, ArrowUp, ArrowDown } from "lucide-react"
 import { ExamTemplateRenderer } from "@/components/shared/exam-template-renderer"
 
 const fieldTypes: Array<{ value: SpecialtyExamFieldType; label: string }> = [
@@ -74,11 +74,13 @@ const normalizeOptions = (value: string) =>
 interface TemplateFieldItemProps {
   field: SpecialtyExamTemplateField
   index: number
+  totalFields: number
   updateField: (index: number, patch: Partial<SpecialtyExamTemplateField>) => void
   removeField: (index: number) => void
+  moveField: (index: number, direction: "up" | "down") => void
 }
 
-function TemplateFieldItem({ field, index, updateField, removeField }: TemplateFieldItemProps) {
+function TemplateFieldItem({ field, index, totalFields, updateField, removeField, moveField }: TemplateFieldItemProps) {
   const [optionsText, setOptionsText] = useState(parseOptions(field.options))
 
   useEffect(() => {
@@ -110,15 +112,37 @@ function TemplateFieldItem({ field, index, updateField, removeField }: TemplateF
             placeholder="Ví dụ: Huyết áp"
           />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-slate-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-          onClick={() => removeField(index)}
-          title="Xóa mục"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
+            onClick={() => moveField(index, "up")}
+            disabled={index === 0}
+            title="Di chuyển lên"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
+            onClick={() => moveField(index, "down")}
+            disabled={index === totalFields - 1}
+            title="Di chuyển xuống"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            onClick={() => removeField(index)}
+            title="Xóa mục"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -274,6 +298,20 @@ export function SpecialtiesContent() {
 
   const removeField = (index: number) => {
     setTemplateDraft((prev) => ({ fields: prev.fields.filter((_, fieldIndex) => fieldIndex !== index) }))
+    setTemplateError("")
+  }
+
+  const moveField = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return
+    if (direction === "down" && index === templateDraft.fields.length - 1) return
+
+    const nextIndex = direction === "up" ? index - 1 : index + 1
+    const nextFields = [...templateDraft.fields]
+    const temp = nextFields[index]
+    nextFields[index] = nextFields[nextIndex]
+    nextFields[nextIndex] = temp
+
+    setTemplateDraft({ fields: nextFields })
     setTemplateError("")
   }
 
@@ -477,8 +515,10 @@ export function SpecialtiesContent() {
                         key={`field-item-${index}`}
                         field={field}
                         index={index}
+                        totalFields={templateDraft.fields.length}
                         updateField={updateField}
                         removeField={removeField}
+                        moveField={moveField}
                       />
                     ))}
                     {templateDraft.fields.length === 0 && (
@@ -490,12 +530,14 @@ export function SpecialtiesContent() {
                     )}
                   </div>
                 ) : (
-                  <div className="overflow-y-auto flex-1 bg-slate-50 rounded-xl border border-slate-200 p-6">
-                    <div className="mb-6 border-b border-slate-200 pb-4">
-                      <h4 className="text-base font-semibold text-blue-800">Xem trước giao diện Bác sĩ</h4>
-                      <p className="text-xs text-slate-500 mt-1">Giao diện này sẽ hiển thị khi bác sĩ tạo bệnh án mới.</p>
+                  <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col h-full">
+                    <div className="bg-muted/30 px-6 py-4 border-b border-border">
+                      <h4 className="text-base font-semibold text-foreground">Xem trước giao diện Bác sĩ</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">Giao diện này sẽ hiển thị khi bác sĩ tạo bệnh án mới.</p>
                     </div>
-                    <ExamTemplateRenderer template={templateDraft} />
+                    <div className="p-8 bg-card flex-1 overflow-y-auto">
+                      <ExamTemplateRenderer template={templateDraft} />
+                    </div>
                   </div>
                 )}
               </div>

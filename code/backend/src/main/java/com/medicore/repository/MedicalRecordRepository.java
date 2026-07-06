@@ -34,4 +34,7 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, In
 
     @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM MedicalRecord r WHERE r.doctor.id = :doctorId AND r.patient.patientCode = :patientCode")
     boolean existsByDoctorIdAndPatientPatientCode(@Param("doctorId") Integer doctorId, @Param("patientCode") String patientCode);
+
+    @Query("SELECT r FROM MedicalRecord r LEFT JOIN FETCH r.appointment a LEFT JOIN FETCH r.patient p LEFT JOIN FETCH r.doctor d LEFT JOIN FETCH d.specialty LEFT JOIN FETCH r.diagnosisIcd10 WHERE d.id = :doctorId ORDER BY r.createdAt DESC")
+    List<MedicalRecord> findByDoctorIdOrderByCreatedAtDesc(@Param("doctorId") Integer doctorId);
 }

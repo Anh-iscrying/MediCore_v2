@@ -19,6 +19,9 @@ public interface MedicalRecordService {
     // Lấy danh sách lịch sử bệnh án của bệnh nhân hiện tại (Hợp nhất từ cả hai nhánh)
     List<MedicalRecordResponse> getCurrentPatientRecords(String email);
 
+    // Lấy toàn bộ bệnh án do bác sĩ lập
+    List<MedicalRecordResponse> getDoctorMedicalRecords(String email);
+
     // Lưu trữ file PDF bệnh án (Tính năng mới từ MC-09-v1)
     void uploadPdf(Integer appointmentId, byte[] pdfBytes);
 }

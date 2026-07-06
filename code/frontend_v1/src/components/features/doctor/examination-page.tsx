@@ -51,6 +51,7 @@ import { useReactToPrint } from "react-to-print"
 import { useRef } from "react"
 import { medicalRecordsApi, aiApi, treatmentTemplatesApi } from "@/lib/api"
 import { generateMedicalRecordPdf } from "@/lib/generate-medical-record-pdf"
+import { ExamTemplateRenderer } from "@/components/shared/exam-template-renderer"
 
 const parseBoldItalicAndArrows = (text: string): React.ReactNode[] => {
   const cleanText = text.replace(/->/g, "→");
@@ -859,6 +860,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
                 specialtyFields={specialtyFields}
                 specialtyExamValues={specialtyExamValues}
                 specialtyName={specialty?.name}
+                doctorName={user?.name || undefined}
                 onBack={() => setPreviewMode(false)}
                 onPrint={handlePrint}
               />
@@ -938,7 +940,7 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
 
                       <h1 className="text-3xl font-bold tracking-wider">
 
-                        PHIẾU KHÁM NGOẠI TRÚ
+                        PHIẾU KHÁM BỆNH
 
                       </h1>
 
@@ -1058,19 +1060,12 @@ Tôi hỗ trợ cung cấp thông tin tham khảo nhanh cho bác sĩ:
 
                   {/* Content */}
                   <div className="p-8 space-y-6">
-                    {specialtyFields.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {specialtyFields.map((field) => (
-                          <div key={field.id} className={field.type === "textarea" ? "md:col-span-2" : ""}>
-                            {field.type !== "checkbox" && (
-                              <label className="block text-xs font-medium text-muted-foreground mb-2">
-                                {field.label}{field.required ? " *" : ""}
-                              </label>
-                            )}
-                            {renderSpecialtyField(field)}
-                          </div>
-                        ))}
-                      </div>
+                    {specialty?.examTemplate ? (
+                      <ExamTemplateRenderer
+                        template={specialty.examTemplate}
+                        value={specialtyExamValues}
+                        onChange={setSpecialtyExamValues}
+                      />
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         Chuyên khoa này chưa có template khám riêng.

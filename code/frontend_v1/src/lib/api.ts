@@ -195,6 +195,8 @@ export const medicalRecordsApi = {
     }),
   getByAppointment: (appointmentId: string | number) =>
     request<any>(`/clinical/medical-records/appointment/${appointmentId}`),
+  listDoctorRecords: () =>
+    request<any[]>("/clinical/medical-records/doctor-records"),
   uploadPdf: (appointmentId: string | number, pdfBlob: Blob) => {
     const formData = new FormData()
     formData.append("file", pdfBlob, `record-${appointmentId}.pdf`)
