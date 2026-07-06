@@ -23,6 +23,7 @@ export function DashboardSidebar() {
     { name: "Trang chủ", href: "/dashboard", icon: Home },
     { name: "Hồ sơ sức khỏe", href: "/dashboard/history", icon: FileText },
     { name: "Lịch hẹn khám", href: "/dashboard/appointments", icon: Calendar },
+    { name: "Đơn thuốc điện tử", href: "/dashboard/prescriptions", icon: Activity },
     { name: "Trợ lý sức khỏe AI", href: "/dashboard/ai-assistant", icon: MessageSquare }
   ]
 

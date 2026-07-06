@@ -19,7 +19,7 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { user, logout } = useAuth()
-  const { notifications, unreadCount, isLoading, examNotification, dismissExamNotification, markRead, markAllRead } = useNotifications(user)
+  const { notifications, unreadCount, isLoading, examNotification, recordNotification, dismissExamNotification, dismissRecordNotification, markRead, markAllRead } = useNotifications(user)
 
   useEffect(() => {
     setMounted(true)
@@ -46,8 +46,13 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
     if (onNavigate) onNavigate()
   }
 
-  const handleNotificationClick = async (id: number) => {
+  const handleNotificationClick = async (id: number, redirectUrl?: string | null) => {
     await markRead(id)
+    if (redirectUrl) {
+      setShowNotifications(false)
+      if (onNavigate) onNavigate()
+      router.push(redirectUrl)
+    }
   }
 
   const formatNotificationTime = (value?: string | null) => {
@@ -106,7 +111,7 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
                   <button
                     key={notification.id}
                     type="button"
-                    onClick={() => handleNotificationClick(notification.id)}
+                    onClick={() => handleNotificationClick(notification.id, notification.data?.redirectUrl)}
                     className={cn(
                       "mb-1 flex w-full flex-col gap-1 rounded-lg p-3 text-left transition-colors hover:bg-muted",
                       !notification.readAt && "bg-primary/10"
@@ -190,10 +195,10 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
             <Bell className="h-8 w-8" />
           </div>
           <h2 className="mb-3 text-2xl font-black uppercase tracking-wide text-foreground">
-            Xin mời vào khám
+            {examNotification.title || "Xin mời vào khám"}
           </h2>
           <p className="mb-6 text-base font-semibold leading-relaxed text-muted-foreground">
-            Bác sĩ đã bắt đầu khám bệnh. Bạn vui lòng vào phòng khám.
+            {examNotification.message || "Bác sĩ đã bắt đầu khám bệnh. Bạn vui lòng vào phòng khám."}
           </p>
           <button
             type="button"
@@ -202,6 +207,51 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
           >
             Tôi đã hiểu
           </button>
+        </div>
+      </div>,
+      document.body
+    )}
+
+    {mounted && recordNotification && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+        <div className="relative w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center text-card-foreground shadow-2xl">
+          <button
+            type="button"
+            onClick={dismissRecordNotification}
+            className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Đóng thông báo"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Bell className="h-8 w-8" />
+          </div>
+          <h2 className="mb-3 text-2xl font-black uppercase tracking-wide text-foreground">
+            {recordNotification.title || "Hồ sơ khám đã sẵn sàng"}
+          </h2>
+          <p className="mb-6 text-base font-semibold leading-relaxed text-muted-foreground">
+            {recordNotification.message || "Phiếu khám và đơn thuốc PDF đã được cập nhật."}
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                dismissRecordNotification()
+                router.push(recordNotification.data?.redirectUrl || "/dashboard/history")
+              }}
+              className="w-full rounded-full bg-primary px-6 py-3 text-sm font-black uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+            >
+              Xem Hồ sơ sức khỏe
+            </button>
+            <button
+              type="button"
+              onClick={dismissRecordNotification}
+              className="w-full rounded-full border border-border bg-card px-6 py-3 text-sm font-black uppercase tracking-widest text-foreground transition-all hover:bg-muted"
+            >
+              Để sau
+            </button>
+          </div>
         </div>
       </div>,
       document.body

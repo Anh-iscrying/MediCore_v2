@@ -6,6 +6,7 @@ import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.response.NotificationListResponse;
 import com.medicore.dto.response.NotificationResponse;
 import com.medicore.entity.clinical.Appointment;
+import com.medicore.entity.clinical.MedicalRecord;
 import com.medicore.entity.notification.Notification;
 import com.medicore.entity.user.AuthCredentials;
 import com.medicore.repository.AuthCredentialsRepository;
@@ -26,7 +27,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PatientNotificationService {
 
+    private static final String APPOINTMENT_CONFIRMED = "APPOINTMENT_CONFIRMED";
     private static final String EXAM_STARTED = "EXAM_STARTED";
+    private static final String MEDICAL_RECORD_READY = "MEDICAL_RECORD_READY";
 
     private final NotificationRepository notificationRepository;
     private final AuthCredentialsRepository authCredentialsRepository;
@@ -69,50 +72,200 @@ public class PatientNotificationService {
     }
 
     @Transactional
-    public void notifyExamStarted(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {
-        if (newStatus != AppointmentStatus.IN_PROGRESS) {
+    public void notifyAppointmentStatusChanged(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {
+        if (oldStatus == newStatus) {
             return;
         }
-        if (appointment.getPatient() == null) {
-            log.warn("Skip exam notification: appointment {} has no patient", appointment.getId());
+        if (newStatus == AppointmentStatus.CONFIRMED) {
+            createPatientAppointmentNotification(
+                    appointment,
+                    APPOINTMENT_CONFIRMED,
+                    "Bác sĩ đã xác nhận lịch khám",
+                    "Lịch khám của bạn đã được bác sĩ xác nhận. Vui lòng đến đúng ca khám đã đặt.",
+                    "/dashboard/appointments?tab=appointments");
+            notifyDoctorAppointmentConfirmed(appointment);
             return;
+        }
+        if (newStatus == AppointmentStatus.IN_PROGRESS) {
+            NotificationResponse response = createPatientAppointmentNotification(
+                    appointment,
+                    EXAM_STARTED,
+                    "Bác sĩ đã bắt đầu khám",
+                    "Bạn vui lòng vào phòng khám.",
+                    "/dashboard/appointments?tab=appointments");
+            if (response != null) {
+                sendExamStartedEmail(appointment, response.getRecipientEmail());
+            }
+        }
+    }
+
+    @Transactional
+    public void notifyExamStarted(Appointment appointment, AppointmentStatus oldStatus, AppointmentStatus newStatus) {
+        notifyAppointmentStatusChanged(appointment, oldStatus, newStatus);
+    }
+
+    @Transactional
+    public void notifyMedicalRecordReady(MedicalRecord record) {
+        if (record == null || record.getAppointment() == null) {
+            return;
+        }
+        Appointment appointment = record.getAppointment();
+        NotificationResponse response = createPatientAppointmentNotification(
+                appointment,
+                MEDICAL_RECORD_READY,
+                "Hồ sơ khám đã sẵn sàng",
+                "Phiếu khám và đơn thuốc PDF đã được gửi qua email. Bạn cũng có thể xem trong Hồ sơ sức khỏe.",
+                "/dashboard/history",
+                record.getId(),
+                record.getPdfUrl());
+        if (response != null) {
+            sendMedicalRecordReadyEmail(record, response.getRecipientEmail());
+        }
+    }
+
+    private NotificationResponse createPatientAppointmentNotification(
+            Appointment appointment,
+            String type,
+            String title,
+            String message,
+            String redirectUrl) {
+        return createPatientAppointmentNotification(appointment, type, title, message, redirectUrl, null, null);
+    }
+
+    private NotificationResponse createPatientAppointmentNotification(
+            Appointment appointment,
+            String type,
+            String title,
+            String message,
+            String redirectUrl,
+            Integer medicalRecordId,
+            String pdfUrl) {
+        if (appointment.getPatient() == null) {
+            log.warn("Skip patient notification: appointment {} has no patient", appointment.getId());
+            return null;
         }
 
         AuthCredentials credentials = authCredentialsRepository.findByPatientId(appointment.getPatient().getId())
                 .orElse(null);
         if (credentials == null) {
-            log.warn("Skip exam notification: patient {} has no auth credentials", appointment.getPatient().getId());
-            return;
+            log.warn("Skip patient notification: patient {} has no auth credentials", appointment.getPatient().getId());
+            return null;
         }
-        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(), appointment.getId(), EXAM_STARTED)) {
-            log.info("Skip exam notification: already exists for appointment {} and patient {}", appointment.getId(), credentials.getEmail());
-            return;
+        if (notificationRepository.existsByRecipientEmailAndAppointmentIdAndType(credentials.getEmail(), appointment.getId(), type)) {
+            log.info("Skip patient notification: type {} already exists for appointment {} and patient {}", type, appointment.getId(), credentials.getEmail());
+            return null;
         }
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("appointmentId", appointment.getId());
-        data.put("doctorId", appointment.getDoctor() != null ? appointment.getDoctor().getId() : null);
-        data.put("doctorName", appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null);
-        data.put("patientId", appointment.getPatient().getId());
+        Map<String, Object> data = buildAppointmentNotificationData(appointment, redirectUrl);
+        if (medicalRecordId != null) {
+            data.put("medicalRecordId", medicalRecordId);
+        }
+        if (pdfUrl != null && !pdfUrl.isBlank()) {
+            data.put("pdfUrl", pdfUrl);
+        }
 
         Notification notification = Notification.builder()
                 .recipientEmail(credentials.getEmail())
                 .patient(appointment.getPatient())
                 .appointment(appointment)
-                .type(EXAM_STARTED)
-                .title("Bác sĩ đã bắt đầu khám")
-                .message("Bạn vui lòng vào phòng khám.")
+                .type(type)
+                .title(title)
+                .message(message)
                 .data(data)
                 .build();
 
         notification = notificationRepository.save(notification);
-        log.info("Created exam notification {} for appointment {} and patient {}", notification.getId(), appointment.getId(), credentials.getEmail());
+        log.info("Created patient notification {} type {} for appointment {} and patient {}", notification.getId(), type, appointment.getId(), credentials.getEmail());
         NotificationResponse response = mapToResponse(notification);
         response.setUnreadCount(notificationRepository.countByRecipientEmailAndReadAtIsNull(credentials.getEmail()));
-        notificationService.notifyPatient(credentials.getEmail(), EXAM_STARTED, response.getMessage(), response);
-        
-        // Gửi email thông báo vào khám cho bệnh nhân
-        sendExamStartedEmail(appointment, credentials.getEmail());
+        notificationService.notifyPatient(credentials.getEmail(), type, response.getMessage(), response);
+        return response;
+    }
+
+    private void notifyDoctorAppointmentConfirmed(Appointment appointment) {
+        if (appointment.getDoctor() == null) {
+            return;
+        }
+        AuthCredentials doctorCredentials = authCredentialsRepository.findByDoctorId(appointment.getDoctor().getId()).orElse(null);
+        if (doctorCredentials == null) {
+            log.warn("Skip doctor confirmation notification: doctor {} has no auth credentials", appointment.getDoctor().getId());
+            return;
+        }
+        Map<String, Object> data = buildAppointmentNotificationData(appointment, "/doctor/appointments");
+        notificationService.notifyPatient(
+                doctorCredentials.getEmail(),
+                APPOINTMENT_CONFIRMED,
+                "Bạn đã xác nhận lịch khám. Thông báo đã được gửi cho bệnh nhân.",
+                data);
+    }
+
+    private Map<String, Object> buildAppointmentNotificationData(Appointment appointment, String redirectUrl) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("appointmentId", appointment.getId());
+        data.put("status", appointment.getStatus() != null ? appointment.getStatus().name() : null);
+        data.put("doctorId", appointment.getDoctor() != null ? appointment.getDoctor().getId() : null);
+        data.put("doctorName", appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null);
+        data.put("patientId", appointment.getPatient() != null ? appointment.getPatient().getId() : null);
+        data.put("appointmentDate", appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : null);
+        data.put("timeSlot", appointment.getTimeSlot());
+        data.put("redirectUrl", redirectUrl);
+        return data;
+    }
+
+    private void sendMedicalRecordReadyEmail(MedicalRecord record, String recipientEmail) {
+        try {
+            Appointment appointment = record.getAppointment();
+            String patientName = appointment.getPatient() != null ? appointment.getPatient().getFullName() : "N/A";
+            String patientCode = appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : "N/A";
+            String doctorName = appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : "N/A";
+            String appointmentDate = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().toString() : "N/A";
+            String timeSlot = appointment.getTimeSlot() != null ? appointment.getTimeSlot() : "N/A";
+            String diagnosis = record.getMainDiagnosis() != null && !record.getMainDiagnosis().isBlank()
+                    ? record.getMainDiagnosis()
+                    : "Xem chi tiết trong hồ sơ sức khỏe";
+
+            String subject = "[MediCore] Hồ sơ khám và đơn thuốc PDF đã sẵn sàng";
+            String htmlContent = buildMedicalRecordReadyEmailTemplate(patientName, patientCode, doctorName, appointmentDate, timeSlot, diagnosis);
+            emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
+        } catch (Exception e) {
+            Integer appointmentId = record != null && record.getAppointment() != null ? record.getAppointment().getId() : null;
+            log.error("Lỗi khi gửi email thông báo hồ sơ khám cho lịch hẹn {}", appointmentId, e);
+        }
+    }
+
+    private String buildMedicalRecordReadyEmailTemplate(String patientName, String patientCode, String doctorName, String appointmentDate, String timeSlot, String diagnosis) {
+        return "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <meta charset=\"utf-8\">\n" +
+                "    <title>Hồ sơ khám đã sẵn sàng - MediCore</title>\n" +
+                "</head>\n" +
+                "<body style=\"font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:24px; color:#0f172a;\">\n" +
+                "  <div style=\"max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;\">\n" +
+                "    <div style=\"background:#0f172a; color:#ffffff; padding:24px; text-align:center;\">\n" +
+                "      <h1 style=\"margin:0; font-size:22px;\">MediCore EMR</h1>\n" +
+                "      <p style=\"margin:6px 0 0; color:#cbd5e1;\">Hồ sơ khám và đơn thuốc PDF đã sẵn sàng</p>\n" +
+                "    </div>\n" +
+                "    <div style=\"padding:28px;\">\n" +
+                "      <p style=\"font-size:17px; font-weight:700;\">Kính chào Ông/Bà " + patientName + ",</p>\n" +
+                "      <p style=\"line-height:1.6;\">Phiếu khám và đơn thuốc PDF của Ông/Bà đã được cập nhật trong Hồ sơ sức khỏe. Vui lòng đăng nhập MediCore để xem hoặc tải file khi cần.</p>\n" +
+                "      <div style=\"background:#f0fdf4; border-left:4px solid #22c55e; padding:14px 16px; margin:20px 0; border-radius:6px;\">\n" +
+                "        <strong>Chẩn đoán chính:</strong> " + diagnosis + "\n" +
+                "      </div>\n" +
+                "      <table style=\"width:100%; border-collapse:collapse; font-size:14px;\">\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Mã bệnh nhân</td><td style=\"padding:8px 0; font-weight:700;\">" + patientCode + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Bác sĩ khám</td><td style=\"padding:8px 0; font-weight:700;\">" + doctorName + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Ngày khám</td><td style=\"padding:8px 0; font-weight:700;\">" + appointmentDate + "</td></tr>\n" +
+                "        <tr><td style=\"padding:8px 0; color:#64748b;\">Khung giờ</td><td style=\"padding:8px 0; font-weight:700;\">" + timeSlot + "</td></tr>\n" +
+                "      </table>\n" +
+                "      <div style=\"text-align:center; margin-top:24px;\">\n" +
+                "        <a href=\"http://localhost:3000/dashboard/history\" style=\"display:inline-block; background:#2563eb; color:#ffffff; padding:12px 22px; border-radius:8px; text-decoration:none; font-weight:700;\">Xem Hồ sơ sức khỏe</a>\n" +
+                "      </div>\n" +
+                "    </div>\n" +
+                "    <div style=\"background:#f8fafc; color:#64748b; text-align:center; padding:16px; font-size:12px;\">Email này được gửi tự động từ MediCore.</div>\n" +
+                "  </div>\n" +
+                "</body>\n" +
+                "</html>";
     }
 
     private void sendExamStartedEmail(Appointment appointment, String recipientEmail) {
@@ -315,6 +468,7 @@ public class PatientNotificationService {
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
+                .recipientEmail(notification.getRecipientEmail())
                 .type(notification.getType())
                 .title(notification.getTitle())
                 .message(notification.getMessage())

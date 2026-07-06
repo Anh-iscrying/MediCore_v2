@@ -33,7 +33,7 @@ export default function PrescriptionsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-sans font-black text-foreground">Thao tác đơn thuốc</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Tải file PDF hoặc in ấn đơn thuốc điện tử (Chức năng mô phỏng).</p>
+              <p className="mt-1 text-sm text-muted-foreground">Tải file PDF hoặc in ấn đơn thuốc điện tử.</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <button className="rounded-xl border border-[#0e0f0c] bg-card px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background transition-colors cursor-pointer">
