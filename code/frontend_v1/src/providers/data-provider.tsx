@@ -504,6 +504,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       timeSlot: a.timeSlot ?? "08:00 - 09:00",
       symptomsInitial: a.symptomsInitial ?? a.mainDiagnosis,
       status: a.status,
+      cancellationReason: a.cancellationReason,
     }
   }
 

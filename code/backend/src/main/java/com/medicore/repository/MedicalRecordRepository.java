@@ -12,6 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Integer> {
+
     @Query("SELECT r FROM MedicalRecord r LEFT JOIN FETCH r.appointment a LEFT JOIN FETCH r.patient LEFT JOIN FETCH r.doctor d LEFT JOIN FETCH d.specialty LEFT JOIN FETCH r.diagnosisIcd10 WHERE a.id = :appointmentId")
     Optional<MedicalRecord> findByAppointmentId(@Param("appointmentId") Integer appointmentId);
 

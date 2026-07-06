@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.time.OffsetDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 @Entity
 @Table(name = "prescription_details")
 @Getter @Setter @Builder
@@ -30,6 +32,9 @@ public class PrescriptionDetail {
     @Column(name = "dosage_instruction")
     private String dosageInstruction;
 
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
+
+    private Boolean isFromTemplate;
 }

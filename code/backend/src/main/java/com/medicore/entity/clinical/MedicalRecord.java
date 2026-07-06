@@ -5,7 +5,6 @@ import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient;
 import jakarta.persistence.*;
 import lombok.*;
-
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -67,6 +66,7 @@ public class MedicalRecord {
     @Column(name = "follow_up_date")
     private LocalDate followUpDate;
 
+    // Chỉ giữ lại 1 định nghĩa chuẩn duy nhất cho JSONB
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "additional_data", columnDefinition = "jsonb")
     private Map<String, Object> additionalData;

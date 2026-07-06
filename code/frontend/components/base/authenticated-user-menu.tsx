@@ -195,10 +195,10 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
             <Bell className="h-8 w-8" />
           </div>
           <h2 className="mb-3 text-2xl font-black uppercase tracking-wide text-foreground">
-            {examNotification.title || "Xin mời vào khám"}
+            {examNotification?.type === "EXAM_STARTED" ? "Xin mời vào khám" : examNotification?.title || "Thông báo"}
           </h2>
           <p className="mb-6 text-base font-semibold leading-relaxed text-muted-foreground">
-            {examNotification.message || "Bác sĩ đã bắt đầu khám bệnh. Bạn vui lòng vào phòng khám."}
+            {examNotification?.message || "Bạn có một thông báo mới từ hệ thống."}
           </p>
           <button
             type="button"

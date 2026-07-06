@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.Locale;
 
 @RestController
@@ -67,85 +68,104 @@ public class AuthController {
 
     @PostMapping("/register")
     @Transactional
-    public ResponseEntity<ApiResponse<LoginResponse>> register(
-            @Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody RegisterRequest request) {
         String email = normalizeEmail(request.getEmail());
 
+        // 1. Kiểm tra email tồn tại
         if (authCredentialsRepository.existsByEmail(email)) {
-            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Email đã được sử dụng");
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Email này đã được sử dụng");
         }
 
+        // 2. Xác thực OTP (Logic từ MC-09-v1)
         emailOtpService.consumeSignupVerification(email, request.getSignupVerificationToken());
 
-        UserRole targetRole = UserRole.PATIENT;
-        String businessCode = idGeneratorService.generatePatientCode();
-        String displayName = request.getName();
-
-        LocalDate dob = null;
-        if (request.getDob() != null) {
-            dob = LocalDate.parse(
-                    request.getDob(),
-                    DateTimeFormatter.ISO_DATE
-            );
-        }
-
-        GenderType targetGender = null;
-
-        if (request.getGender() != null && !request.getGender().isBlank()) {
-            try {
-                targetGender = GenderType.valueOf(
-                        request.getGender().toUpperCase()
-                );
-            } catch (IllegalArgumentException e) {
-                targetGender = null;
+        // 3. LOGIC "NHẬN DIỆN NGƯỜI THÂN" (Logic từ HEAD)
+        Optional<Patient> existingPatient = patientRepository.findByPhone(request.getPhone());
+        
+        Patient patient;
+        String businessCode;
+        
+        if (existingPatient.isPresent()) {
+            Patient oldProfile = existingPatient.get();
+            
+            // Kiểm tra xem hồ sơ SĐT này đã gắn với tài khoản email nào chưa
+            boolean alreadyLinked = authCredentialsRepository.findByPatientId(oldProfile.getId()).isPresent();
+            
+            if (alreadyLinked) {
+                throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Số điện thoại này đã được sử dụng cho tài khoản khác");
             }
+            
+            // TRƯỜNG HỢP RA RIÊNG: "Chuyển nhượng" hồ sơ từ người quản lý sang tài khoản mới
+            patient = oldProfile;
+            patient.setFullName(request.getName());
+            patient.setManagedBy(null); // Thoát khỏi sự quản lý của người thân
+            patient.setUpdatedAt(LocalDateTime.now());
+            businessCode = patient.getPatientCode();
+            
+        } else {
+            // TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN
+            businessCode = idGeneratorService.generatePatientCode();
+            
+            LocalDate dob = null;
+            if (request.getDob() != null) {
+                dob = LocalDate.parse(request.getDob(), DateTimeFormatter.ISO_DATE);
+            }
+
+            GenderType targetGender = null;
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                try {
+                    targetGender = GenderType.valueOf(request.getGender().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    targetGender = null;
+                }
+            }
+
+            patient = Patient.builder()
+                    .patientCode(businessCode)
+                    .fullName(request.getName())
+                    .dob(dob)
+                    .gender(targetGender)
+                    .phone(request.getPhone())
+                    .address(request.getAddress())
+                    .build();
+
+            patient.setCreatedAt(LocalDateTime.now());
+            patient.setUpdatedAt(LocalDateTime.now());
         }
 
-        Patient patient = Patient.builder()
-                .patientCode(businessCode)
-                .fullName(request.getName())
-                .dob(dob)
-                .gender(targetGender)
-                .phone(request.getPhone())
-                .address(request.getAddress())
-                .build();
-
-        patient.setCreatedAt(LocalDateTime.now());
-        patient.setUpdatedAt(LocalDateTime.now());
-
+        // Lưu thông tin bệnh nhân
         patient = patientRepository.save(patient);
 
+        // 4. Tạo tài khoản đăng nhập
         AuthCredentials credentials = AuthCredentials.builder()
                 .email(email)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.PATIENT)
                 .patient(patient)
                 .build();
-
+        
         authCredentialsRepository.save(credentials);
 
+        // 5. Sinh JWT và Cookie
         String token = jwtTokenProvider.generateToken(
                 credentials.getEmail(),
-                targetRole.name(),
+                UserRole.PATIENT.name(),
                 patient.getId(),
                 businessCode
         );
 
         LoginResponse response = LoginResponse.builder()
                 .token(token)
-                .role(targetRole.name())
+                .role(UserRole.PATIENT.name())
                 .email(credentials.getEmail())
-                .name(displayName)
+                .name(request.getName())
                 .patientId(patient.getId())
                 .patientCode(businessCode)
                 .build();
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, createAccessTokenCookie(token, 24 * 60 * 60).toString())
-                .body(ApiResponse.success(
-                        "Đăng ký tài khoản thành công",
-                        response
-                ));
+                .body(ApiResponse.success("Đăng ký tài khoản thành công", response));
     }
 
     @PostMapping("/patient/signup/request-otp")
@@ -251,7 +271,7 @@ public class AuthController {
     private ResponseCookie createAccessTokenCookie(String token, long maxAge) {
         return ResponseCookie.from("accessToken", token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(false) // Đặt true nếu dùng HTTPS
                 .path("/")
                 .maxAge(maxAge)
                 .sameSite("Lax")

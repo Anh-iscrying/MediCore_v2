@@ -240,7 +240,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         } catch (DataIntegrityViolationException e) {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
         }
-        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, status);
+        patientNotificationService.notifyExamStarted(appointment, oldStatus, status);
+        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, status, request.getCancellationReason());
         return mapToResponse(appointment);
     }
 

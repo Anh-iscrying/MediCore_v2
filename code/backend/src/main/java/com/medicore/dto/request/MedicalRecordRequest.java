@@ -20,6 +20,7 @@ public class MedicalRecordRequest {
     private Map<String, Object> additionalData;
     private List<DiagnosisItem> diagnoses;
     private List<MedicineItem> medicines;
+    private Map<String, Object> specialtyData; 
 
     @Data
     public static class DiagnosisItem {
@@ -32,5 +33,6 @@ public class MedicalRecordRequest {
         private Integer medicineId;
         private Integer quantity;
         private String dosageInstruction;
+        private Boolean isFromTemplate;
     }
 }

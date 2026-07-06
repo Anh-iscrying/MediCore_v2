@@ -19,6 +19,7 @@ public class MedicalRecordResponse {
     private String emrCode;
     private Integer appointmentId;
     private String patientId;
+    private String patientCode; // <--- Giữ lại dòng này từ nhánh HEAD của bạn
     private String patientName;
     private Integer doctorId;
     private String doctorName;

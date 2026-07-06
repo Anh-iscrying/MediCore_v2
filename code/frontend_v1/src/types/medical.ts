@@ -96,6 +96,7 @@ export interface Appointment {
   timeSlot?: string
   symptomsInitial?: string
   patientCode?: string
+  cancellationReason?: string
 }
 
 export interface Patient {
@@ -311,6 +312,7 @@ export interface AppointmentRequest {
   timeSlot: string
   symptomsInitial?: string
   status?: AppointmentStatus
+  cancellationReason?: string
 }
 
 export interface AppointmentResponse {
@@ -331,6 +333,7 @@ export interface AppointmentResponse {
   status?: AppointmentStatus
   icdCode?: string
   mainDiagnosis?: string
+  cancellationReason?: string
 }
 
 export interface MedicalRecordRequest {

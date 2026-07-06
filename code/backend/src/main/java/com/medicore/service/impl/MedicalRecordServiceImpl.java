@@ -13,19 +13,14 @@ import com.medicore.entity.clinical.Prescription;
 import com.medicore.entity.clinical.PrescriptionDetail;
 import com.medicore.entity.user.AuthCredentials;
 import com.medicore.entity.user.Patient;
-import com.medicore.repository.AppointmentRepository;
-import com.medicore.repository.AuthCredentialsRepository;
-import com.medicore.repository.DiseaseRepository;
-import com.medicore.repository.MedicalRecordRepository;
-import com.medicore.repository.MedicineRepository;
-import com.medicore.repository.PrescriptionDetailRepository;
-import com.medicore.repository.PrescriptionRepository;
+import com.medicore.repository.*;
 import com.medicore.service.IdGeneratorService;
 import com.medicore.service.MedicalRecordPdfService;
 import com.medicore.service.MedicalRecordService;
 import com.medicore.service.PatientNotificationService;
 import com.medicore.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,8 +29,8 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MedicalRecordServiceImpl implements MedicalRecordService {
@@ -62,7 +57,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         Appointment appointment = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy lịch hẹn"));
 
-        MedicalRecord record = recordRepository.findByAppointmentId(appointment.getId())
+        MedicalRecord recordToSave = recordRepository.findByAppointmentId(appointment.getId())
                 .orElseGet(() -> MedicalRecord.builder()
                         .emrCode(idGeneratorService.generateEmrCode())
                         .appointment(appointment)
@@ -71,25 +66,34 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                         .createdAt(OffsetDateTime.now())
                         .build());
 
-        applyRequest(record, request);
-        record = recordRepository.save(record);
+        applyRequest(recordToSave, request);
+        MedicalRecord savedRecord = recordRepository.save(recordToSave); 
 
-        Prescription prescription = prescriptionRepository.findByMedicalRecordId(record.getId()).orElse(null);
-        if (prescription == null) {
-            prescription = Prescription.builder()
-                    .medicalRecord(record)
-                    .createdAt(OffsetDateTime.now())
-                    .build();
-        }
+        // XỬ LÝ ĐƠN THUỐC - ĐÃ SỬA BIẾN RECORD THÀNH SAVEDRECORD
+        Prescription prescription = prescriptionRepository.findByMedicalRecordId(savedRecord.getId())
+                .orElseGet(() -> Prescription.builder()
+                        .medicalRecord(savedRecord)
+                        .createdAt(OffsetDateTime.now())
+                        .build());
         prescription = prescriptionRepository.save(prescription);
 
         prescriptionDetailRepository.deleteByPrescriptionId(prescription.getId());
         List<PrescriptionDetail> details = savePrescriptionDetails(prescription, request.getMedicines());
 
+        AppointmentStatus oldStatus = appointment.getStatus();
         appointment.setStatus(AppointmentStatus.DONE);
         appointmentRepository.save(appointment);
+        patientNotificationService.notifyAppointmentStatusChanged(appointment, oldStatus, AppointmentStatus.DONE, null);
 
-        return toResponse(record, details);
+        return toResponse(savedRecord, details);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MedicalRecordResponse getById(Integer id) {
+        MedicalRecord record = recordRepository.findById(id)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy hồ sơ bệnh án"));
+        return toResponse(record, loadDetails(record));
     }
 
     @Override
@@ -124,43 +128,41 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         record.setHistorySummary(request.getHistorySummary());
         record.setCareAdvice(request.getCareAdvice());
         record.setFollowUpDate(request.getFollowUpDate());
-        record.setAdditionalData(request.getAdditionalData() == null ? Collections.emptyMap() : request.getAdditionalData());
+        record.setAdditionalData(request.getSpecialtyData() == null ? Collections.emptyMap() : request.getSpecialtyData());
 
-        String primaryIcd10 = request.getDiagnoses() == null ? null : request.getDiagnoses().stream()
-                .filter(item -> item.getIcd10Code() != null && Boolean.TRUE.equals(item.getIsPrimary()))
-                .map(MedicalRecordRequest.DiagnosisItem::getIcd10Code)
-                .findFirst()
-                .orElseGet(() -> request.getDiagnoses().stream()
-                        .filter(item -> StringUtils.hasText(item.getIcd10Code()))
-                        .map(MedicalRecordRequest.DiagnosisItem::getIcd10Code)
-                        .findFirst()
-                        .orElse(null));
+        // TÌM MÃ ICD-10 CHÍNH
+        String primaryIcd10 = null;
+        if (request.getDiagnoses() != null && !request.getDiagnoses().isEmpty()) {
+            primaryIcd10 = request.getDiagnoses().stream()
+                    .filter(item -> Boolean.TRUE.equals(item.getIsPrimary()))
+                    .map(MedicalRecordRequest.DiagnosisItem::getIcd10Code)
+                    .findFirst()
+                    .orElse(request.getDiagnoses().get(0).getIcd10Code());
+        }
+
         if (StringUtils.hasText(primaryIcd10)) {
-            Disease disease = diseaseRepository.findById(primaryIcd10.trim())
-                    .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy mã ICD-10: " + primaryIcd10));
+            final String finalCode = primaryIcd10.trim(); 
+            Disease disease = diseaseRepository.findById(finalCode)
+                    .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Mã bệnh không tồn tại: " + finalCode));
             record.setDiagnosisIcd10(disease);
-        } else {
-            record.setDiagnosisIcd10(null);
         }
     }
 
     private List<PrescriptionDetail> savePrescriptionDetails(Prescription prescription, List<MedicalRecordRequest.MedicineItem> medicines) {
         List<PrescriptionDetail> details = new ArrayList<>();
-        if (medicines == null) {
-            return details;
-        }
+        if (medicines == null) return details;
 
-        for (MedicalRecordRequest.MedicineItem item : medicines) {
-            if (item.getMedicineId() == null) {
-                continue;
-            }
+        for (var item : medicines) {
+            if (item.getMedicineId() == null) continue;
             var medicine = medicineRepository.findById(item.getMedicineId())
                     .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không thấy thuốc ID: " + item.getMedicineId()));
+            
             PrescriptionDetail detail = PrescriptionDetail.builder()
                     .prescription(prescription)
                     .medicine(medicine)
                     .quantity(item.getQuantity() == null ? 1 : item.getQuantity())
                     .dosageInstruction(item.getDosageInstruction())
+                    .isFromTemplate(item.getIsFromTemplate())
                     .createdAt(OffsetDateTime.now())
                     .build();
             details.add(prescriptionDetailRepository.save(detail));
@@ -174,30 +176,21 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .orElseGet(Collections::emptyList);
     }
 
-    private String buildStoragePath(MedicalRecord record) {
-        String patientCode = record.getPatient() == null ? "unknown" : record.getPatient().getPatientCode();
-        Integer appointmentId = record.getAppointment() == null ? 0 : record.getAppointment().getId();
-        return "patients/" + safePath(patientCode) + "/appointments/" + appointmentId + "/record-" + safePath(record.getEmrCode()) + ".pdf";
-    }
-
-    private String safePath(String value) {
-        return value == null ? "unknown" : value.replaceAll("[^a-zA-Z0-9._-]", "-");
-    }
-
     private MedicalRecordResponse toResponse(MedicalRecord record, List<PrescriptionDetail> details) {
         String signedUrl = storageService.createSignedUrl(record.getPdfStoragePath());
         return MedicalRecordResponse.builder()
                 .id(record.getId())
                 .emrCode(record.getEmrCode())
-                .appointmentId(record.getAppointment() == null ? null : record.getAppointment().getId())
-                .patientId(record.getPatient() == null ? null : record.getPatient().getPatientCode())
-                .patientName(record.getPatient() == null ? null : record.getPatient().getFullName())
-                .doctorId(record.getDoctor() == null ? null : record.getDoctor().getId())
-                .doctorName(record.getDoctor() == null ? null : record.getDoctor().getDoctorName())
-                .appointmentDate(record.getAppointment() == null || record.getAppointment().getAppointmentDate() == null ? null : record.getAppointment().getAppointmentDate().toString())
-                .timeSlot(record.getAppointment() == null ? null : record.getAppointment().getTimeSlot())
-                .diagnosisIcd10(record.getDiagnosisIcd10() == null ? null : record.getDiagnosisIcd10().getIcd10Code())
-                .diagnosisName(record.getDiagnosisIcd10() == null ? null : record.getDiagnosisIcd10().getDiseaseName())
+                .appointmentId(record.getAppointment() != null ? record.getAppointment().getId() : null)
+                .patientId(record.getPatient() != null ? String.valueOf(record.getPatient().getId()) : null)
+                .patientCode(record.getPatient() != null ? record.getPatient().getPatientCode() : "N/A")
+                .patientName(record.getPatient() != null ? record.getPatient().getFullName() : "N/A")
+                .doctorId(record.getDoctor() != null ? record.getDoctor().getId() : null)
+                .doctorName(record.getDoctor() != null ? record.getDoctor().getDoctorName() : "N/A")
+                .appointmentDate(record.getAppointment() != null && record.getAppointment().getAppointmentDate() != null ? record.getAppointment().getAppointmentDate().toString() : null)
+                .timeSlot(record.getAppointment() != null ? record.getAppointment().getTimeSlot() : null)
+                .diagnosisIcd10(record.getDiagnosisIcd10() != null ? record.getDiagnosisIcd10().getIcd10Code() : null)
+                .diagnosisName(record.getDiagnosisIcd10() != null ? record.getDiagnosisIcd10().getDiseaseName() : null)
                 .mainDiagnosis(record.getMainDiagnosis())
                 .symptoms(record.getSymptoms())
                 .physicalExamination(record.getPhysicalExamination())
@@ -211,15 +204,15 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .pdfStoragePath(record.getPdfStoragePath())
                 .pdfGeneratedAt(record.getPdfGeneratedAt())
                 .createdAt(record.getCreatedAt())
-                .medicines(details == null ? List.of() : details.stream().map(this::toMedicineResponse).toList())
+                .medicines(details != null ? details.stream().map(this::toMedicineResponse).toList() : List.of())
                 .build();
     }
 
     private MedicalRecordResponse.MedicineResponse toMedicineResponse(PrescriptionDetail detail) {
         return MedicalRecordResponse.MedicineResponse.builder()
-                .medicineId(detail.getMedicine() == null ? null : detail.getMedicine().getId())
-                .medicineName(detail.getMedicine() == null ? null : detail.getMedicine().getMedicineName())
-                .unit(detail.getMedicine() == null ? null : detail.getMedicine().getUnit())
+                .medicineId(detail.getMedicine() != null ? detail.getMedicine().getId() : null)
+                .medicineName(detail.getMedicine() != null ? detail.getMedicine().getMedicineName() : "N/A")
+                .unit(detail.getMedicine() != null ? detail.getMedicine().getUnit() : "N/A")
                 .quantity(detail.getQuantity())
                 .dosageInstruction(detail.getDosageInstruction())
                 .build();
@@ -231,21 +224,18 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     }
 
     private void ensureCanRead(MedicalRecord record, AuthCredentials credentials) {
-        if (credentials.getRole() == UserRole.ADMIN) {
-            return;
-        }
-        if (credentials.getRole() == UserRole.DOCTOR
-                && credentials.getDoctor() != null
-                && record.getDoctor() != null
-                && credentials.getDoctor().getId().equals(record.getDoctor().getId())) {
-            return;
-        }
-        if (credentials.getRole() == UserRole.PATIENT
-                && credentials.getPatient() != null
-                && record.getPatient() != null
-                && credentials.getPatient().getPatientCode().equals(record.getPatient().getPatientCode())) {
-            return;
-        }
+        if (credentials.getRole() == UserRole.ADMIN) return;
+        
+        if (credentials.getRole() == UserRole.DOCTOR 
+            && credentials.getDoctor() != null 
+            && record.getDoctor() != null 
+            && credentials.getDoctor().getId().equals(record.getDoctor().getId())) return;
+
+        if (credentials.getRole() == UserRole.PATIENT 
+            && credentials.getPatient() != null 
+            && record.getPatient() != null 
+            && credentials.getPatient().getPatientCode().equals(record.getPatient().getPatientCode())) return;
+
         throw new CustomBusinessException(ErrorCodes.FORBIDDEN);
     }
 
@@ -253,9 +243,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     @Transactional
     public void uploadPdf(Integer appointmentId, byte[] pdfBytes) {
         MedicalRecord record = recordRepository.findByAppointmentId(appointmentId)
-                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy hồ sơ khám cho lịch hẹn này"));
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND, "Không tìm thấy hồ sơ khám"));
 
-        String storagePath = buildStoragePath(record);
+        String storagePath = "patients/" + record.getPatient().getPatientCode() + "/appointments/" + appointmentId + "/record.pdf";
         storageService.uploadPdf(storagePath, pdfBytes);
 
         record.setPdfStoragePath(storagePath);

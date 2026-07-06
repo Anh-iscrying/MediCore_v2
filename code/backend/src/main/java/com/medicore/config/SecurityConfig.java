@@ -40,22 +40,25 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
 
+                // 1. Các API cụ thể cho Bệnh nhân (Phải để lên đầu)
                 .requestMatchers(HttpMethod.GET, "/clinical/medical-records/me").hasRole("PATIENT")
                 .requestMatchers(HttpMethod.GET, "/clinical/medical-records/appointment/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT")
+                
+                // 2. Các API cho Bác sĩ xử lý hồ sơ
                 .requestMatchers(HttpMethod.POST, "/clinical/medical-records").hasAnyRole("ADMIN", "DOCTOR")
                 .requestMatchers(HttpMethod.POST, "/clinical/medical-records/appointment/*/upload-pdf").hasAnyRole("ADMIN", "DOCTOR")
 
-                // API Hàng chờ/Hồ sơ bệnh án: Chỉ ADMIN hoặc DOCTOR mới được xem danh sách tổng
+                // 3. API Hàng chờ/Lâm sàng chung: Chỉ ADMIN hoặc DOCTOR mới được truy cập
                 .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
 
-                // API quản trị bác sĩ/chuyên khoa: Chỉ ADMIN được sửa dữ liệu quản trị
+                // 4. API quản trị bác sĩ/chuyên khoa
                 .requestMatchers(HttpMethod.POST, "/doctors/**", "/specialties/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/doctors/**", "/specialties/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/doctors/**", "/specialties/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/doctors/profile").hasRole("DOCTOR")
                 .requestMatchers(HttpMethod.PUT, "/doctors/**", "/specialties/**").hasRole("ADMIN")
 
-                // Các API khác mới dùng authenticated()
+                // Các API còn lại
                 .anyRequest().authenticated()
         )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
