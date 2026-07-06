@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
+import { getCachedMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
 
 export default function MedicalHistoryPage() {
   const [records, setRecords] = useState<MedicalRecord[]>([])
@@ -16,7 +16,7 @@ export default function MedicalHistoryPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await getMyMedicalRecords()
+        const data = await getCachedMyMedicalRecords()
         if (!cancelled) setRecords(data || [])
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Không thể tải hồ sơ bệnh án")

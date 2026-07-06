@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { flushSync } from "react-dom"
-import { getMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
+import { getCachedMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
 
 function formatRecordDate(value?: string) {
   if (!value) return "Chưa có ngày khám"
@@ -37,7 +37,7 @@ export default function PrescriptionsPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await getMyMedicalRecords()
+        const data = await getCachedMyMedicalRecords()
         if (!isMounted) return
         setRecords(Array.isArray(data) ? data : [])
       } catch (err) {

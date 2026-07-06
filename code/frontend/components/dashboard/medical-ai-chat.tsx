@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/base/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api";
 import { sendAiChatStream, sendAiChatWithImages, type AiChatMessage } from "@/lib/ai-chat";

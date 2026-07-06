@@ -43,3 +43,32 @@ export function getMedicalRecordByAppointment(appointmentId: number | string) {
 export function getMyMedicalRecords() {
   return apiFetch<MedicalRecord[]>("/clinical/medical-records/me")
 }
+
+let myMedicalRecordsCache: MedicalRecord[] | null = null
+let myMedicalRecordsPromise: Promise<MedicalRecord[]> | null = null
+
+export function getCachedMyMedicalRecords(options?: { force?: boolean }) {
+  if (!options?.force && myMedicalRecordsCache) {
+    return Promise.resolve(myMedicalRecordsCache)
+  }
+
+  if (!options?.force && myMedicalRecordsPromise) {
+    return myMedicalRecordsPromise
+  }
+
+  myMedicalRecordsPromise = getMyMedicalRecords()
+    .then((records) => {
+      myMedicalRecordsCache = Array.isArray(records) ? records : []
+      return myMedicalRecordsCache
+    })
+    .finally(() => {
+      myMedicalRecordsPromise = null
+    })
+
+  return myMedicalRecordsPromise
+}
+
+export function clearMyMedicalRecordsCache() {
+  myMedicalRecordsCache = null
+  myMedicalRecordsPromise = null
+}

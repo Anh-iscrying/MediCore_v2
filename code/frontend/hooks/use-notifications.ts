@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Client } from "@stomp/stompjs"
-import SockJS from "sockjs-client"
+import type { Client } from "@stomp/stompjs"
 import {
   getNotifications,
   markAllNotificationsRead,
@@ -20,7 +19,7 @@ type WebSocketMessage = {
 
 const WS_URL = process.env.NEXT_PUBLIC_BACKEND_WS_URL || "http://127.0.0.1:8080/api/v1/ws"
 
-export function useNotifications(user: AuthUser | null) {
+export function useNotifications(user: AuthUser | null, enabled = true) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -28,7 +27,7 @@ export function useNotifications(user: AuthUser | null) {
   const [recordNotification, setRecordNotification] = useState<NotificationItem | null>(null)
 
   const refreshNotifications = useCallback(async () => {
-    if (user?.role !== "PATIENT") return
+    if (!enabled || user?.role !== "PATIENT") return
 
     setIsLoading(true)
     try {
@@ -38,14 +37,14 @@ export function useNotifications(user: AuthUser | null) {
     } finally {
       setIsLoading(false)
     }
-  }, [user?.role])
+  }, [enabled, user?.role])
 
   useEffect(() => {
     void refreshNotifications()
   }, [refreshNotifications])
 
   useEffect(() => {
-    if (user?.role !== "PATIENT") return
+    if (!enabled || user?.role !== "PATIENT") return
 
     let client: Client | null = null
     let cancelled = false
@@ -56,6 +55,12 @@ export function useNotifications(user: AuthUser | null) {
 
       const { token } = (await tokenResponse.json()) as { token?: string | null }
       if (!token || cancelled) return
+
+      const [{ Client }, { default: SockJS }] = await Promise.all([
+        import("@stomp/stompjs"),
+        import("sockjs-client"),
+      ])
+      if (cancelled) return
 
       client = new Client({
         webSocketFactory: () => new SockJS(WS_URL),
@@ -94,7 +99,7 @@ export function useNotifications(user: AuthUser | null) {
       cancelled = true
       void client?.deactivate()
     }
-  }, [user?.role, user?.email])
+  }, [enabled, user?.role, user?.email])
 
   const markRead = useCallback(async (id: number) => {
     const updated = await markNotificationRead(id)

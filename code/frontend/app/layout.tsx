@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/base/theme-provider"
-import { AuthProvider } from "@/components/auth/auth-provider"
 import "@/styles/globals.css"
 
 const inter = Inter({
@@ -44,7 +43,7 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AuthProvider>{children}</AuthProvider>
+          {children}
         </ThemeProvider>
         <Analytics />
       </body>

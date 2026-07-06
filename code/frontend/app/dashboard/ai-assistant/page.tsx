@@ -1,4 +1,4 @@
-import { MedicalAiChat } from "@/components/ui/medical-ai-chat"
+import { MedicalAiChat } from "@/components/dashboard/medical-ai-chat"
 
 export default function AIAssistantPage() {
   return (

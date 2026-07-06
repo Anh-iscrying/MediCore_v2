@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { apiFetch } from "@/lib/api"
-import { getMyMedicalRecords, MedicalRecord } from "@/lib/medical-records"
+import { getCachedMyMedicalRecords, MedicalRecord } from "@/lib/medical-records"
 import { cn } from "@/lib/utils"
 
 type PatientProfile = {
@@ -33,20 +33,25 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([])
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoadError(null)
       try {
         const [profileData, appointmentsData, recordsData] = await Promise.all([
           apiFetch<PatientProfile>("/patients/me"),
           apiFetch<AppointmentResponse[]>("/appointments/me"),
-          getMyMedicalRecords().catch(() => [] as MedicalRecord[])
+          getCachedMyMedicalRecords()
         ])
         setProfile(profileData)
-        setAppointments(appointmentsData)
-        setMedicalRecords(recordsData || [])
+        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : [])
+        setMedicalRecords(Array.isArray(recordsData) ? recordsData : [])
       } catch (error) {
-        console.error("Lỗi khi tải dữ liệu dashboard:", error)
+        setLoadError(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.")
+        setProfile(null)
+        setAppointments([])
+        setMedicalRecords([])
       } finally {
         setIsLoading(false)
       }
@@ -208,6 +213,12 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 p-4 md:p-8 select-none">
+      {loadError && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
+          Không thể tải đầy đủ dữ liệu tổng quan. Vui lòng thử tải lại trang hoặc kiểm tra kết nối hệ thống.
+        </div>
+      )}
+
       {isIncomplete && (
         <div className="rounded-xl border border-[#ffd11a]/30 bg-[#ffd11a]/10 p-4 text-sm font-semibold text-[#4a3b1c] flex items-center gap-2">
           <span>⚠️</span>

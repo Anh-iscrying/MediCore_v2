@@ -4,8 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
-import { useAuth } from "@/components/auth/auth-provider"
-import { AuthenticatedUserMenu } from "@/components/base/authenticated-user-menu"
 
 const navLinks = [
   { label: "Chuyên khoa", href: "#specialties" },
@@ -17,7 +15,6 @@ const navLinks = [
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
-  const { user, isLoading } = useAuth()
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 px-4 pt-4">
@@ -42,26 +39,18 @@ export function Header() {
           </div>
 
           <div className="hidden items-center gap-5 md:flex">
-            {isLoading ? (
-              <div className="h-9 w-28 animate-pulse rounded-full bg-muted" />
-            ) : user ? (
-              <AuthenticatedUserMenu />
-            ) : (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Đăng nhập
-                </Link>
-                <Button
-                  asChild
-                  className="h-11 rounded-[24px] bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02]"
-                >
-                  <Link href="/dashboard/appointments">Đặt lịch khám</Link>
-                </Button>
-              </>
-            )}
+            <Link
+              href="/auth/login"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Đăng nhập
+            </Link>
+            <Button
+              asChild
+              className="h-11 rounded-[24px] bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02]"
+            >
+              <Link href="/dashboard/appointments">Đặt lịch khám</Link>
+            </Button>
           </div>
 
           <button
@@ -88,28 +77,20 @@ export function Header() {
               </Link>
             ))}
             <div className="my-1 h-px bg-border" />
-            {isLoading ? (
-              <div className="h-10 w-full animate-pulse rounded-full bg-muted" />
-            ) : user ? (
-              <div className="flex justify-center py-2">
-                <AuthenticatedUserMenu onNavigate={() => setIsOpen(false)} />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full rounded-[24px] py-3 text-center text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  Đăng nhập
+            <div className="flex flex-col gap-3">
+              <Link
+                href="/auth/login"
+                onClick={() => setIsOpen(false)}
+                className="w-full rounded-[24px] py-3 text-center text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Đăng nhập
+              </Link>
+              <Button asChild className="h-12 w-full rounded-[24px] bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+                <Link href="/dashboard/appointments" onClick={() => setIsOpen(false)}>
+                  Đặt lịch khám
                 </Link>
-                <Button asChild className="h-12 w-full rounded-[24px] bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                  <Link href="/dashboard/appointments" onClick={() => setIsOpen(false)}>
-                    Đặt lịch khám
-                  </Link>
-                </Button>
-              </div>
-            )}
+              </Button>
+            </div>
           </div>
         )}
       </nav>

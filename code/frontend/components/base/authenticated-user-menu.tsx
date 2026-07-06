@@ -17,13 +17,24 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const router = useRouter()
   const { user, logout } = useAuth()
-  const { notifications, unreadCount, isLoading, examNotification, recordNotification, dismissExamNotification, dismissRecordNotification, markRead, markAllRead } = useNotifications(user)
+  const { notifications, unreadCount, isLoading, examNotification, recordNotification, dismissExamNotification, dismissRecordNotification, markRead, markAllRead } = useNotifications(user, showNotifications || notificationsEnabled)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (user?.role !== "PATIENT") {
+      setNotificationsEnabled(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => setNotificationsEnabled(true), 3000)
+    return () => window.clearTimeout(timeoutId)
+  }, [user?.role])
 
   const displayName = user?.name || user?.email || "Người dùng"
   const initials = displayName
@@ -73,6 +84,7 @@ export function AuthenticatedUserMenu({ onNavigate }: AuthenticatedUserMenuProps
           className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all hover:text-foreground hover:bg-card"
           title="Thông báo"
           onClick={() => {
+            setNotificationsEnabled(true)
             setShowNotifications(!showNotifications)
             setShowDropdown(false)
           }}
