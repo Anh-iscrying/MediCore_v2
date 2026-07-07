@@ -35,7 +35,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 import java.util.Locale;
 
 @RestController
@@ -80,59 +79,33 @@ public class AuthController {
         // 2. Xác thực OTP (Logic từ MC-09-v1)
         emailOtpService.consumeSignupVerification(email, request.getSignupVerificationToken());
 
-        // 3. LOGIC "NHẬN DIỆN NGƯỜI THÂN" (Logic từ HEAD)
-        Optional<Patient> existingPatient = patientRepository.findByPhone(request.getPhone());
-        
-        Patient patient;
-        String businessCode;
-        
-        if (existingPatient.isPresent()) {
-            Patient oldProfile = existingPatient.get();
-            
-            // Kiểm tra xem hồ sơ SĐT này đã gắn với tài khoản email nào chưa
-            boolean alreadyLinked = authCredentialsRepository.findByPatientId(oldProfile.getId()).isPresent();
-            
-            if (alreadyLinked) {
-                throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Số điện thoại này đã được sử dụng cho tài khoản khác");
-            }
-            
-            // TRƯỜNG HỢP RA RIÊNG: "Chuyển nhượng" hồ sơ từ người quản lý sang tài khoản mới
-            patient = oldProfile;
-            patient.setFullName(request.getName());
-            patient.setManagedBy(null); // Thoát khỏi sự quản lý của người thân
-            patient.setUpdatedAt(LocalDateTime.now());
-            businessCode = patient.getPatientCode();
-            
-        } else {
-            // TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN
-            businessCode = idGeneratorService.generatePatientCode();
-            
-            LocalDate dob = null;
-            if (request.getDob() != null) {
-                dob = LocalDate.parse(request.getDob(), DateTimeFormatter.ISO_DATE);
-            }
+        // 3. Tạo hồ sơ bệnh nhân mới
+        String businessCode = idGeneratorService.generatePatientCode();
 
-            GenderType targetGender = null;
-            if (request.getGender() != null && !request.getGender().isBlank()) {
-                try {
-                    targetGender = GenderType.valueOf(request.getGender().toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    targetGender = null;
-                }
-            }
-
-            patient = Patient.builder()
-                    .patientCode(businessCode)
-                    .fullName(request.getName())
-                    .dob(dob)
-                    .gender(targetGender)
-                    .phone(request.getPhone())
-                    .address(request.getAddress())
-                    .build();
-
-            patient.setCreatedAt(LocalDateTime.now());
-            patient.setUpdatedAt(LocalDateTime.now());
+        LocalDate dob = null;
+        if (request.getDob() != null) {
+            dob = LocalDate.parse(request.getDob(), DateTimeFormatter.ISO_DATE);
         }
+
+        GenderType targetGender = null;
+        if (request.getGender() != null && !request.getGender().isBlank()) {
+            try {
+                targetGender = GenderType.valueOf(request.getGender().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                targetGender = null;
+            }
+        }
+
+        Patient patient = Patient.builder()
+                .patientCode(businessCode)
+                .fullName(request.getName())
+                .dob(dob)
+                .gender(targetGender)
+                .address(request.getAddress())
+                .build();
+
+        patient.setCreatedAt(LocalDateTime.now());
+        patient.setUpdatedAt(LocalDateTime.now());
 
         // Lưu thông tin bệnh nhân
         patient = patientRepository.save(patient);
