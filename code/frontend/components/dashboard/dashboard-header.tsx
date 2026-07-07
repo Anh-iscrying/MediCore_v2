@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { AuthenticatedUserMenu } from "@/components/base/authenticated-user-menu"
+import { AuthenticatedUserMenu } from "@/components/base/user/authenticated-user-menu"
 
 export function DashboardHeader() {
   const pathname = usePathname()

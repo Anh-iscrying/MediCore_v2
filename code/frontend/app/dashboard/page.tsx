@@ -36,27 +36,48 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoadError(null)
+    let cancelled = false
+
+    async function fetchMedicalRecords() {
       try {
-        const [profileData, appointmentsData, recordsData] = await Promise.all([
-          apiFetch<PatientProfile>("/patients/me"),
-          apiFetch<AppointmentResponse[]>("/appointments/me"),
-          getCachedMyMedicalRecords()
-        ])
-        setProfile(profileData)
-        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : [])
-        setMedicalRecords(Array.isArray(recordsData) ? recordsData : [])
+        const recordsData = await getCachedMyMedicalRecords()
+        if (!cancelled) setMedicalRecords(Array.isArray(recordsData) ? recordsData : [])
       } catch (error) {
-        setLoadError(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.")
-        setProfile(null)
-        setAppointments([])
-        setMedicalRecords([])
-      } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Không thể tải đầy đủ dữ liệu hồ sơ khám.")
+          setMedicalRecords([])
+        }
       }
     }
-    void fetchData()
+
+    async function fetchPrimaryData() {
+      setLoadError(null)
+      try {
+        const [profileData, appointmentsData] = await Promise.all([
+          apiFetch<PatientProfile>("/patients/me"),
+          apiFetch<AppointmentResponse[]>("/appointments/me"),
+        ])
+        if (cancelled) return
+        setProfile(profileData)
+        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : [])
+        setIsLoading(false)
+        void fetchMedicalRecords()
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.")
+          setProfile(null)
+          setAppointments([])
+          setMedicalRecords([])
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void fetchPrimaryData()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // 1. Tỷ lệ hoàn thành hồ sơ (%) dựa trên 5 trường đã điền

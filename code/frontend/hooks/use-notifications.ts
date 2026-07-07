@@ -8,6 +8,7 @@ import {
   markNotificationRead,
   type NotificationItem,
 } from "@/lib/notifications"
+import { clearMyMedicalRecordsCache } from "@/lib/medical-records"
 import type { AuthUser } from "@/lib/auth"
 
 type WebSocketMessage = {
@@ -34,6 +35,8 @@ export function useNotifications(user: AuthUser | null, enabled = true) {
       const response = await getNotifications()
       setNotifications(response.notifications || [])
       setUnreadCount(response.unreadCount || 0)
+    } catch {
+      // Giữ nguyên trạng thái hiện tại nếu tải thông báo thất bại.
     } finally {
       setIsLoading(false)
     }
@@ -71,11 +74,19 @@ export function useNotifications(user: AuthUser | null, enabled = true) {
         debug: () => undefined,
         onConnect: () => {
           client?.subscribe("/user/queue/notifications", (message) => {
-            const payload = JSON.parse(message.body) as WebSocketMessage
+            let payload: WebSocketMessage
+            try {
+              payload = JSON.parse(message.body) as WebSocketMessage
+            } catch {
+              return
+            }
+
             if (!payload.data) return
 
+            let isNewNotification = false
             setNotifications((current) => {
               const exists = current.some((notification) => notification.id === payload.data?.id)
+              isNewNotification = !exists
               return exists ? current : [payload.data as NotificationItem, ...current].slice(0, 20)
             })
             const shouldShowPopup = ["EXAM_STARTED", "APPOINTMENT_CANCELLED", "APPOINTMENT_COMPLETED"].includes(payload.eventType || "")
@@ -83,9 +94,13 @@ export function useNotifications(user: AuthUser | null, enabled = true) {
               setExamNotification(payload.data)
             }
             if (payload.eventType === "MEDICAL_RECORD_READY") {
+              clearMyMedicalRecordsCache()
               setRecordNotification(payload.data)
             }
-            setUnreadCount((count) => payload.data?.unreadCount ?? count + 1)
+            setUnreadCount((count) => {
+              if (typeof payload.data?.unreadCount === "number") return payload.data.unreadCount
+              return isNewNotification ? count + 1 : count
+            })
           })
         },
       })
@@ -103,10 +118,16 @@ export function useNotifications(user: AuthUser | null, enabled = true) {
 
   const markRead = useCallback(async (id: number) => {
     const updated = await markNotificationRead(id)
-    setNotifications((current) => current.map((notification) => (
-      notification.id === id ? { ...notification, ...updated } : notification
-    )))
-    setUnreadCount(updated.unreadCount ?? 0)
+    let wasUnread = false
+    setNotifications((current) => current.map((notification) => {
+      if (notification.id !== id) return notification
+      wasUnread = !notification.readAt
+      return { ...notification, ...updated }
+    }))
+    setUnreadCount((count) => {
+      if (typeof updated.unreadCount === "number") return updated.unreadCount
+      return wasUnread ? Math.max(0, count - 1) : count
+    })
   }, [])
 
   const markAllRead = useCallback(async () => {

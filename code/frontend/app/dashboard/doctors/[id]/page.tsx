@@ -110,7 +110,8 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
   const router = useRouter()
 
   const [doctor, setDoctor] = useState<Doctor | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isDoctorLoading, setIsDoctorLoading] = useState(true)
+  const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(true)
   const todayIso = getTodayIso()
   const maxDateIso = addDaysIso(todayIso, 30)
   const [selectedDate, setSelectedDate] = useState(todayIso)
@@ -135,6 +136,7 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
   }, [toastMessage])
 
   const hasRestoredRef = useRef(false)
+  const availabilityRequestIdRef = useRef(0)
 
   // Load saved choices from sessionStorage on mount
   useEffect(() => {
@@ -166,32 +168,89 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
   }, [symptoms])
 
   useEffect(() => {
-    async function fetchDoctor() {
+    let cancelled = false
+
+    async function fetchDoctorDetail() {
+      setIsDoctorLoading(true)
+      setIsAvailabilityLoading(true)
       try {
         const detailRes = await fetch(`/api/backend/doctors/${encodeURIComponent(docId)}`)
         if (!detailRes.ok) throw new Error(await readApiError(detailRes, "Không thể tải thông tin bác sĩ"))
 
         const detailPayload = await detailRes.json()
         const detailDoctor = normalizeDoctorPayload(detailPayload.data)
-        const availableRes = await fetch(
-          `/api/doctors?date=${encodeURIComponent(selectedDate)}&specialtyId=${encodeURIComponent(String(detailDoctor.specialty_id))}`
-        )
-        if (!availableRes.ok) throw new Error(await readApiError(availableRes, "Không thể tải lịch trống của bác sĩ"))
+        if (!cancelled) setDoctor(detailDoctor)
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Fetch doctor details error:", err)
+          triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải thông tin bác sĩ.", "danger", "Lỗi tải thông tin")
+          setDoctor(null)
+          setIsAvailabilityLoading(false)
+        }
+      } finally {
+        if (!cancelled) setIsDoctorLoading(false)
+      }
+    }
 
+    void fetchDoctorDetail()
+
+    return () => {
+      cancelled = true
+    }
+  }, [docId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchAppointments() {
+      try {
         const appointmentsRes = await fetch("/api/appointments")
         if (!appointmentsRes.ok) throw new Error(await readApiError(appointmentsRes, "Không thể tải lịch hẹn của bạn"))
 
-        const availableDoctors: Doctor[] = await availableRes.json()
         const appsData: Appointment[] = await appointmentsRes.json()
+        if (!cancelled) setAppointments(appsData)
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Fetch appointments error:", err)
+          triggerToast(err instanceof Error ? err.message : "Không thể tải lịch hẹn của bạn.", "danger", "Lỗi lịch hẹn")
+        }
+      }
+    }
+
+    void fetchAppointments()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!doctor) return
+
+    const currentDoctor = doctor
+    const requestId = availabilityRequestIdRef.current + 1
+    availabilityRequestIdRef.current = requestId
+    let cancelled = false
+
+    async function fetchAvailability() {
+      setIsAvailabilityLoading(true)
+      try {
+        const availableRes = await fetch(
+          `/api/doctors?date=${encodeURIComponent(selectedDate)}&specialtyId=${encodeURIComponent(String(currentDoctor.specialty_id))}`
+        )
+        if (!availableRes.ok) throw new Error(await readApiError(availableRes, "Không thể tải lịch trống của bác sĩ"))
+
+        const availableDoctors: Doctor[] = await availableRes.json()
+        if (cancelled || requestId !== availabilityRequestIdRef.current) return
+
         const availability = availableDoctors.find((d: Doctor) => d.id === Number(docId))
         const mergedDoctor = {
-          ...detailDoctor,
+          ...currentDoctor,
           doctor_schedules: availability?.doctor_schedules ?? [],
           availableSlots: availability?.availableSlots ?? [],
         }
 
         setDoctor(mergedDoctor)
-        setAppointments(appsData)
 
         // Restore saved slot if available, otherwise fallback to first available
         const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
@@ -208,14 +267,23 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
           setSelectedTimeSlot(firstAvailableSlot ?? "")
         }
       } catch (err) {
-        console.error("Fetch doctor details error:", err)
-        triggerToast(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải thông tin bác sĩ.", "danger", "Lỗi tải thông tin")
+        if (!cancelled && requestId === availabilityRequestIdRef.current) {
+          console.error("Fetch doctor availability error:", err)
+          triggerToast(err instanceof Error ? err.message : "Không thể tải lịch trống của bác sĩ.", "danger", "Lỗi lịch trống")
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled && requestId === availabilityRequestIdRef.current) {
+          setIsAvailabilityLoading(false)
+        }
       }
     }
-    fetchDoctor()
-  }, [docId, selectedDate])
+
+    void fetchAvailability()
+
+    return () => {
+      cancelled = true
+    }
+  }, [docId, doctor?.id, doctor?.specialty_id, selectedDate])
 
   const getSelectedScheduleTimeSlot = (doctorToBook: Doctor) =>
     doctorToBook.doctor_schedules.find(
@@ -269,7 +337,7 @@ export default function DoctorDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  if (isLoading) {
+  if (isDoctorLoading || isAvailabilityLoading) {
     return (
       <div className="mx-auto max-w-[1400px] select-none flex flex-col items-center justify-center min-h-[500px]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-foreground" />

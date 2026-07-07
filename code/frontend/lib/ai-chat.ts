@@ -1,4 +1,4 @@
-import { apiFetch, ApiError } from "./api"
+import { apiFetch } from "./api"
 
 export type AiChatMessage = {
   role: "user" | "assistant"
@@ -20,11 +20,6 @@ export type AiChatResponse = {
   reply: string
   consultationLogId?: number | null
   createdAt?: string | null
-}
-
-type StreamEvent = {
-  event?: string
-  data?: string
 }
 
 export function sendAiChat(input: AiChatRequest) {

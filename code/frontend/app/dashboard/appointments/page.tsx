@@ -155,6 +155,8 @@ export default function AppointmentsPage() {
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false)
   const doctorsCacheRef = useRef<Record<string, Doctor[]>>({})
   const doctorsRequestIdRef = useRef(0)
+  const selectedTimeSlotRef = useRef("")
+  const recordCacheRef = useRef<Record<string, MedicalRecord>>({})
 
   // Parse URL search params safely on client mount
   useEffect(() => {
@@ -206,6 +208,7 @@ export default function AppointmentsPage() {
   }, [selectedDate])
 
   useEffect(() => {
+    selectedTimeSlotRef.current = selectedTimeSlot
     if (!hasRestoredRef.current) return
     window.sessionStorage.setItem("booking_timeSlot", selectedTimeSlot)
   }, [selectedTimeSlot])
@@ -296,7 +299,7 @@ export default function AppointmentsPage() {
 
     const cacheKey = `${date}:${specialty.id}`
     const savedTimeSlot = typeof window !== "undefined" ? window.sessionStorage.getItem("booking_timeSlot") : null
-    const preferredSlot = savedTimeSlot || selectedTimeSlot
+    const preferredSlot = savedTimeSlot || selectedTimeSlotRef.current
 
     if (!forceRefresh && doctorsCacheRef.current[cacheKey]) {
       const cachedDoctors = doctorsCacheRef.current[cacheKey]
@@ -330,7 +333,7 @@ export default function AppointmentsPage() {
         setIsDoctorsLoading(false)
       }
     }
-  }, [chooseDoctorFromData, selectedSpecialty, selectedTimeSlot, specialties, triggerToast])
+  }, [chooseDoctorFromData, selectedSpecialty, specialties, triggerToast])
 
   // Fetch static page data once, then load doctors only for the selected specialty/date.
   useEffect(() => {
@@ -393,6 +396,7 @@ export default function AppointmentsPage() {
 
   // Handle time slot change
   const handleTimeSlotChange = (slot: string) => {
+    selectedTimeSlotRef.current = slot
     setSelectedTimeSlot(slot)
 
     const availableDocs = doctors.filter(doc => doc.specialty === selectedSpecialty && getAvailableSlots(doc).includes(slot))
@@ -459,9 +463,17 @@ export default function AppointmentsPage() {
   }
 
   const handleViewRecord = async (appointment: Appointment) => {
+    const cacheKey = String(appointment.id)
+    const cachedRecord = recordCacheRef.current[cacheKey]
+    if (cachedRecord) {
+      setSelectedRecord(cachedRecord)
+      return
+    }
+
     setLoadingRecordAppointmentId(appointment.id)
     try {
       const record = await getMedicalRecordByAppointment(appointment.id)
+      recordCacheRef.current[cacheKey] = record
       setSelectedRecord(record)
     } catch (err) {
       console.error("Failed to load medical record:", err)

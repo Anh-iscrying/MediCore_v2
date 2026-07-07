@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { ArrowRight, CalendarCheck, ClipboardList, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
-import { AnimatedText } from "@/components/base/animated-text"
+import { AnimatedText } from "@/components/base/effects/animated-text"
 
 const trustItems = [
   { label: "Bác sĩ chuyên khoa", icon: ShieldCheck },
@@ -20,6 +20,7 @@ export function HeroSection() {
         muted
         loop
         playsInline
+        preload="metadata"
         disablePictureInPicture
         controlsList="nofullscreen"
         className="absolute inset-0 z-0 h-full w-full translate-z-0 object-cover pointer-events-none"

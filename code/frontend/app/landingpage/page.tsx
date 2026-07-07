@@ -1,4 +1,4 @@
-import { Header } from "@/components/base/header"
+import { Header } from "@/components/base/layout/header"
 import { HeroSection } from "@/components/landingpage/hero-section"
 import { ScienceSection } from "@/components/landingpage/science-section"
 import { AICareSection } from "@/components/landingpage/ai-care-section"
@@ -6,7 +6,7 @@ import { TechSection } from "@/components/landingpage/tech-section"
 import { DoctorsSection } from "@/components/landingpage/doctors-section"
 import { PatientStoriesSection } from "@/components/landingpage/testimonials-section"
 import { MissionSection } from "@/components/landingpage/mission-section"
-import { Footer } from "@/components/base/footer"
+import { Footer } from "@/components/base/layout/footer"
 
 export default function LandingPage() {
   return (

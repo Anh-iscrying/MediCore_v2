@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import { Button } from "@/components/base/ui/button"
 import { ArrowRight } from "lucide-react"
-import { ScrollBlurText } from "@/components/base/scroll-blur-text"
+import { ScrollBlurText } from "@/components/base/effects/scroll-blur-text"
 
 const products = [
   {

@@ -8,9 +8,6 @@ import {
   Calendar,
   MessageSquare,
   Activity,
-  LogOut,
-  UserCheck,
-  User
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
