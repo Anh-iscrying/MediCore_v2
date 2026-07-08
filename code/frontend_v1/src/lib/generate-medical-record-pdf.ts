@@ -1,6 +1,6 @@
 import { pdf } from "@react-pdf/renderer";
 import React from "react";
-import MedicalRecordPdfDocument, { MedicalRecordPdfProps } from "../components/features/doctor/MedicalRecordPdfDocument";
+import MedicalRecordPdfDocument, { MedicalRecordPdfProps } from "../components/features/doctor/examination/MedicalRecordPdfDocument";
 
 /**
  * Generates a PDF blob from the MedicalRecordPdfDocument component

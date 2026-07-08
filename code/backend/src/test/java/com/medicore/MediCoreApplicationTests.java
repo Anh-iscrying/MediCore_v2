@@ -1,8 +1,10 @@
 package com.medicore;
 
-import com.medicore.repository.SpecialtyRepository;
-import com.medicore.repository.PatientRepository;
-import com.medicore.repository.DoctorRepository;
+import com.medicore.repository.user.SpecialtyRepository;
+import com.medicore.repository.user.PatientRepository;
+import com.medicore.repository.user.DoctorRepository;
+import com.medicore.repository.clinical.MedicalRecordRepository;
+import com.medicore.repository.clinical.PrescriptionDetailRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,10 +23,10 @@ class MediCoreApplicationTests {
     private DoctorRepository doctorRepository;
 
     @Autowired
-    private com.medicore.repository.MedicalRecordRepository medicalRecordRepository;
+    private MedicalRecordRepository medicalRecordRepository;
 
     @Autowired
-    private com.medicore.repository.PrescriptionDetailRepository prescriptionDetailRepository;
+    private PrescriptionDetailRepository prescriptionDetailRepository;
 
     @Test
     void contextLoads() {

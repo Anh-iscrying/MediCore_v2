@@ -1,0 +1,12 @@
+# Subpackage: service.clinical
+
+Thư mục này xử lý các nghiệp vụ cốt lõi về quy trình khám lâm sàng, hồ sơ bệnh án, lịch khám, kê đơn thuốc và phác đồ điều trị.
+
+## 📂 Các Service
+*   [AppointmentService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/AppointmentService.java) & [AppointmentServiceImpl.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/AppointmentServiceImpl.java): Xử lý đặt lịch, duyệt lịch, hủy lịch và kiểm tra ràng buộc lịch khám.
+*   [MedicalRecordService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/MedicalRecordService.java) & [MedicalRecordServiceImpl.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/MedicalRecordServiceImpl.java): Khởi tạo, cập nhật bệnh án (EMR), lưu thông tin đơn thuốc.
+*   [TreatmentTemplateService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/TreatmentTemplateService.java) & [TreatmentTemplateServiceImpl.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/TreatmentTemplateServiceImpl.java): Quản lý phác đồ điều trị mẫu giúp bác sĩ kê đơn nhanh.
+*   [DiseaseService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/DiseaseService.java) & [DiseaseServiceImpl.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/DiseaseServiceImpl.java): Tra cứu danh mục bệnh lý ICD-10.
+*   [MedicineService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/MedicineService.java) & [MedicineServiceImpl.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/MedicineServiceImpl.java): Tra cứu danh mục thuốc.
+*   [ExcelImportService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/ExcelImportService.java): Import danh mục thuốc và bệnh lý từ file Excel.
+*   [MedicalRecordPdfService.java](file:///Users/doando/Documents/medicore/MediCore_v2/code/backend/src/main/java/com/medicore/service/clinical/MedicalRecordPdfService.java): Xuất file PDF bệnh án điện tử và đơn thuốc.

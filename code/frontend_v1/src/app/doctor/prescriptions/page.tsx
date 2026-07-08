@@ -1,4 +1,4 @@
-import { PrescriptionManager } from "@/components/features/doctor/prescription-manager"
+import { PrescriptionManager } from "@/components/features/doctor/prescription/prescription-manager"
 
 export const metadata = {
   title: "Kê đơn thuốc | MedAdmin",

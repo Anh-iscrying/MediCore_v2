@@ -1,4 +1,4 @@
-import { WaitingPatientsList } from "@/components/features/doctor/waiting-patients-list"
+import { WaitingPatientsList } from "@/components/features/doctor/patient/waiting-patients-list"
 
 export const metadata = {
   title: "Danh sách bệnh nhân chờ | MedAdmin",

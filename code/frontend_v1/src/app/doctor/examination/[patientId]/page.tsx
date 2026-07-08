@@ -1,7 +1,7 @@
 "use client"
 
 import { use } from "react"
-import { ExaminationPageWrapper } from "@/components/features/doctor/examination-page-wrapper"
+import { ExaminationPageWrapper } from "@/components/features/doctor/examination/examination-page-wrapper"
 
 export default function ExaminationRoute({
   params,
