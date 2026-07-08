@@ -101,10 +101,7 @@ public class AuthController {
                 .fullName(request.getName())
                 .dob(dob)
                 .gender(targetGender)
-<<<<<<< HEAD
-=======
                 .phone(normalizePhone(request.getPhone()))
->>>>>>> 2641541 (fix)
                 .address(request.getAddress())
                 .build();
 
@@ -121,7 +118,7 @@ public class AuthController {
                 .role(UserRole.PATIENT)
                 .patient(patient)
                 .build();
-        
+
         authCredentialsRepository.save(credentials);
 
         // 5. Sinh JWT và Cookie
@@ -129,8 +126,7 @@ public class AuthController {
                 credentials.getEmail(),
                 UserRole.PATIENT.name(),
                 patient.getId(),
-                businessCode
-        );
+                businessCode);
 
         LoginResponse response = LoginResponse.builder()
                 .token(token)
@@ -153,7 +149,8 @@ public class AuthController {
     }
 
     @PostMapping("/patient/signup/verify-otp")
-    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifySignupOtp(@Valid @RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifySignupOtp(
+            @Valid @RequestBody VerifyOtpRequest request) {
         OtpVerifyResponse response = emailOtpService.verifySignupOtp(request.getEmail(), request.getOtp());
         return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công", response));
     }
@@ -165,7 +162,8 @@ public class AuthController {
     }
 
     @PostMapping("/patient/password-reset/verify-otp")
-    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifyPasswordResetOtp(@Valid @RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<ApiResponse<OtpVerifyResponse>> verifyPasswordResetOtp(
+            @Valid @RequestBody VerifyOtpRequest request) {
         OtpVerifyResponse response = emailOtpService.verifyPasswordResetOtp(request.getEmail(), request.getOtp());
         return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công", response));
     }
@@ -180,7 +178,8 @@ public class AuthController {
     @Transactional
     public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new CustomBusinessException(ErrorCodes.UNAUTHORIZED);
         }
 
@@ -191,7 +190,8 @@ public class AuthController {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Mật khẩu hiện tại không đúng");
         }
         if (passwordEncoder.matches(request.getNewPassword(), credentials.getPasswordHash())) {
-            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Mật khẩu mới không được trùng mật khẩu hiện tại");
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST,
+                    "Mật khẩu mới không được trùng mật khẩu hiện tại");
         }
 
         credentials.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -203,7 +203,8 @@ public class AuthController {
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<LoginResponse>> me() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new CustomBusinessException(ErrorCodes.UNAUTHORIZED);
         }
 
@@ -265,8 +266,7 @@ public class AuthController {
                 credentials.getEmail(),
                 credentials.getRole().name(),
                 businessId,
-                businessCode
-        );
+                businessCode);
     }
 
     private ResponseCookie createAccessTokenCookie(String token, long maxAge) {
