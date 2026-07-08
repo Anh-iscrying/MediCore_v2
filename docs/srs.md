@@ -245,27 +245,39 @@ sequenceDiagram
     actor Doctor as Bác sĩ
     actor Admin as Admin
     participant System as Hệ thống HMS (Spring Boot)
-    participant DB as Cơ sở dữ liệu
-    participant AI as AI Service (API)
-    participant Email as Dịch vụ Email
+    participant DB as Cơ sở dữ liệu (Supabase Postgres)
+    participant Storage as Supabase Storage (S3)
+    participant AI as AI Gateway Service
+    participant Email as Dịch vụ Email (Gmail SMTP)
 
-    Patient->>System: Yêu cầu đặt lịch hẹn khám
-    System->>DB: Kiểm tra khung giờ & lưu Appointment (PENDING)
+    %% 1. Đặt lịch
+    Patient->>System: Gửi yêu cầu đặt lịch khám (POST /appointments)
+    System->>DB: Kiểm tra lịch trực & lưu Lịch hẹn (PENDING/CONFIRMED)
     System->>Email: Kích hoạt gửi email xác nhận đặt lịch
-    Email-->>Patient: Gửi Email xác nhận thành công
-    Admin->>System: Xác nhận & duyệt lịch hẹn
-    System->>DB: Cập nhật Appointment (CONFIRMED)
-    Doctor->>System: Mở ca khám, yêu cầu xem hồ sơ bệnh án
-    System->>DB: Truy vấn bệnh sử & dị ứng cũ
-    Doctor->>System: Nhấp yêu cầu AI tóm tắt hồ sơ
-    System->>AI: Gửi dữ liệu y tế thô (đã khử định danh)
-    AI-->>System: Trả về bản tóm tắt y khoa (Markdown)
-    System-->>Doctor: Hiển thị bản tóm tắt y tế thông minh
-    Doctor->>System: Nhập thông tin khám bệnh & kê đơn thuốc
-    System->>DB: Lưu MedicalRecord & Prescription
-    System->>DB: Cập nhật Appointment (COMPLETED)
-    System->>Email: Kích hoạt gửi email báo kết quả khám
-    Email-->>Patient: Gửi Email đính kèm đường link tải đơn thuốc PDF
+    Email-->>Patient: Gửi Email xác nhận đặt lịch thành công
+
+    %% 2. Bắt đầu khám
+    Doctor->>System: Yêu cầu bắt đầu khám (PUT /appointments/{id}/start-exam)
+    System->>DB: Cập nhật trạng thái lịch hẹn (IN_PROGRESS)
+
+    %% 3. Khám bệnh & Tham khảo AI
+    Doctor->>System: Tra cứu hồ sơ bệnh án cũ của bệnh nhân (GET /clinical/medical-records/appointment/{id})
+    System->>DB: Truy vấn dữ liệu bệnh án & dị ứng trong quá khứ
+    System-->>Doctor: Trả về thông tin bệnh án cũ
+    Doctor->>System: Hỏi ý kiến AI / Tóm tắt bệnh sử (POST /ai/doctor/chat)
+    System->>AI: Gửi dữ liệu bệnh sử (đã khử định danh)
+    AI-->>System: Trả về phản hồi phân tích y khoa (Markdown)
+    System-->>Doctor: Hiển thị kết quả hỗ trợ từ trợ lý AI
+
+    %% 4. Kê đơn & Lưu bệnh án
+    Doctor->>System: Lưu kết quả khám & Kê đơn thuốc (POST /clinical/medical-records)
+    System->>DB: Tạo mới MedicalRecord, Prescription & cập nhật lịch hẹn (COMPLETED)
+    Doctor->>System: Tải tệp PDF đơn thuốc/bệnh án lên (POST /clinical/medical-records/appointment/{id}/upload-pdf)
+    System->>Storage: Lưu trữ tệp tin PDF đơn thuốc
+    Storage-->>System: Trả về URL đường dẫn tệp tin PDF
+    System->>DB: Lưu liên kết PDF đơn thuốc vào cơ sở dữ liệu
+    System->>Email: Kích hoạt gửi mail báo kết quả khám
+    Email-->>Patient: Gửi Email đính kèm link tải đơn thuốc PDF
 ```
 
 ### 4.2. Sơ đồ chức năng (USE CASE)
@@ -277,25 +289,37 @@ Sơ đồ dưới đây thể hiện các chức năng dành cho Bệnh nhân:
 graph LR
     Patient((Bệnh nhân))
 
-    subgraph "Phân hệ Bệnh nhân (Patient Portal)"
-        UC_Register("Đăng ký / Đăng nhập")
-        UC_Profile("Cập nhật hồ sơ cá nhân")
-        UC_Book("Đặt lịch hẹn khám (Public/Private)")
-        UC_CancelBook("Hủy lịch hẹn khám")
-        UC_ViewHistory("Xem lịch sử & Tiến trình điều trị")
-        UC_ViewPrescription("Xem & Tải đơn thuốc PDF")
-        UC_AIChat("Tư vấn & Trò chuyện cùng trợ lý AI (RAG)")
-        UC_Reminders("Nhận nhắc nhở uống thuốc & tái khám")
+    subgraph PatientPortal ["Phân hệ Bệnh nhân (Patient Portal)"]
+        UC_Auth(["Đăng ký & Đăng nhập (Xác thực OTP)"])
+        UC_Profile(["Xem & Cập nhật hồ sơ cá nhân"])
+        UC_Book(["Đặt lịch hẹn khám (POST /appointments)"])
+        UC_ViewAppoints(["Xem danh sách lịch hẹn của tôi"])
+        UC_CancelBook(["Hủy lịch hẹn của tôi (PUT /.../cancel)"])
+        UC_ViewHistory(["Xem bệnh án & đơn thuốc cá nhân"])
+        UC_AIChat(["Trò chuyện tư vấn triệu chứng/hình ảnh với AI"])
+        UC_Notification(["Nhận thông báo & Email nhắc nhở"])
     end
 
-    Patient --- UC_Register
+    Patient --- UC_Auth
     Patient --- UC_Profile
     Patient --- UC_Book
+    Patient --- UC_ViewAppoints
     Patient --- UC_CancelBook
     Patient --- UC_ViewHistory
-    Patient --- UC_ViewPrescription
     Patient --- UC_AIChat
-    Patient --- UC_Reminders
+    Patient --- UC_Notification
+
+    %% Style Rules
+    style Patient fill:#e8eaf6,stroke:#7986cb,stroke-width:2px;
+    style UC_Auth fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_Profile fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_Book fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ViewAppoints fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_CancelBook fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ViewHistory fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_AIChat fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_Notification fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style PatientPortal fill:#fffde7,stroke:#afb42b,stroke-width:1px;
 ```
 
 #### 4.2.2. Phân hệ Bác sĩ (Doctor Portal)
@@ -305,19 +329,34 @@ Sơ đồ dưới đây thể hiện các chức năng dành cho Bác sĩ:
 graph LR
     Doctor((Bác sĩ))
 
-    subgraph "Phân hệ Bác sĩ (Doctor Portal)"
-        UC_ViewAssigned("Xem danh sách lịch hẹn phân công")
-        UC_ViewEMR("Tra cứu hồ sơ bệnh án bệnh nhân")
-        UC_AISummary("Yêu cầu AI tóm tắt hồ sơ y tế")
-        UC_CreateEMR("Tạo mới & Cập nhật bệnh án")
-        UC_CreatePrescription("Kê đơn thuốc điện tử")
+    subgraph DoctorPortal ["Phân hệ Bác sĩ (Doctor Portal)"]
+        UC_ViewSchedule(["Tra cứu danh sách & ca khám chờ"])
+        UC_ManageWork(["Đăng ký lịch làm việc (DoctorSchedule)"])
+        UC_StartExam(["Bắt đầu ca khám bệnh (start-exam)"])
+        UC_ViewEMR(["Tra cứu bệnh sử & tiền sử dị ứng bệnh nhân"])
+        UC_CreateEMR(["Lập bệnh án & kê đơn thuốc điện tử"])
+        UC_UploadPDF(["Tải lên PDF đơn thuốc (Supabase Storage)"])
+        UC_AIChat(["Hỏi ý kiến trợ lý ảo Doctor AI"])
     end
 
-    Doctor --- UC_ViewAssigned
+    Doctor --- UC_ViewSchedule
+    Doctor --- UC_ManageWork
+    Doctor --- UC_StartExam
     Doctor --- UC_ViewEMR
-    Doctor --- UC_AISummary
     Doctor --- UC_CreateEMR
-    Doctor --- UC_CreatePrescription
+    Doctor --- UC_UploadPDF
+    Doctor --- UC_AIChat
+
+    %% Style Rules
+    style Doctor fill:#e8eaf6,stroke:#7986cb,stroke-width:2px;
+    style UC_ViewSchedule fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ManageWork fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_StartExam fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ViewEMR fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_CreateEMR fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_UploadPDF fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_AIChat fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style DoctorPortal fill:#fffde7,stroke:#afb42b,stroke-width:1px;
 ```
 
 #### 4.2.3. Phân hệ Quản trị viên (Admin Portal)
@@ -327,19 +366,34 @@ Sơ đồ dưới đây thể hiện các chức năng dành cho Quản trị vi
 graph LR
     Admin((Quản trị viên))
 
-    subgraph "Phân hệ Quản trị (Admin Portal)"
-        UC_ManageUsers("Quản lý tài khoản & Phân quyền")
-        UC_ManageDoctors("Quản lý bác sĩ (Thêm mới, gán khoa)")
-        UC_ManagePatients("Quản lý thông tin bệnh nhân")
-        UC_ManageSettings("Quản lý danh mục & Điều phối lịch hẹn")
-        UC_AuditLog("Theo dõi nhật ký hệ thống (Audit log)")
+    subgraph AdminPortal ["Phân hệ Quản trị (Admin Portal)"]
+        UC_ManageAccounts(["Quản lý tài khoản & phân quyền"])
+        UC_ManageDocs(["Quản lý bác sĩ (Thêm mới, gán chuyên khoa)"])
+        UC_ManagePats(["Quản lý bệnh nhân & hồ sơ hành chính"])
+        UC_ManageSettings(["Điều phối, duyệt & xóa lịch hẹn"])
+        UC_ImportCatalog(["Import danh mục thuốc/bệnh lý từ Excel"])
+        UC_ManageSpecialty(["Quản lý danh mục chuyên khoa"])
+        UC_AuditLog(["Theo dõi nhật ký hệ thống (Audit log)"])
     end
 
-    Admin --- UC_ManageUsers
-    Admin --- UC_ManageDoctors
-    Admin --- UC_ManagePatients
+    Admin --- UC_ManageAccounts
+    Admin --- UC_ManageDocs
+    Admin --- UC_ManagePats
     Admin --- UC_ManageSettings
+    Admin --- UC_ImportCatalog
+    Admin --- UC_ManageSpecialty
     Admin --- UC_AuditLog
+
+    %% Style Rules
+    style Admin fill:#e8eaf6,stroke:#7986cb,stroke-width:2px;
+    style UC_ManageAccounts fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ManageDocs fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ManagePats fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ManageSettings fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ImportCatalog fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_ManageSpecialty fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style UC_AuditLog fill:#e8eaf6,stroke:#7986cb,stroke-width:1px;
+    style AdminPortal fill:#fffde7,stroke:#afb42b,stroke-width:1px;
 ```
 
 ---

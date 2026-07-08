@@ -34,34 +34,35 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/ws/**").permitAll()
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
 
-                // 1. Các API cụ thể cho Bệnh nhân (Phải để lên đầu)
-                .requestMatchers(HttpMethod.GET, "/clinical/medical-records/me").hasRole("PATIENT")
-                .requestMatchers(HttpMethod.GET, "/clinical/medical-records/appointment/**").hasAnyRole("ADMIN", "DOCTOR", "PATIENT")
-                
-                // 2. Các API cho Bác sĩ xử lý hồ sơ
-                .requestMatchers(HttpMethod.POST, "/clinical/medical-records").hasAnyRole("ADMIN", "DOCTOR")
-                .requestMatchers(HttpMethod.POST, "/clinical/medical-records/appointment/*/upload-pdf").hasAnyRole("ADMIN", "DOCTOR")
+                        // 1. Các API cụ thể cho Bệnh nhân (Phải để lên đầu)
+                        .requestMatchers(HttpMethod.GET, "/clinical/medical-records/me").hasRole("PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/clinical/medical-records/appointment/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "PATIENT")
 
-                // 3. API Hàng chờ/Lâm sàng chung: Chỉ ADMIN hoặc DOCTOR mới được truy cập
-                .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
+                        // 2. Các API cho Bác sĩ xử lý hồ sơ
+                        .requestMatchers(HttpMethod.POST, "/clinical/medical-records").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.POST, "/clinical/medical-records/appointment/*/upload-pdf")
+                        .hasAnyRole("ADMIN", "DOCTOR")
 
-                // 4. API quản trị bác sĩ/chuyên khoa
-                .requestMatchers(HttpMethod.POST, "/doctors/**", "/specialties/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PATCH, "/doctors/**", "/specialties/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/doctors/**", "/specialties/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/doctors/profile").hasRole("DOCTOR")
-                .requestMatchers(HttpMethod.PUT, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                        // 3. API Hàng chờ/Lâm sàng chung: Chỉ ADMIN hoặc DOCTOR mới được truy cập
+                        .requestMatchers("/clinical/**").hasAnyRole("ADMIN", "DOCTOR")
 
-                // Các API còn lại
-                .anyRequest().authenticated()
-        )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        // 4. API quản trị bác sĩ/chuyên khoa
+                        .requestMatchers(HttpMethod.POST, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/doctors/profile").hasRole("DOCTOR")
+                        .requestMatchers(HttpMethod.PUT, "/doctors/**", "/specialties/**").hasRole("ADMIN")
+
+                        // Các API còn lại
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -70,9 +71,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
-            .map(String::trim)
-            .filter(origin -> !origin.isEmpty())
-            .toList());
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));
         configuration.setAllowCredentials(true);
@@ -84,7 +85,8 @@ public class SecurityConfig {
 
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilterRegistration() {
-        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(new CorsFilter(corsConfigurationSource()));
+        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(
+                new CorsFilter(corsConfigurationSource()));
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
     }
