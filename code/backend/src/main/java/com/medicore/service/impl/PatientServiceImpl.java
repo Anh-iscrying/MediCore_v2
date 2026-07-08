@@ -92,7 +92,7 @@ public class PatientServiceImpl implements PatientService {
                 .fullName(request.getName())
                 .dob(dob)
                 .gender(gender)
-                .phone(request.getPhone())
+                .phone(normalizePhone(request.getPhone()))
                 .address(request.getAddress())
                 .build();
 
@@ -126,7 +126,7 @@ public class PatientServiceImpl implements PatientService {
         patient.setFullName(request.getName());
         patient.setDob(dob);
         patient.setGender(gender);
-        patient.setPhone(request.getPhone());
+        patient.setPhone(normalizePhone(request.getPhone()));
         patient.setAddress(request.getAddress());
         patient.setUpdatedAt(LocalDateTime.now());
 
@@ -161,7 +161,7 @@ public class PatientServiceImpl implements PatientService {
         patient.setFullName(request.getName());
         patient.setDob(dob);
         patient.setGender(gender);
-        patient.setPhone(request.getPhone());
+        patient.setPhone(normalizePhone(request.getPhone()));
         patient.setAddress(request.getAddress());
         patient.setUpdatedAt(LocalDateTime.now());
 
@@ -175,6 +175,10 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
         patientRepository.delete(patient);
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null || phone.isBlank() ? null : phone.trim();
     }
 
     private PatientResponse mapToResponse(Patient patient) {
@@ -237,7 +241,7 @@ public class PatientServiceImpl implements PatientService {
         Patient familyMember = Patient.builder()
                 .patientCode(patientCode) // Hết lỗi đỏ
                 .fullName(request.getName())
-                .phone(request.getPhone())
+                .phone(normalizePhone(request.getPhone()))
                 .dob(dob)
                 .managedBy(ownerEmail)
                 .build();

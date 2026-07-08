@@ -57,4 +57,24 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to send HTML email to {} with subject: {}", to, subject, e);
         }
     }
+
+    @Override
+    @Async
+    public void sendHtmlEmailWithAttachment(String to, String subject, String htmlContent, String attachmentName, byte[] attachmentData) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            if (mailFrom != null && !mailFrom.isBlank()) {
+                helper.setFrom(mailFrom);
+            }
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            helper.addAttachment(attachmentName, new org.springframework.core.io.ByteArrayResource(attachmentData));
+            mailSender.send(message);
+            log.info("Sent HTML email with attachment {} to {} with subject: {}", attachmentName, to, subject);
+        } catch (Exception e) {
+            log.error("Failed to send HTML email with attachment to {} with subject: {}", to, subject, e);
+        }
+    }
 }

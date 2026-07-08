@@ -101,6 +101,10 @@ public class AuthController {
                 .fullName(request.getName())
                 .dob(dob)
                 .gender(targetGender)
+<<<<<<< HEAD
+=======
+                .phone(normalizePhone(request.getPhone()))
+>>>>>>> 2641541 (fix)
                 .address(request.getAddress())
                 .build();
 
@@ -277,5 +281,9 @@ public class AuthController {
 
     private String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null || phone.isBlank() ? null : phone.trim();
     }
 }

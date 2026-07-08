@@ -47,6 +47,31 @@ public class SupabaseStorageService {
         }
     }
 
+    public byte[] downloadPdf(String objectPath) {
+        ensureConfigured();
+        String endpoint = storageBaseUrl() + "/object/" + properties.getMedicalRecordsBucket() + "/" + objectPath;
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(30))
+                .header("Authorization", "Bearer " + properties.getServiceRoleKey())
+                .header("apikey", properties.getServiceRoleKey())
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new CustomBusinessException(ErrorCodes.INTERNAL_SERVER_ERROR,
+                        "Không thể tải xuống PDF hồ sơ từ Supabase Storage");
+            }
+            return response.body();
+        } catch (IOException ex) {
+            throw new CustomBusinessException(ErrorCodes.INTERNAL_SERVER_ERROR, "Không thể kết nối Supabase Storage để tải PDF");
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new CustomBusinessException(ErrorCodes.INTERNAL_SERVER_ERROR, "Kết nối tải PDF bị gián đoạn");
+        }
+    }
+
     public String createSignedUrl(String objectPath) {
         if (!StringUtils.hasText(objectPath) || !isConfigured()) {
             return null;

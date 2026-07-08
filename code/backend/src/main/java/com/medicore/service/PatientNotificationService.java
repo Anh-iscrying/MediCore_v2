@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.util.StringUtils;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,6 +39,7 @@ public class PatientNotificationService {
     private final AuthCredentialsRepository authCredentialsRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final SupabaseStorageService storageService;
 
     @Transactional(readOnly = true)
     public NotificationListResponse getCurrentPatientNotifications(String email) {
@@ -236,10 +239,25 @@ public class PatientNotificationService {
                     ? record.getMainDiagnosis()
                     : "Xem chi tiết trong hồ sơ sức khỏe";
 
-            String subject = "[MediCore] Hồ sơ khám và đơn thuốc PDF đã sẵn sàng";
+            String subject = "[MediCore] Hồ sơ khám và đơn thuốc PDF";
             String htmlContent = buildMedicalRecordReadyEmailTemplate(patientName, patientCode, doctorName,
                     appointmentDate, timeSlot, diagnosis);
-            emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
+
+            byte[] pdfBytes = null;
+            if (record.getPdfStoragePath() != null && !record.getPdfStoragePath().isBlank()) {
+                try {
+                    pdfBytes = storageService.downloadPdf(record.getPdfStoragePath());
+                } catch (Exception ex) {
+                    log.error("Không thể tải file PDF từ Storage để gửi email đính kèm: {}", ex.getMessage());
+                }
+            }
+
+            if (pdfBytes != null) {
+                String attachmentName = "phieu_kham_" + patientCode + "_" + appointment.getId() + ".pdf";
+                emailService.sendHtmlEmailWithAttachment(recipientEmail, subject, htmlContent, attachmentName, pdfBytes);
+            } else {
+                emailService.sendHtmlEmail(recipientEmail, subject, htmlContent);
+            }
         } catch (Exception e) {
             Integer appointmentId = record != null && record.getAppointment() != null ? record.getAppointment().getId()
                     : null;
@@ -261,11 +279,11 @@ public class PatientNotificationService {
                 +
                 "    <div style=\"background:#0f172a; color:#ffffff; padding:24px; text-align:center;\">\n" +
                 "      <h1 style=\"margin:0; font-size:22px;\">MediCore EMR</h1>\n" +
-                "      <p style=\"margin:6px 0 0; color:#cbd5e1;\">Hồ sơ khám và đơn thuốc PDF đã sẵn sàng</p>\n" +
+                "      <p style=\"margin:6px 0 0; color:#cbd5e1;\">Hồ sơ khám và đơn thuốc PDF của bạn</p>\n" +
                 "    </div>\n" +
                 "    <div style=\"padding:28px;\">\n" +
                 "      <p style=\"font-size:17px; font-weight:700;\">Kính chào Ông/Bà " + patientName + ",</p>\n" +
-                "      <p style=\"line-height:1.6;\">Phiếu khám và đơn thuốc PDF của Ông/Bà đã được cập nhật trong Hồ sơ sức khỏe. Vui lòng đăng nhập MediCore để xem hoặc tải file khi cần.</p>\n"
+                "      <p style=\"line-height:1.6;\">Phiếu khám và đơn thuốc PDF của Ông/Bà đã được gửi đính kèm trong email này. Ngoài ra, Ông/Bà cũng có thể đăng nhập vào ứng dụng MediCore để xem lại bất kỳ lúc nào.</p>\n"
                 +
                 "      <div style=\"background:#f0fdf4; border-left:4px solid #22c55e; padding:14px 16px; margin:20px 0; border-radius:6px;\">\n"
                 +
@@ -289,7 +307,7 @@ public class PatientNotificationService {
                 "    <div style=\"background:#f8fafc; color:#64748b; text-align:center; padding:16px; font-size:12px;\">Email này được gửi tự động từ MediCore.</div>\n"
                 +
                 "  </div>\n" +
-                "</body>\n" +
+                "</body>" +
                 "</html>";
     }
 
