@@ -1,13 +1,45 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getCachedMyMedicalRecords, type MedicalRecord } from "@/lib/medical-records"
+import { getCachedMyMedicalRecords, getMedicalRecordByAppointment, type MedicalRecord } from "@/lib/medical-records"
 
 export default function MedicalHistoryPage() {
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadingRecordId, setLoadingRecordId] = useState<number | null>(null)
+
+  const handleViewPdf = async (record: MedicalRecord) => {
+    if (record.pdfUrl) {
+      window.open(record.pdfUrl, "_blank")
+      return
+    }
+
+    if (!record.appointmentId) {
+      alert("Không tìm thấy thông tin lịch hẹn để tải PDF.")
+      return
+    }
+
+    setLoadingRecordId(record.id)
+    try {
+      const updated = await getMedicalRecordByAppointment(record.appointmentId)
+      if (updated && updated.pdfUrl) {
+        // Lưu lại pdfUrl vào state để không cần gọi lại API lần sau
+        setRecords((prev) =>
+          prev.map((r) => (r.id === record.id ? { ...r, pdfUrl: updated.pdfUrl } : r))
+        )
+        window.open(updated.pdfUrl, "_blank")
+      } else {
+        alert("Không thể tải PDF. Vui lòng thử lại sau.")
+      }
+    } catch (err) {
+      console.error("Lỗi tải Signed URL cho PDF:", err)
+      alert("Đã xảy ra lỗi khi tải tài liệu PDF khám bệnh.")
+    } finally {
+      setLoadingRecordId(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -122,15 +154,14 @@ export default function MedicalHistoryPage() {
                     </p>
                   </div>
                 </div>
-                {record.pdfUrl ? (
-                  <a
-                    href={record.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full rounded-xl border border-[#0e0f0c] bg-card px-5 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background md:w-auto cursor-pointer transition-colors"
+                {(record.pdfUrl || record.pdfStoragePath) ? (
+                  <button
+                    onClick={() => handleViewPdf(record)}
+                    disabled={loadingRecordId === record.id}
+                    className="w-full rounded-xl border border-[#0e0f0c] bg-card px-5 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-[#0e0f0c] hover:bg-background md:w-auto cursor-pointer transition-colors disabled:opacity-50"
                   >
-                    Xem phiếu khám/đơn thuốc PDF
-                  </a>
+                    {loadingRecordId === record.id ? "Đang mở..." : "Xem phiếu khám/đơn thuốc PDF"}
+                  </button>
                 ) : (
                   <span className="w-full rounded-xl border border-border bg-background px-5 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground md:w-auto">
                     PDF chưa được tạo
