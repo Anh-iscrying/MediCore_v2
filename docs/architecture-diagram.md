@@ -72,7 +72,6 @@ graph TB
     %% Tầng Dữ liệu & Lưu trữ
     subgraph StorageLayer ["Tầng Dữ liệu & Lưu trữ (Data & Storage Layer)"]
         Postgres["Cơ sở dữ liệu PostgreSQL (Supabase)"]
-        PgVector["Phần mở rộng PgVector (Vector Store)"]
         SupabaseStorage["Supabase Storage (Tệp đính kèm & PDF)"]
     end
 
@@ -114,7 +113,6 @@ graph TB
     JPA --> Postgres
     JDBC --> Postgres
     Flyway --> Postgres
-    Postgres --- PgVector
     
     ClinicalServices --> SupabaseStorage
     SystemServices --> SupabaseStorage
@@ -130,7 +128,7 @@ graph TB
     class PatientApp,DocAdminApp frontStyle;
     class CORS,SpringSec,JwtFilter,AuthController,ClinicalController,DoctorController,SpecialtyController,WSController,AuthServices,ClinicalServices,UserServices,AIServices,SystemServices,JPA,JDBC,Flyway backStyle;
     class GeminiAPI,SMTPServer extStyle;
-    class Postgres,PgVector,SupabaseStorage dbStyle;
+    class Postgres,SupabaseStorage dbStyle;
 ```
 
 ---
@@ -166,7 +164,6 @@ graph TB
 
 ### 2.3. Lớp Dữ liệu & Lưu trữ (Data & Storage Layer)
 *   **PostgreSQL (Supabase):** Hệ quản trị cơ sở dữ liệu chính. Lưu trữ toàn bộ dữ liệu quan hệ (Người dùng, Bác sĩ, Chuyên khoa, Lịch hẹn, Bệnh án, Đơn thuốc).
-*   **PgVector Extension:** Hỗ trợ lưu trữ các vector embeddings được trích xuất từ dữ liệu tri thức y khoa. Phục vụ cho công cụ tìm kiếm ngữ nghĩa và trợ lý AI (RAG - Retrieval-Augmented Generation).
 *   **Supabase Storage:** Dịch vụ Object Storage tích hợp của Supabase, dùng để lưu trữ các tệp tin đính kèm như hình ảnh chụp chiếu (X-Ray, siêu âm) và các file PDF kết quả khám bệnh đã được kết xuất.
 
 ---
