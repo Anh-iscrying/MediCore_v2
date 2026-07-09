@@ -73,13 +73,21 @@ export function DoctorProfileModal({ isOpen, onClose, currentDoctor, onSave }: D
 
         if (cancelled) return
 
-        setSpecialties(specialtyResponses)
+        const profileSpecialtyId = doctorProfile.specialtyId ? String(doctorProfile.specialtyId) : ""
+        const profileSpecialtyName = doctorProfile.specialtyName ?? currentDoctor?.specialtyName ?? "Chuyên khoa hiện tại"
+        const nextSpecialties = specialtyResponses.some((specialty: any) => String(specialty.id) === profileSpecialtyId)
+          ? specialtyResponses
+          : profileSpecialtyId
+            ? [...specialtyResponses, { id: profileSpecialtyId, name: `${profileSpecialtyName} (Tạm ngừng)` }]
+            : specialtyResponses
+
+        setSpecialties(nextSpecialties)
         setDoctorId(String(doctorProfile.id ?? currentDoctor?.doctorId ?? currentDoctor?.id ?? ""))
         setAvatarUrl(doctorProfile.avatar ?? doctorProfile.avatarUrl ?? "")
         setName(doctorProfile.name ?? doctorProfile.doctorName ?? currentDoctor?.name ?? "")
         setPhone(doctorProfile.phone ?? "")
         setDegree(doctorProfile.title ?? doctorProfile.degree ?? "")
-        setSpecialtyId(doctorProfile.specialtyId ? String(doctorProfile.specialtyId) : "")
+        setSpecialtyId(profileSpecialtyId)
         setBio(doctorProfile.bio ?? "")
         setAchievements(Array.isArray(doctorProfile.achievements) ? doctorProfile.achievements.join("\n") : "")
         setExperience(

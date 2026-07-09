@@ -74,4 +74,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
             @Param("doctorId") Integer doctorId,
             @Param("patientCode") String patientCode,
             Pageable pageable);
+
+    boolean existsByDoctorId(Integer doctorId);
 }

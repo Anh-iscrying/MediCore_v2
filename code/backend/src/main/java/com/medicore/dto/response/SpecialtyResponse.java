@@ -15,5 +15,6 @@ public class SpecialtyResponse {
     private Integer id;
     private String name;
     private Long doctorCount;
+    private Boolean active;
     private Map<String, Object> examTemplate;
 }

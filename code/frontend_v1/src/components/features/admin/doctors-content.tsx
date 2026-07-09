@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useData } from "@/providers/data-provider"
+import { useToast } from "@/hooks/use-toast"
 import type { Doctor } from "@/types/medical"
 import { Card } from "@/components/base/ui/card"
 import { Button } from "@/components/base/ui/button"
@@ -65,13 +66,19 @@ export function DoctorsContent() {
   const [editing, setEditing] = useState<Doctor | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<Doctor | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     ensureDoctorsLoaded()
     ensureSpecialtiesLoaded()
   }, [ensureDoctorsLoaded, ensureSpecialtiesLoaded])
 
-  const specialtyName = (id: string) => specialties.find((s) => s.id === id)?.name ?? "—"
+  const activeSpecialties = specialties.filter((s) => s.status !== "inactive")
+  const specialtyName = (id: string) => {
+    const specialty = specialties.find((s) => s.id === id)
+    if (!specialty) return "—"
+    return specialty.status === "inactive" ? `${specialty.name} (Tạm ngừng)` : specialty.name
+  }
 
   const filtered = doctors.filter((d) => {
     const matchesQuery =
@@ -83,7 +90,7 @@ export function DoctorsContent() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ ...emptyForm, specialtyId: specialties[0]?.id ?? "" })
+    setForm({ ...emptyForm, specialtyId: activeSpecialties[0]?.id ?? "" })
     setDialogOpen(true)
   }
 
@@ -247,11 +254,13 @@ export function DoctorsContent() {
                     <SelectValue placeholder="Chọn" />
                   </SelectTrigger>
                   <SelectContent>
-                    {specialties.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
+                    {specialties
+                      .filter((s) => s.status !== "inactive" || s.id === form.specialtyId)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}{s.status === "inactive" ? " (Tạm ngừng)" : ""}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -342,8 +351,24 @@ export function DoctorsContent() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deleteTarget) deleteDoctor(deleteTarget.id)
+              onClick={async () => {
+                if (deleteTarget) {
+                  try {
+                    const message = await deleteDoctor(deleteTarget.id)
+                    toast({
+                      title: message.includes("Ngừng làm việc")
+                        ? "Đã chuyển trạng thái"
+                        : "Thành công",
+                      description: message,
+                    })
+                  } catch (err: any) {
+                    toast({
+                      variant: "destructive",
+                      title: "Lỗi",
+                      description: err?.message || "Không thể xóa bác sĩ",
+                    })
+                  }
+                }
                 setDeleteTarget(null)
               }}
             >

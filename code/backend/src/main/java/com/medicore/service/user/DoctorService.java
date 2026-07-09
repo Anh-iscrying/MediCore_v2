@@ -14,5 +14,5 @@ public interface DoctorService {
     DoctorResponse createDoctor(DoctorRequest request);
     DoctorResponse updateDoctor(Integer id, DoctorRequest request);
     DoctorResponse updateDoctorByEmail(String email, DoctorProfileRequest request);
-    void deleteDoctor(Integer id);
+    String deleteDoctor(Integer id);
 }

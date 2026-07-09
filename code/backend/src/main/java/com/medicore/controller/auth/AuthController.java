@@ -59,6 +59,14 @@ public class AuthController {
             throw new CustomBusinessException(ErrorCodes.BAD_REQUEST);
         }
 
+        // Chặn bác sĩ đã nghỉ việc đăng nhập
+        if (credentials.getRole() == UserRole.DOCTOR
+                && credentials.getDoctor() != null
+                && !Boolean.TRUE.equals(credentials.getDoctor().getIsActive())) {
+            throw new CustomBusinessException(ErrorCodes.FORBIDDEN,
+                    "Tài khoản bác sĩ đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+        }
+
         LoginResponse response = buildLoginResponse(credentials, createToken(credentials));
 
         return ResponseEntity.ok()

@@ -113,7 +113,11 @@ public class DoctorController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteDoctor(@PathVariable Integer id) {
-        doctorService.deleteDoctor(id);
+        String result = doctorService.deleteDoctor(id);
+        if ("DEACTIVATED".equals(result)) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Bác sĩ đã có lịch hẹn/bệnh án, hệ thống đã tự động chuyển sang trạng thái 'Ngừng làm việc'", null));
+        }
         return ResponseEntity.ok(ApiResponse.success("Xóa bác sĩ thành công", null));
     }
 

@@ -6,9 +6,10 @@ import com.medicore.dto.response.SpecialtyResponse;
 import java.util.List;
 
 public interface SpecialtyService {
-    List<SpecialtyResponse> getAllSpecialties();
+    List<SpecialtyResponse> getAllSpecialties(boolean includeInactive);
     SpecialtyResponse getSpecialtyById(Integer id);
     SpecialtyResponse createSpecialty(SpecialtyRequest request);
     SpecialtyResponse updateSpecialty(Integer id, SpecialtyRequest request);
+    SpecialtyResponse updateSpecialtyStatus(Integer id, boolean active);
     void deleteSpecialty(Integer id);
 }

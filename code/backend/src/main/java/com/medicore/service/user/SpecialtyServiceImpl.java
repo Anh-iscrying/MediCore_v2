@@ -30,18 +30,23 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SpecialtyResponse> getAllSpecialties() {
+    public List<SpecialtyResponse> getAllSpecialties(boolean includeInactive) {
         // Batch count: 1 query thay vì N+1
         Map<Integer, Long> countMap = new java.util.HashMap<>();
         doctorRepository.countGroupBySpecialtyId().forEach(row ->
             countMap.put(((Number) row[0]).intValue(), ((Number) row[1]).longValue())
         );
 
-        return specialtyRepository.findAll().stream()
+        List<Specialty> specialties = includeInactive
+                ? specialtyRepository.findAll()
+                : specialtyRepository.findByIsActiveTrue();
+
+        return specialties.stream()
                 .map(s -> SpecialtyResponse.builder()
                         .id(s.getId())
                         .name(s.getSpecialtyName())
                         .doctorCount(countMap.getOrDefault(s.getId(), 0L))
+                        .active(Boolean.TRUE.equals(s.getIsActive()))
                         .examTemplate(normalizeExamTemplate(s.getExamTemplate()))
                         .build())
                 .collect(Collectors.toList());
@@ -64,6 +69,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         Specialty specialty = Specialty.builder()
                 .specialtyName(request.getName())
                 .examTemplate(normalizeExamTemplate(request.getExamTemplate()))
+                .isActive(true)
                 .createdAt(OffsetDateTime.now())
                 .build();
         specialty = specialtyRepository.save(specialty);
@@ -90,13 +96,28 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     @Override
     @Transactional
+    public SpecialtyResponse updateSpecialtyStatus(Integer id, boolean active) {
+        Specialty specialty = specialtyRepository.findById(id)
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        specialty.setIsActive(active);
+        specialty = specialtyRepository.save(specialty);
+        return mapToResponse(specialty);
+    }
+
+    @Override
+    @Transactional
     public void deleteSpecialty(Integer id) {
         Specialty specialty = specialtyRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
-        
-        // Vì đây là hard delete, nhưng chúng ta cần cẩn thận nếu có bác sĩ thuộc chuyên khoa này.
-        // Tuy nhiên, theo yêu cầu "hard delete" đơn giản, nếu có liên kết DB sẽ báo lỗi khóa ngoại.
-        // Ta cứ delete thẳng, Spring Data/PostgreSQL sẽ throw exception nếu có ràng buộc FK, GlobalExceptionHandler sẽ bắt và báo lỗi.
+
+        long doctorCount = doctorRepository.countBySpecialtyId(id);
+        if (doctorCount > 0) {
+            throw new CustomBusinessException(
+                    ErrorCodes.CONFLICT,
+                    "Không thể xóa chuyên khoa vì đang có " + doctorCount + " bác sĩ. Vui lòng tạm ngừng hoặc chuyển bác sĩ sang chuyên khoa khác trước."
+            );
+        }
+
         specialtyRepository.delete(specialty);
     }
 
@@ -106,6 +127,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
                 .id(specialty.getId())
                 .name(specialty.getSpecialtyName())
                 .doctorCount(doctorCount)
+                .active(Boolean.TRUE.equals(specialty.getIsActive()))
                 .examTemplate(normalizeExamTemplate(specialty.getExamTemplate()))
                 .build();
     }

@@ -49,6 +49,55 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return result.data as T
 }
 
+// Variant trả về cả message (dùng cho delete/soft-delete responses)
+async function requestFull<T>(path: string, options?: RequestInit): Promise<{ data: T; message: string }> {
+  const url = `${BASE_URL}${path}`
+
+  let token = null
+  if (typeof window !== "undefined") {
+    token = localStorage.getItem("token")
+  }
+
+  const headers: Record<string, string> = {}
+  if (!(typeof FormData !== "undefined" && options?.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json"
+  }
+  if (options?.headers) {
+    Object.assign(headers, options.headers)
+  }
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  })
+
+  const text = await response.text()
+  let result: any = {}
+  if (text) {
+    try {
+      result = JSON.parse(text)
+    } catch (e) {
+      console.warn("Response was not JSON:", text)
+    }
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+      }
+    }
+    throw new Error(result.message || `Yêu cầu thất bại với mã lỗi ${response.status}`)
+  }
+
+  return { data: result.data as T, message: result.message ?? "" }
+}
+
 export const authApi = {
   login: (data: any) =>
     request<any>("/auth/login", {
@@ -63,7 +112,7 @@ export const authApi = {
 }
 
 export const specialtiesApi = {
-  list: () => request<any[]>("/specialties"),
+  list: (includeInactive = false) => request<any[]>(includeInactive ? "/specialties?includeInactive=true" : "/specialties"),
   get: (id: string | number) => request<any>(`/specialties/${id}`),
   create: (data: { name: string; examTemplate?: any }) =>
     request<any>("/specialties", {
@@ -74,6 +123,11 @@ export const specialtiesApi = {
     request<any>(`/specialties/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+  updateStatus: (id: string | number, active: boolean) =>
+    request<any>(`/specialties/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ active }),
     }),
   delete: (id: string | number) =>
     request<void>(`/specialties/${id}`, {
@@ -101,7 +155,7 @@ export const doctorsApi = {
       body: JSON.stringify(data),
     }),
   delete: (id: string | number) =>
-    request<void>(`/doctors/${id}`, {
+    requestFull<void>(`/doctors/${id}`, {
       method: "DELETE",
     }),
 }
