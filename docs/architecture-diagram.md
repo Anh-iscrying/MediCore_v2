@@ -49,13 +49,11 @@ graph TB
         end
 
         subgraph ServiceLayer ["Lớp Service (Business Logic)"]
-            AuthService["AuthService / JJWT"]
-            ClinicalService["Clinical & Medical Record Service"]
-            DocSpecService["Doctor & Specialty Service"]
-            QueueService["Appointment Queue Service"]
-            PdfService["MedicalRecordPdfService (OpenPDF)"]
-            EmailService["EmailService (JavaMail)"]
-            AIService["AIService (Spring AI / WebClient)"]
+            AuthServices["Gói auth (AuthService, EmailService)"]
+            ClinicalServices["Gói clinical (AppointmentService, MedicalRecordService, MedicalRecordPdfService)"]
+            UserServices["Gói user (UserService, DoctorService, SpecialtyService)"]
+            AIServices["Gói ai (AIService)"]
+            SystemServices["Gói system (IdGeneratorService, NotificationService, SupabaseStorageService)"]
         end
 
         subgraph RepositoryLayer ["Lớp Data Access (Spring Data JPA / Migration)"]
@@ -90,28 +88,27 @@ graph TB
     JwtFilter --> ControllerLayer
 
     %% Luồng đi từ Controller -> Service
-    AuthController --> AuthService
-    ClinicalController --> ClinicalService
-    ClinicalController --> PdfService
-    DoctorController --> DocSpecService
-    SpecialtyController --> DocSpecService
-    WSController --> QueueService
+    AuthController --> AuthServices
+    ClinicalController --> ClinicalServices
+    DoctorController --> UserServices
+    SpecialtyController --> UserServices
+    WSController --> SystemServices
 
     %% Tương tác giữa các Service
-    ClinicalService --> AIService
-    ClinicalService --> EmailService
-    DocSpecService --> EmailService
+    ClinicalServices --> AIServices
+    ClinicalServices --> AuthServices
+    UserServices --> AuthServices
     
     %% Service -> Kết nối bên ngoài
-    AIService --> GeminiAPI
-    EmailService --> SMTPServer
+    AIServices --> GeminiAPI
+    AuthServices --> SMTPServer
     
     %% Lớp Service -> Repository
-    AuthService --> JPA
-    ClinicalService --> JPA
-    DocSpecService --> JPA
-    DocSpecService --> JDBC
-    QueueService --> JPA
+    AuthServices --> JPA
+    ClinicalServices --> JPA
+    UserServices --> JPA
+    UserServices --> JDBC
+    SystemServices --> JPA
 
     %% Lớp Repository & Dịch vụ -> Database & Storage
     JPA --> Postgres
@@ -119,8 +116,8 @@ graph TB
     Flyway --> Postgres
     Postgres --- PgVector
     
-    PdfService --> SupabaseStorage
-    ClinicalService --> SupabaseStorage
+    ClinicalServices --> SupabaseStorage
+    SystemServices --> SupabaseStorage
 
     %% Custom Styling cho các Block
     classDef actorStyle fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
@@ -131,7 +128,7 @@ graph TB
 
     class Patient,Doctor,Admin actorStyle;
     class PatientApp,DocAdminApp frontStyle;
-    class CORS,SpringSec,JwtFilter,AuthController,ClinicalController,DoctorController,SpecialtyController,WSController,AuthService,ClinicalService,DocSpecService,QueueService,PdfService,EmailService,AIService,JPA,JDBC,Flyway backStyle;
+    class CORS,SpringSec,JwtFilter,AuthController,ClinicalController,DoctorController,SpecialtyController,WSController,AuthServices,ClinicalServices,UserServices,AIServices,SystemServices,JPA,JDBC,Flyway backStyle;
     class GeminiAPI,SMTPServer extStyle;
     class Postgres,PgVector,SupabaseStorage dbStyle;
 ```
