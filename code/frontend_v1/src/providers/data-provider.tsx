@@ -50,13 +50,14 @@ interface DataContextValue {
   prescriptions: Prescription[]
   examinationRecords: ExaminationRecord[]
   // Specialty CRUD
-  addSpecialty: (s: Omit<Specialty, "id" | "doctorCount">) => void
-  updateSpecialty: (id: string, s: Omit<Specialty, "id" | "doctorCount">) => void
-  deleteSpecialty: (id: string) => void
+  addSpecialty: (s: Omit<Specialty, "id" | "doctorCount">) => Promise<void>
+  updateSpecialty: (id: string, s: Omit<Specialty, "id" | "doctorCount">) => Promise<void>
+  updateSpecialtyStatus: (id: string, active: boolean) => Promise<void>
+  deleteSpecialty: (id: string) => Promise<void>
   // Doctor CRUD
   addDoctor: (d: Omit<Doctor, "id"> & { password?: string }) => void
   updateDoctor: (id: string, d: Omit<Doctor, "id"> & { password?: string }) => void
-  deleteDoctor: (id: string) => void
+  deleteDoctor: (id: string) => Promise<string>
   setShift: (doctorId: string, dateStr: string, shift: ShiftType) => Promise<void>
   // Medicine CRUD
   addMedicine: (m: Omit<Medicine, "id">) => void
@@ -117,7 +118,7 @@ const mapSpecialty = (s: SpecialtyResponse, fallback?: Partial<Specialty>): Spec
   code: fallback?.code ?? `SP${s.id}`,
   description: fallback?.description ?? "",
   doctorCount: Number(s.doctorCount ?? fallback?.doctorCount ?? 0),
-  status: fallback?.status ?? "active",
+  status: s.active === false ? "inactive" : fallback?.status ?? "active",
   examTemplate: normalizeExamTemplate(s.examTemplate ?? fallback?.examTemplate ?? emptyExamTemplate),
 })
 
@@ -426,14 +427,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (loadedRef.current.specialties || !token) return
     loadedRef.current.specialties = true
     try {
-      const res = await specialtiesApi.list()
+      const res = await specialtiesApi.list(user?.role === "ADMIN")
       const nextSpecialties = res.map((s) => mapSpecialty(s))
       setSpecialties(withDoctorCounts(nextSpecialties, doctors))
     } catch (e) {
       loadedRef.current.specialties = false
       console.error("Không thể tải danh sách chuyên khoa", e)
     }
-  }, [token, doctors])
+  }, [token, user?.role, doctors])
 
   const ensurePrescriptionsLoaded = React.useCallback(async () => {
     if (loadedRef.current.prescriptions || !token) return
@@ -481,7 +482,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (user?.role === "ADMIN") {
           // ADMIN Dashboard cần: specialties, doctors, appointments
           const [specialtyResponses, doctorResponses, appointmentResponses] = await Promise.all([
-            specialtiesApi.list(),
+            specialtiesApi.list(true),
             doctorsApi.list(),
             appointmentsApi.list(),
           ])
@@ -559,6 +560,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setSpecialties((p) => [...p, mapSpecialty(created, s)])
       } catch (error) {
         console.error("Không thể tạo chuyên khoa", error)
+        throw error
       }
     },
     updateSpecialty: async (id, s) => {
@@ -567,6 +569,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setSpecialties((p) => p.map((x) => (x.id === id ? mapSpecialty(updated, { ...x, ...s }) : x)))
       } catch (error) {
         console.error("Không thể cập nhật chuyên khoa", error)
+        throw error
+      }
+    },
+    updateSpecialtyStatus: async (id, active) => {
+      try {
+        const updated = await specialtiesApi.updateStatus(id, active)
+        setSpecialties((p) => p.map((x) => (x.id === id ? mapSpecialty(updated, x) : x)))
+      } catch (error) {
+        console.error("Không thể cập nhật trạng thái chuyên khoa", error)
+        throw error
       }
     },
     deleteSpecialty: async (id) => {
@@ -575,6 +587,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setSpecialties((p) => p.filter((x) => x.id !== id))
       } catch (error) {
         console.error("Không thể xóa chuyên khoa", error)
+        throw error
       }
     },
 
@@ -604,14 +617,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     deleteDoctor: async (id) => {
       try {
-        await doctorsApi.delete(id)
-        setDoctors((p) => {
-          const next = p.filter((x) => x.id !== id)
-          updateDoctorCounts(next)
-          return next
-        })
+        const { message } = await doctorsApi.delete(id)
+        const isDeactivated = message.includes("Ngừng làm việc")
+
+        if (isDeactivated) {
+          // Soft delete: cập nhật trạng thái bác sĩ trong danh sách
+          setDoctors((p) => {
+            const next = p.map((x) => x.id === id ? { ...x, status: "inactive" as const } : x)
+            updateDoctorCounts(next)
+            return next
+          })
+        } else {
+          // Hard delete: xóa bác sĩ khỏi danh sách
+          setDoctors((p) => {
+            const next = p.filter((x) => x.id !== id)
+            updateDoctorCounts(next)
+            return next
+          })
+        }
+
+        return message
       } catch (error) {
         console.error("Không thể xóa bác sĩ", error)
+        throw error
       }
     },
     setShift: async (doctorId, dateStr, shift) => {

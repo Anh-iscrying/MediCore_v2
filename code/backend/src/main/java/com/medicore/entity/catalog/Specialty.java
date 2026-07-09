@@ -28,4 +28,8 @@ public class Specialty {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "exam_template", columnDefinition = "jsonb")
     private Map<String, Object> examTemplate;
+
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
 }

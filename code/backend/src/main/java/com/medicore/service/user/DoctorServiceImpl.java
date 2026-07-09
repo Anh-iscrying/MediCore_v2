@@ -9,8 +9,12 @@ import com.medicore.dto.response.DoctorResponse;
 import com.medicore.entity.catalog.Specialty;
 import com.medicore.entity.user.AuthCredentials;
 import com.medicore.entity.user.Doctor;
+import com.medicore.repository.ai.DoctorAiConsultationLogRepository;
 import com.medicore.repository.auth.AuthCredentialsRepository;
+import com.medicore.repository.clinical.AppointmentRepository;
+import com.medicore.repository.clinical.MedicalRecordRepository;
 import com.medicore.repository.user.DoctorRepository;
+import com.medicore.repository.user.DoctorScheduleRepository;
 import com.medicore.repository.user.SpecialtyRepository;
 import com.medicore.service.system.IdGeneratorService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +39,10 @@ public class DoctorServiceImpl implements DoctorService {
     private final IdGeneratorService idGeneratorService;
     private final AuthCredentialsRepository authCredentialsRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AppointmentRepository appointmentRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
+    private final DoctorAiConsultationLogRepository doctorAiConsultationLogRepository;
+    private final DoctorScheduleRepository doctorScheduleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -87,6 +96,7 @@ public class DoctorServiceImpl implements DoctorService {
     public DoctorResponse createDoctor(DoctorRequest request) {
         Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        validateActiveSpecialty(specialty);
 
         String email = request.getEmail();
         if (email == null || email.trim().isEmpty()) {
@@ -110,6 +120,10 @@ public class DoctorServiceImpl implements DoctorService {
                 .avatarUrl(request.getAvatarUrl())
                 .achievements(normalizeAchievements(request.getAchievements()))
                 .build();
+
+        // Ánh xạ status → isActive
+        String status = request.getStatus();
+        doctor.setIsActive(!"inactive".equalsIgnoreCase(status));
         
         doctor.setCreatedAt(LocalDateTime.now());
         doctor.setUpdatedAt(LocalDateTime.now());
@@ -139,6 +153,9 @@ public class DoctorServiceImpl implements DoctorService {
 
         Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        if (doctor.getSpecialty() == null || !doctor.getSpecialty().getId().equals(specialty.getId())) {
+            validateActiveSpecialty(specialty);
+        }
 
         doctor.setDoctorName(request.getName());
         doctor.setSpecialty(specialty);
@@ -148,6 +165,13 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setExperienceYears(request.getExperience());
         doctor.setAvatarUrl(request.getAvatarUrl());
         doctor.setAchievements(normalizeAchievements(request.getAchievements()));
+
+        // Ánh xạ status → isActive
+        String status = request.getStatus();
+        if (status != null) {
+            doctor.setIsActive(!"inactive".equalsIgnoreCase(status));
+        }
+
         doctor.setUpdatedAt(LocalDateTime.now());
         doctor = doctorRepository.save(doctor);
 
@@ -198,14 +222,34 @@ public class DoctorServiceImpl implements DoctorService {
 
     @Override
     @Transactional
-    public void deleteDoctor(Integer id) {
+    public String deleteDoctor(Integer id) {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
-        
+
+        boolean hasAppointments = appointmentRepository.existsByDoctorId(id);
+        boolean hasMedicalRecords = medicalRecordRepository.existsByDoctorId(id);
+        boolean hasAiLogs = doctorAiConsultationLogRepository.existsByDoctorId(id);
+
+        if (hasAppointments || hasMedicalRecords || hasAiLogs) {
+            // Soft delete: chuyển trạng thái thành "Ngừng làm việc"
+            doctor.setIsActive(false);
+            doctor.setUpdatedAt(LocalDateTime.now());
+            doctorRepository.save(doctor);
+
+            // Xóa lịch trực tương lai chưa bị đặt
+            doctorScheduleRepository.deleteByDoctorAndWorkDateAfterAndIsBookedFalse(doctor, LocalDate.now());
+
+            return "DEACTIVATED";
+        }
+
+        // Hard delete: bác sĩ chưa có dữ liệu liên kết
         authCredentialsRepository.findByDoctorId(doctor.getId())
                 .ifPresent(authCredentialsRepository::delete);
-                
+        doctorScheduleRepository.findByDoctorId(id)
+                .forEach(doctorScheduleRepository::delete);
         doctorRepository.delete(doctor);
+
+        return "DELETED";
     }
 
     @Override
@@ -221,6 +265,9 @@ public class DoctorServiceImpl implements DoctorService {
 
         Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
+        if (doctor.getSpecialty() == null || !doctor.getSpecialty().getId().equals(specialty.getId())) {
+            validateActiveSpecialty(specialty);
+        }
 
         doctor.setDoctorName(request.getName());
         doctor.setPhone(request.getPhone());
@@ -234,6 +281,12 @@ public class DoctorServiceImpl implements DoctorService {
 
         doctor = doctorRepository.save(doctor);
         return mapToResponse(doctor);
+    }
+
+    private void validateActiveSpecialty(Specialty specialty) {
+        if (!Boolean.TRUE.equals(specialty.getIsActive())) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Không thể chọn chuyên khoa đang tạm ngừng");
+        }
     }
 
     private List<String> normalizeAchievements(List<String> achievements) {
@@ -263,7 +316,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .email(email)
                 .phone(doctor.getPhone())
                 .experience(doctor.getExperienceYears())
-                .status("active")
+                .status(Boolean.TRUE.equals(doctor.getIsActive()) ? "active" : "inactive")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
                 .achievements(doctor.getAchievements())
@@ -286,7 +339,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .email(email)
                 .phone(doctor.getPhone())
                 .experience(doctor.getExperienceYears())
-                .status("active")
+                .status(Boolean.TRUE.equals(doctor.getIsActive()) ? "active" : "inactive")
                 .avatar(doctor.getAvatarUrl())
                 .doctorCode(doctor.getDoctorCode())
                 .achievements(doctor.getAchievements())

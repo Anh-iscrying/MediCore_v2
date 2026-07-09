@@ -162,6 +162,7 @@ export interface SpecialtyResponse {
   id: number
   name: string
   doctorCount: number
+  active?: boolean
   examTemplate?: SpecialtyExamTemplate
 }
 

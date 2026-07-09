@@ -2,6 +2,7 @@ package com.medicore.controller.user;
 
 import com.medicore.common.base.ApiResponse;
 import com.medicore.dto.request.SpecialtyRequest;
+import com.medicore.dto.request.SpecialtyStatusRequest;
 import com.medicore.dto.response.SpecialtyResponse;
 import com.medicore.service.user.SpecialtyService;
 import jakarta.validation.Valid;
@@ -20,8 +21,10 @@ public class SpecialtyController {
     private final SpecialtyService specialtyService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SpecialtyResponse>>> getAllSpecialties() {
-        return ResponseEntity.ok(ApiResponse.success(specialtyService.getAllSpecialties()));
+    @PreAuthorize("!#includeInactive || hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<SpecialtyResponse>>> getAllSpecialties(
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ResponseEntity.ok(ApiResponse.success(specialtyService.getAllSpecialties(includeInactive)));
     }
 
     @GetMapping("/{id}")
@@ -41,6 +44,16 @@ public class SpecialtyController {
             @PathVariable Integer id,
             @Valid @RequestBody SpecialtyRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật chuyên khoa thành công", specialtyService.updateSpecialty(id, request)));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SpecialtyResponse>> updateSpecialtyStatus(
+            @PathVariable Integer id,
+            @Valid @RequestBody SpecialtyStatusRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                request.getActive() ? "Kích hoạt chuyên khoa thành công" : "Tạm ngừng chuyên khoa thành công",
+                specialtyService.updateSpecialtyStatus(id, request.getActive())));
     }
 
     @DeleteMapping("/{id}")

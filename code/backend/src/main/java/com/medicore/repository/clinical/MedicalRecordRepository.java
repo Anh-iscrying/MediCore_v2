@@ -37,4 +37,6 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, In
 
     @Query("SELECT r FROM MedicalRecord r LEFT JOIN FETCH r.appointment a LEFT JOIN FETCH r.patient p LEFT JOIN FETCH r.doctor d LEFT JOIN FETCH d.specialty LEFT JOIN FETCH r.diagnosisIcd10 WHERE d.id = :doctorId ORDER BY r.createdAt DESC")
     List<MedicalRecord> findByDoctorIdOrderByCreatedAtDesc(@Param("doctorId") Integer doctorId);
+
+    boolean existsByDoctorId(Integer doctorId);
 }

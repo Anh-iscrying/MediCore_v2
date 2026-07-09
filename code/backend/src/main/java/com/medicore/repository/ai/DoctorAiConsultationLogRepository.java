@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DoctorAiConsultationLogRepository extends JpaRepository<DoctorAiConsultationLog, Integer> {
+    boolean existsByDoctorId(Integer doctorId);
 }

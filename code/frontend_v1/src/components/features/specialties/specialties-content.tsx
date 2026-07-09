@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type MouseEvent } from "react"
 import { useData } from "@/providers/data-provider"
 import { useToast } from "@/hooks/use-toast"
 import type { Specialty, SpecialtyExamFieldType, SpecialtyExamTemplate, SpecialtyExamTemplateField } from "@/types/medical"
@@ -207,6 +207,7 @@ export function SpecialtiesContent() {
     doctors,
     addSpecialty,
     updateSpecialty,
+    updateSpecialtyStatus,
     deleteSpecialty,
     ensureSpecialtiesLoaded,
     ensureDoctorsLoaded,
@@ -216,6 +217,8 @@ export function SpecialtiesContent() {
   const [editing, setEditing] = useState<Specialty | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<Specialty | null>(null)
+  const [deleteError, setDeleteError] = useState("")
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string>("")
   const [templateDraft, setTemplateDraft] = useState<SpecialtyExamTemplate>(emptyTemplate)
   const [templateError, setTemplateError] = useState("")
@@ -236,6 +239,12 @@ export function SpecialtiesContent() {
     [doctors, selectedSpecialty?.id],
   )
 
+  const deleteTargetDoctorCount = deleteTarget
+    ? doctors.filter((doctor) => doctor.specialtyId === deleteTarget.id).length || deleteTarget.doctorCount
+    : 0
+  const deleteTargetInUse = deleteTargetDoctorCount > 0
+  const deleteTargetInactive = deleteTarget?.status === "inactive"
+
   useEffect(() => {
     if (!selectedSpecialty) return
     setSelectedSpecialtyId(selectedSpecialty.id)
@@ -255,22 +264,30 @@ export function SpecialtiesContent() {
     setDialogOpen(true)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim() || !form.code.trim()) return
-    if (editing) {
-      updateSpecialty(editing.id, { ...form, examTemplate: normalizeTemplate(editing.examTemplate) })
+    try {
+      if (editing) {
+        await updateSpecialty(editing.id, { ...form, examTemplate: normalizeTemplate(editing.examTemplate) })
+        toast({
+          title: "Cập nhật thành công",
+          description: `Đã cập nhật thông tin chuyên khoa ${form.name}.`,
+        })
+      } else {
+        await addSpecialty({ ...form, examTemplate: emptyTemplate })
+        toast({
+          title: "Thêm thành công",
+          description: `Đã thêm chuyên khoa ${form.name} mới.`,
+        })
+      }
+      setDialogOpen(false)
+    } catch (error) {
       toast({
-        title: "Cập nhật thành công",
-        description: `Đã cập nhật thông tin chuyên khoa ${form.name}.`,
-      })
-    } else {
-      addSpecialty({ ...form, examTemplate: emptyTemplate })
-      toast({
-        title: "Thêm thành công",
-        description: `Đã thêm chuyên khoa ${form.name} mới.`,
+        title: "Không thể lưu chuyên khoa",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại.",
+        variant: "destructive",
       })
     }
-    setDialogOpen(false)
   }
 
   const updateField = (index: number, patch: Partial<SpecialtyExamTemplateField>) => {
@@ -330,7 +347,7 @@ export function SpecialtiesContent() {
     return ""
   }
 
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
     if (!selectedSpecialty) return
     const nextTemplate = {
       fields: templateDraft.fields.map((field) => ({
@@ -346,19 +363,88 @@ export function SpecialtiesContent() {
       return
     }
 
-    updateSpecialty(selectedSpecialty.id, {
-      name: selectedSpecialty.name,
-      code: selectedSpecialty.code,
-      description: selectedSpecialty.description,
-      status: selectedSpecialty.status,
-      examTemplate: nextTemplate,
-    })
-    setTemplateDraft(nextTemplate)
-    setTemplateError("")
-    toast({
-      title: "Lưu thành công",
-      description: `Đã lưu cấu hình template khám cho chuyên khoa ${selectedSpecialty.name}.`,
-    })
+    try {
+      await updateSpecialty(selectedSpecialty.id, {
+        name: selectedSpecialty.name,
+        code: selectedSpecialty.code,
+        description: selectedSpecialty.description,
+        status: selectedSpecialty.status,
+        examTemplate: nextTemplate,
+      })
+      setTemplateDraft(nextTemplate)
+      setTemplateError("")
+      toast({
+        title: "Lưu thành công",
+        description: `Đã lưu cấu hình template khám cho chuyên khoa ${selectedSpecialty.name}.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Không thể lưu template",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const openDelete = (specialty: Specialty) => {
+    setDeleteTarget(specialty)
+    setDeleteError("")
+  }
+
+  const handleStatusChange = async (specialty: Specialty, active: boolean) => {
+    try {
+      await updateSpecialtyStatus(specialty.id, active)
+      toast({
+        title: active ? "Kích hoạt thành công" : "Tạm ngừng thành công",
+        description: active
+          ? `Đã kích hoạt chuyên khoa ${specialty.name}.`
+          : `Đã tạm ngừng chuyên khoa ${specialty.name}.`,
+      })
+      setDeleteTarget(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Vui lòng thử lại."
+      setDeleteError(message)
+      toast({
+        title: active ? "Không thể kích hoạt" : "Không thể tạm ngừng",
+        description: message,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    if (!deleteTarget || deleteBusy) return
+
+    setDeleteBusy(true)
+    setDeleteError("")
+    try {
+      if (deleteTargetInUse) {
+        await updateSpecialtyStatus(deleteTarget.id, false)
+        toast({
+          title: "Tạm ngừng thành công",
+          description: `Đã tạm ngừng chuyên khoa ${deleteTarget.name}.`,
+        })
+        setDeleteTarget(null)
+      } else {
+        await deleteSpecialty(deleteTarget.id)
+        toast({
+          title: "Xóa thành công",
+          description: `Đã xóa chuyên khoa ${deleteTarget.name}.`,
+        })
+        setDeleteTarget(null)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Vui lòng thử lại."
+      setDeleteError(message)
+      toast({
+        title: "Không thể xóa chuyên khoa",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setDeleteBusy(false)
+    }
   }
 
   return (
@@ -391,7 +477,7 @@ export function SpecialtiesContent() {
                       <SelectContent>
                         {specialties.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
-                            {s.name} ({s.code})
+                            {s.name} ({s.code}){s.status === "inactive" ? " • Tạm ngừng" : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -407,12 +493,22 @@ export function SpecialtiesContent() {
                       >
                         <Pencil className="w-4 h-4 text-foreground" />
                       </Button>
+                      {selectedSpecialty.status === "inactive" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => handleStatusChange(selectedSpecialty, true)}
+                        >
+                          Kích hoạt lại
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-9 w-9 border border-border hover:bg-destructive/10 text-destructive"
-                        title="Xóa chuyên khoa"
-                        onClick={() => setDeleteTarget(selectedSpecialty)}
+                        title={selectedSpecialty.status === "inactive" ? "Xóa vĩnh viễn" : "Xóa chuyên khoa"}
+                        onClick={() => openDelete(selectedSpecialty)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -421,9 +517,14 @@ export function SpecialtiesContent() {
                 </div>
 
                 <div className="flex flex-col justify-end pt-1">
-                  <p className="text-xs text-muted-foreground leading-normal">
-                    Mã chuyên khoa: <span className="font-mono font-semibold bg-muted px-1 py-0.5 rounded text-muted-foreground">{selectedSpecialty.code}</span>
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground leading-normal">
+                      Mã chuyên khoa: <span className="font-mono font-semibold bg-muted px-1 py-0.5 rounded text-muted-foreground">{selectedSpecialty.code}</span>
+                    </p>
+                    <StatusBadge tone={selectedSpecialty.status === "inactive" ? "warning" : "success"}>
+                      {selectedSpecialty.status === "inactive" ? "Tạm ngừng" : "Hoạt động"}
+                    </StatusBadge>
+                  </div>
                   <p className="text-xs text-muted-foreground max-w-md truncate mt-1" title={selectedSpecialty.description}>
                     {selectedSpecialty.description || "Không có mô tả."}
                   </p>
@@ -584,30 +685,49 @@ export function SpecialtiesContent() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleteBusy) {
+            setDeleteTarget(null)
+            setDeleteError("")
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xóa chuyên khoa?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteTargetInUse ? "Không thể xóa vĩnh viễn" : "Xóa chuyên khoa?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc muốn xóa chuyên khoa &quot;{deleteTarget?.name}&quot;? Hành động này không thể hoàn tác.
+              {deleteTargetInUse ? (
+                <span>
+                  Chuyên khoa &quot;{deleteTarget?.name}&quot; đang có {deleteTargetDoctorCount} bác sĩ nên không thể xóa vĩnh viễn. Bạn có thể tạm ngừng chuyên khoa để ẩn khỏi đăng ký và chọn mới.
+                </span>
+              ) : (
+                <span>
+                  Bạn có chắc muốn xóa vĩnh viễn chuyên khoa &quot;{deleteTarget?.name}&quot;? Hành động này không thể hoàn tác.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {deleteError}
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteBusy}>Hủy</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteSpecialty(deleteTarget.id)
-                  toast({
-                    title: "Xóa thành công",
-                    description: `Đã xóa chuyên khoa ${deleteTarget.name}.`,
-                  })
-                }
-                setDeleteTarget(null)
-              }}
+              className={deleteTargetInUse ? "bg-amber-600 text-white hover:bg-amber-700" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
+              disabled={deleteBusy || (deleteTargetInUse && deleteTargetInactive)}
+              onClick={handleDeleteAction}
             >
-              Xóa
+              {deleteBusy
+                ? "Đang xử lý..."
+                : deleteTargetInUse
+                  ? deleteTargetInactive ? "Đã tạm ngừng" : "Tạm ngừng chuyên khoa"
+                  : "Xóa vĩnh viễn"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
