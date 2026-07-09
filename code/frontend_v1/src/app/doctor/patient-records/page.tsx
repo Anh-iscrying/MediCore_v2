@@ -1,4 +1,4 @@
-import { PatientRecordsContent } from "@/components/features/doctor/patient/patient-records-content"
+import { PatientRecordsContent } from "@/components/doctor/patient/patient-records-content"
 
 export default function PatientRecordsPage() {
   return (

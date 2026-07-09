@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useAuth } from "@/providers/auth-provider"
+import { useAuth } from "@/components/base/providers/auth-provider"
 import { Button } from "@/components/base/ui/button"
 import { Input } from "@/components/base/ui/input"
 import { Label } from "@/components/base/ui/label"
@@ -83,7 +83,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full bg-background overflow-hidden font-sans">
 
       {/* LEFT SIDE: Form Đăng nhập */}
-      <div className="flex w-full flex-col justify-between p-8 lg:w-[45%] xl:w-[40%] bg-white dark:bg-slate-900 border-r border-border/40 z-10">
+      <div className="flex w-full flex-col justify-between p-8 lg:w-[45%] xl:w-[40%] bg-card border-r border-border/40 z-10">
 
         {/* Header Logo */}
         <div className="flex items-center gap-2.5">
@@ -110,7 +110,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
+              <Alert variant="destructive" className="border-destructive/20 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/15">
                 <ShieldAlert className="h-4 w-4" />
                 <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
               </Alert>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                   placeholder="name@medicore.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 rounded-xl border-slate-200 focus-visible:ring-primary focus-visible:border-primary dark:border-slate-800 dark:bg-slate-900"
+                  className="pl-10 h-11 rounded-xl border-input focus-visible:ring-primary focus-visible:border-primary bg-background"
                   required
                   disabled={loading}
                 />
@@ -145,7 +145,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 rounded-xl border-slate-200 focus-visible:ring-primary focus-visible:border-primary dark:border-slate-800 dark:bg-slate-900"
+                  className="pl-10 h-11 rounded-xl border-input focus-visible:ring-primary focus-visible:border-primary bg-background"
                   required
                   disabled={loading}
                 />

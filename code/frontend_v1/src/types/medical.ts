@@ -30,7 +30,7 @@ export interface Doctor {
   email: string
   phone: string
   experience: number // số năm kinh nghiệm
-  status: "active" | "on-leave" | "inactive"
+  status: "active" | "inactive"
   avatar?: string
   bio?: string
   doctorCode?: string
