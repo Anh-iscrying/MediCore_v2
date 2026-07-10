@@ -1,4 +1,5 @@
 package com.medicore.config.websocket;
+
 import com.medicore.config.security.JwtTokenProvider;
 
 import com.medicore.common.constants.ErrorCodes;
@@ -38,7 +39,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // CHỈ ĐỂ topic và queue ở đây thôi bạn nhé
+        // CHỈ ĐỂ topic và queue ở đây
         config.enableSimpleBroker("/topic", "/queue");
 
         config.setApplicationDestinationPrefixes("/app");

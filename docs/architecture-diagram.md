@@ -65,7 +65,7 @@ graph TB
 
     %% Các dịch vụ tích hợp bên ngoài
     subgraph ExternalServices ["Dịch vụ bên ngoài"]
-        GeminiAPI["Google Gemini API (LLM)"]
+        LLMAPI["Dịch vụ LLM API (LLM)"]
         SMTPServer["SMTP Server (Gửi Email)"]
     end
 
@@ -99,7 +99,7 @@ graph TB
     UserServices --> AuthServices
     
     %% Service -> Kết nối bên ngoài
-    AIServices --> GeminiAPI
+    AIServices --> LLMAPI
     AuthServices --> SMTPServer
     
     %% Lớp Service -> Repository
@@ -127,7 +127,7 @@ graph TB
     class Patient,Doctor,Admin actorStyle;
     class PatientApp,DocAdminApp frontStyle;
     class CORS,SpringSec,JwtFilter,AuthController,ClinicalController,DoctorController,SpecialtyController,WSController,AuthServices,ClinicalServices,UserServices,AIServices,SystemServices,JPA,JDBC,Flyway backStyle;
-    class GeminiAPI,SMTPServer extStyle;
+    class LLMAPI,SMTPServer extStyle;
     class Postgres,SupabaseStorage dbStyle;
 ```
 
@@ -135,36 +135,11 @@ graph TB
 
 ## 2. Chi tiết các thành phần trong Kiến trúc
 
-### 2.1. Lớp Trình diễn (Frontend Presentation Layer)
-Được viết bằng **Next.js (App Router)** và **TypeScript**, bao gồm hai ứng dụng riêng biệt chạy trên các cổng khác nhau:
-*   **Patient Web App (Port 3001):** Dành riêng cho bệnh nhân. Cho phép đăng ký/đăng nhập, tìm kiếm bác sĩ, chuyên khoa, đặt lịch khám, theo dõi hàng chờ thời gian thực và xem lại lịch sử bệnh án (`/clinical/medical-records/me`).
-*   **Doctor & Admin Dashboard (Port 3000):** Dành cho bác sĩ và quản trị viên.
-    *   *Bác sĩ:* Quản lý hàng chờ bệnh nhân, tiến hành khám bệnh, nhập kết quả bệnh án, kê đơn thuốc và tải xuống file PDF bệnh án.
-    *   *Quản trị viên:* Cấu hình thông tin bác sĩ, chuyên khoa, quản lý tài khoản và giám sát toàn bộ hệ thống.
-
-### 2.2. Lớp Ứng dụng (Backend Application Layer)
-Được xây dựng trên **Spring Boot 3.3.4** và **Java 21**, vận hành theo cấu trúc phân lớp truyền thống:
-1.  **Cổng Bảo mật (Spring Security & JWT):**
-    *   `CORS Filter`: Cấu hình cho phép các nguồn gốc (Origins) xác định truy cập API, hỗ trợ đầy đủ các phương thức HTTP bao gồm `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
-    *   `JwtAuthenticationFilter`: Chặn và xác thực JWT token từ Header `Authorization` (Bearer token) của request gửi lên.
-    *   `Spring Security`: Áp dụng phân quyền phân vai trò (Role-Based Access Control) chặt chẽ bằng cách sử dụng `@PreAuthorize` hoặc cấu hình các requestMatchers (`ADMIN`, `DOCTOR`, `PATIENT`).
-2.  **Lớp Controller (REST APIs & WebSocket Message Broker):**
-    *   Cung cấp các API RESTful định dạng JSON.
-    *   Tích hợp WebSocket Broker qua giao thức **STOMP (SockJS)** phục vụ cập nhật trạng thái lịch hẹn khám và cập nhật số thứ tự xếp hàng thời gian thực.
-3.  **Lớp Service (Business Logic):**
-    *   `AuthService`: Xử lý đăng ký, đăng nhập, và tạo JWT.
-    *   `Clinical & Medical Record Service`: Logic quản lý lịch sử khám bệnh, ghi nhận kết quả và chẩn đoán.
-    *   `Queue Service`: Quản lý logic hàng chờ gọi số của bệnh nhân tại các phòng khám.
-    *   `MedicalRecordPdfService`: Kết xuất đơn thuốc và hồ sơ bệnh án sang PDF thông qua thư viện OpenPDF/iText.
-    *   `AIService`: Điều phối việc gọi mô hình ngôn ngữ lớn (Gemini API) thông qua WebClient để phân tích chẩn đoán hỗ trợ bác sĩ và lưu vết (`DoctorAiConsultationLog`).
-4.  **Lớp Repository (Data Access Layer):**
-    *   Sử dụng **Spring Data JPA** để ánh xạ thực thể (ORM - Hibernate) giúp thao tác với cơ sở dữ liệu nhanh chóng.
-    *   Dùng **JDBC Template** cho các truy vấn tối ưu hiệu năng hoặc tự động sinh mã định danh có định dạng phức tạp (như `DOC-yyyy-xxxx` hay `PAT-yyyy-xxxx`).
-    *   Tích hợp **Flyway Migration** để tự động chạy các script cập nhật cấu trúc bảng (schema) đồng bộ giữa các môi trường.
-
-### 2.3. Lớp Dữ liệu & Lưu trữ (Data & Storage Layer)
-*   **PostgreSQL (Supabase):** Hệ quản trị cơ sở dữ liệu chính. Lưu trữ toàn bộ dữ liệu quan hệ (Người dùng, Bác sĩ, Chuyên khoa, Lịch hẹn, Bệnh án, Đơn thuốc).
-*   **Supabase Storage:** Dịch vụ Object Storage tích hợp của Supabase, dùng để lưu trữ các tệp tin đính kèm như hình ảnh chụp chiếu (X-Ray, siêu âm) và các file PDF kết quả khám bệnh đã được kết xuất.
+*   **Tầng 1 - Frontend Presentation Layer (Giao diện):** Chúng em tách biệt hoàn toàn thành 2 ứng dụng độc lập: Patient Web App (chạy trên Port 3001) dành cho bệnh nhân và Doctor & Admin Web App (chạy trên Port 3000) phục vụ nội bộ. Sự tách biệt này giúp tối ưu trải nghiệm người dùng và dễ dàng mở rộng (scale) độc lập sau này.
+*   **Tầng 2 - Backend Application Layer (Xử lý logic):** Sử dụng Spring Boot làm nhân cốt lõi để xử lý các User requests. Luồng yêu cầu đi qua API Gateway, được bảo mật chặt chẽ bởi Spring Security và xác thực qua cơ chế mã hóa JWT. Tại lớp điều hướng REST Controllers & WebSocket Broker, chúng em tích hợp WebSocket để đẩy dữ liệu trạng thái hàng chờ thời gian thực đến giao diện bệnh nhân.
+    
+    Tiến vào lớp Service Layer, chúng em chia mã nguồn thành các gói nghiệp vụ phân tách rõ ràng bao gồm: ai, auth, clinical, system và user. Một điểm đặc biệt là hệ thống kết nối tương tác với **LLM API** (đóng vai trò External AI Service) và SMTP Mail Server (phục vụ Email Notifications) thông qua cơ chế bất đồng bộ (Asynchronous), giúp trải nghiệm tư vấn của Trợ lý AI và gửi mail nhắc nhở luôn mượt mà, không gây nghẽn hệ thống. Qua tầng giao tiếp Data Access Layer (JPA, Flyway), dữ liệu sẽ được đồng bộ xuống tầng cuối cùng.
+*   **Tầng thứ 3 - Database & Storage Layer:** Hệ thống tối giản và tối ưu hóa hạ tầng lưu trữ thành hai thành phần cốt lõi: Lưu trữ toàn bộ dữ liệu quan hệ, thông tin người dùng và lịch sử khám bệnh tại PostgreSQL (Supabase), đồng thời quản lý, lưu trữ toàn bộ các tệp tin y tế hay tệp PDF đơn thuốc một cách an toàn, bảo mật thông qua Supabase Object Storage.
 
 ---
 
