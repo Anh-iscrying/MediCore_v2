@@ -546,21 +546,21 @@ export default function AppointmentsPage() {
       return {
         label: "Bác sĩ đã xác nhận",
         description: "Lịch khám đã được bác sĩ tiếp nhận. Vui lòng đến đúng ca khám.",
-        className: "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20",
+        className: "bg-[#e2f6d5] text-[#054d28] border-[#2ead4b]/20 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-500/20",
       }
     }
     if (status === "IN_PROGRESS") {
       return {
         label: "Đang khám",
         description: "Bác sĩ đã bắt đầu khám. Bạn vui lòng vào phòng khám.",
-        className: "bg-blue-50 text-blue-700 border-blue-200",
+        className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-500/20",
       }
     }
     if (isWaitingStatus(status)) {
       return {
         label: "Đang chờ đến ca khám",
         description: "Bạn đã đặt lịch thành công. Hệ thống sẽ thông báo khi bác sĩ xác nhận hoặc bắt đầu khám.",
-        className: "bg-amber-50 text-amber-700 border-amber-200",
+        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-500/20",
       }
     }
     if (isCompletedStatus(status)) {

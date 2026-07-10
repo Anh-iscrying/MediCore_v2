@@ -3,7 +3,6 @@
 import type React from "react"
 import { useEffect, useRef } from "react"
 import Link from "next/link"
-import { AuthProvider } from "@/components/auth/auth-provider"
 
 export default function AuthLayout({
   children,
@@ -31,8 +30,7 @@ export default function AuthLayout({
   }, [])
 
   return (
-    <AuthProvider>
-      <main className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 py-8 bg-background">
+    <main className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-4 py-8 bg-background">
       {/* Premium background mesh overlay */}
       <div className="absolute inset-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[100px] dark:bg-primary/5" />
@@ -73,7 +71,6 @@ export default function AuthLayout({
           </Link>
         </div>
       </div>
-      </main>
-    </AuthProvider>
+    </main>
   )
 }

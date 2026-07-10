@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/providers/auth-provider"
+import { useAuth } from "@/components/base/providers/auth-provider"
 import { Button } from "@/components/base/ui/button"
 
 export function Sidebar() {
@@ -15,12 +15,12 @@ export function Sidebar() {
 
   const adminMenu = [
     { icon: LayoutDashboard, label: "Báo cáo thống kê", href: "/" },
-    { icon: Stethoscope, label: "Quản lý Bác sĩ", href: "/admin" },
-    { icon: CalendarClock, label: "Lịch trực", href: "/schedule" },
-    { icon: FolderHeart, label: "Quản lý Chuyên khoa", href: "/specialties" },
-    { icon: Pill, label: "Quản lý Thuốc", href: "/medicines" },
-    { icon: FileText, label: "Quản lý ICD-10", href: "/icd" },
-    { icon: ClipboardList, label: "Combo thuốc ICD-10", href: "/treatment-templates" },
+    { icon: Stethoscope, label: "Quản lý Bác sĩ", href: "/admin/doctors" },
+    { icon: CalendarClock, label: "Lịch trực", href: "/admin/schedule" },
+    { icon: FolderHeart, label: "Quản lý Chuyên khoa", href: "/admin/specialties" },
+    { icon: Pill, label: "Quản lý Thuốc", href: "/admin/medicines" },
+    { icon: FileText, label: "Quản lý ICD-10", href: "/admin/icd" },
+    { icon: ClipboardList, label: "Combo thuốc ICD-10", href: "/admin/treatment-templates" },
   ]
 
   const doctorMenu = [
@@ -92,7 +92,7 @@ export function Sidebar() {
           variant="outline"
           size="sm"
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 h-9 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-950 dark:hover:bg-red-950/20"
+          className="w-full flex items-center justify-center gap-2 h-9 text-xs border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/30 dark:hover:bg-destructive/20"
         >
           <LogOut className="w-3.5 h-3.5" />
           Đăng xuất

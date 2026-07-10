@@ -2,7 +2,7 @@
 
 import { Menu } from "lucide-react"
 import { Button } from "@/components/base/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/base/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/base/ui/sheet"
 import { Sidebar } from "./sidebar"
 
 export function MobileNav() {
@@ -15,6 +15,8 @@ export function MobileNav() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64">
+        <SheetTitle className="sr-only">Menu điều hướng</SheetTitle>
+        <SheetDescription className="sr-only">Thanh menu điều hướng trên thiết bị di động</SheetDescription>
         <Sidebar />
       </SheetContent>
     </Sheet>

@@ -2,11 +2,11 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { ThemeProvider } from "@/providers/theme-provider"
-import { DataProvider } from "@/providers/data-provider"
-import { AuthProvider } from "@/providers/auth-provider"
+import { ThemeProvider } from "@/components/base/providers/theme-provider"
+import { DataProvider } from "@/components/base/providers/data-provider"
+import { AuthProvider } from "@/components/base/providers/auth-provider"
 import { Toaster } from "@/components/base/ui/toaster"
-import "./globals.css"
+import "../styles/globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })

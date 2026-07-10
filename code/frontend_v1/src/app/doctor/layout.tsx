@@ -1,4 +1,4 @@
-import { DoctorSidebar } from "@/components/features/doctor/layout/doctor-sidebar"
+import { DoctorSidebar } from "@/components/doctor/layout/doctor-sidebar"
 
 export default function DoctorLayout({
   children,

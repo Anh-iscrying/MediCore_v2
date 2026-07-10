@@ -1,4 +1,4 @@
-import { DoctorScheduleContent } from "@/components/features/doctor/schedule/doctor-schedule-content"
+import { DoctorScheduleContent } from "@/components/doctor/schedule/doctor-schedule-content"
 
 export const metadata = {
   title: "Lịch làm việc bác sĩ | MedAdmin",

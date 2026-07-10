@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { AppShell } from "@/components/base/layout/app-shell"
-import { StatsCards } from "@/components/features/dashboard/stats-cards"
-import { FilterPanel } from "@/components/features/dashboard/filter-panel"
-import { DashboardCharts } from "@/components/features/dashboard/dashboard-charts"
-import { AppointmentTable } from "@/components/features/dashboard/appointment-table"
+import { StatsCards } from "@/components/admin/dashboard/stats-cards"
+import { FilterPanel } from "@/components/admin/dashboard/filter-panel"
+import { DashboardCharts } from "@/components/admin/dashboard/dashboard-charts"
+import { AppointmentTable } from "@/components/admin/dashboard/appointment-table"
 import { Button } from "@/components/base/ui/button"
 import { Download } from "lucide-react"
 

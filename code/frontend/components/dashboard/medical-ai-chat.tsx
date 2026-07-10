@@ -589,7 +589,7 @@ export function MedicalAiChat() {
                         </div>
                     )}
                     {uploadError && (
-                        <p className="px-5 pt-3 text-xs font-semibold text-red-600">
+                        <p className="px-5 pt-3 text-xs font-semibold text-destructive">
                             {uploadError}
                         </p>
                     )}

@@ -6,17 +6,17 @@ const doctors = [
   {
     role: "Bác sĩ Tim mạch",
     focus: "Theo dõi huyết áp, đau ngực, hồi hộp và nguy cơ tim mạch.",
-    image: "/images/doctor-1.png",
+    image: "/images/doctor-chen.png",
   },
   {
     role: "Bác sĩ Nội tổng quát",
     focus: "Đánh giá triệu chứng thường gặp, bệnh mạn tính và hướng khám tiếp theo.",
-    image: "/images/doctor-2.png",
+    image: "/images/doctor-jenkins.png",
   },
   {
     role: "Bác sĩ Răng Hàm Mặt",
     focus: "Tư vấn đau cơ xương khớp, hồi phục sau chấn thương và kế hoạch tái khám.",
-    image: "/images/doctor-3.png",
+    image: "/images/doctor-vance.png",
   },
 ]
 

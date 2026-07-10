@@ -1,13 +1,5 @@
-import { AppShell } from "@/components/base/layout/app-shell"
-import { DoctorsContent } from "@/components/features/admin/doctors-content"
+import { redirect } from "next/navigation"
 
 export default function AdminPage() {
-  return (
-    <AppShell
-      title="Quản lý Bác sĩ"
-      description="Danh sách, thêm, chỉnh sửa và xóa thông tin bác sĩ."
-    >
-      <DoctorsContent />
-    </AppShell>
-  )
+  redirect("/")
 }
