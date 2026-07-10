@@ -1,5 +1,4 @@
 import type React from "react"
-import { AuthProvider } from "@/components/auth/auth-provider"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 
 export const metadata = {
@@ -13,8 +12,6 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthProvider>
-      <DashboardShell>{children}</DashboardShell>
-    </AuthProvider>
+    <DashboardShell>{children}</DashboardShell>
   )
 }
