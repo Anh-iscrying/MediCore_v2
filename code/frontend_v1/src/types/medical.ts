@@ -17,15 +17,33 @@ export interface Doctor {
   experience: number // số năm kinh nghiệm
   status: "active" | "on-leave" | "inactive"
   avatar?: string
+  bio?: string
   doctorCode?: string
 }
 
-export type ShiftType = "morning" | "afternoon" | "night" | "off"
+export type ShiftType = "morning" | "afternoon" | "full_day" | "night" | "off"
 
 export interface ScheduleEntry {
   doctorId: string
-  // key: day index 0-6 (Mon-Sun)
-  shifts: Record<number, ShiftType>
+  // key: date string YYYY-MM-DD
+  shifts: Record<string, ShiftType>
+  scheduleIds?: Record<string, string>
+}
+
+export interface ScheduleRequest {
+  doctorId: number
+  workDate: string
+  timeSlot: string
+}
+
+export interface ScheduleResponse {
+  id: number
+  doctorId: number
+  doctorName?: string
+  doctorCode?: string
+  workDate: string
+  timeSlot: string
+  isBooked?: boolean
 }
 
 export interface Medicine {
@@ -48,7 +66,7 @@ export interface IcdCode {
   description: string
 }
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED"
+export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "WAITING" | "IN_PROGRESS" | "DONE"
 
 export interface Appointment {
   id: string
@@ -131,12 +149,23 @@ export interface DoctorRequest {
   name: string
   specialtyId: number
   title?: string
+  bio?: string
   phone?: string
   experience?: number
   email?: string
   password?: string
   status?: Doctor["status"]
-  avatar?: string
+  avatarUrl?: string
+}
+
+export interface DoctorProfileRequest {
+  name: string
+  specialtyId: number
+  title?: string
+  bio?: string
+  phone?: string
+  experience?: number
+  avatarUrl?: string
 }
 
 export interface DoctorResponse {
@@ -145,6 +174,7 @@ export interface DoctorResponse {
   specialtyId: number
   specialtyName?: string
   title?: string
+  bio?: string
   email?: string
   phone?: string
   experience?: number
@@ -187,6 +217,44 @@ export interface DiseaseResponse {
   name: string
   category?: string
   description?: string
+}
+
+export interface TreatmentTemplateDetail {
+  id?: number
+  medicineId: number
+  medicineName?: string
+  unit?: string
+  quantity: number
+  dosage: string
+}
+
+export interface TreatmentTemplate {
+  id: string
+  icd10Code: string
+  icd10Name?: string
+  templateName: string
+  description?: string
+  details: TreatmentTemplateDetail[]
+}
+
+export interface TreatmentTemplateRequest {
+  icd10Code: string
+  templateName: string
+  description?: string
+  medicines: {
+    medicineId: number
+    quantity: number
+    dosage: string
+  }[]
+}
+
+export interface TreatmentTemplateResponse {
+  id: number
+  icd10Code: string
+  icd10Name?: string
+  templateName: string
+  description?: string
+  details: TreatmentTemplateDetail[]
 }
 
 export interface PatientRequest {

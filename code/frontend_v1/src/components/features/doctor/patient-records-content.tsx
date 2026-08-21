@@ -77,7 +77,7 @@ export function PatientRecordsContent() {
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm text-foreground">{patient.name}</p>
-                        <p className="text-xs text-muted-foreground">{patient.id}</p>
+                        <p className="text-xs text-muted-foreground">{patient.patientCode || patient.id}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">

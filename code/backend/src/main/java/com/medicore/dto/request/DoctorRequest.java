@@ -18,6 +18,7 @@ public class DoctorRequest {
     private Integer specialtyId;
 
     private String title;
+    private String bio;
     private String phone;
 
     @Min(value = 0, message = "Số năm kinh nghiệm không được nhỏ hơn 0")

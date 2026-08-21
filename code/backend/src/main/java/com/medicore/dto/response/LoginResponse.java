@@ -16,4 +16,6 @@ public class LoginResponse {
     private String name;
     private Integer doctorId;
     private String doctorCode;
+    private Integer patientId;
+    private String patientCode;
 }

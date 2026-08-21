@@ -19,11 +19,26 @@ export const seedDoctors: Doctor[] = [
 ]
 
 export const seedSchedule: ScheduleEntry[] = [
-  { doctorId: "dr1", shifts: { 0: "morning", 1: "morning", 2: "afternoon", 3: "off", 4: "night", 5: "off", 6: "off" } },
-  { doctorId: "dr2", shifts: { 0: "afternoon", 1: "afternoon", 2: "morning", 3: "morning", 4: "off", 5: "night", 6: "off" } },
-  { doctorId: "dr3", shifts: { 0: "off", 1: "off", 2: "off", 3: "off", 4: "off", 5: "off", 6: "off" } },
-  { doctorId: "dr4", shifts: { 0: "morning", 1: "night", 2: "off", 3: "afternoon", 4: "afternoon", 5: "morning", 6: "off" } },
-  { doctorId: "dr5", shifts: { 0: "night", 1: "off", 2: "morning", 3: "morning", 4: "afternoon", 5: "off", 6: "morning" } },
+  { doctorId: "dr1", shifts: {
+    "2026-06-01": "morning", "2026-06-02": "morning", "2026-06-03": "afternoon",
+    "2026-06-04": "off", "2026-06-05": "night", "2026-06-06": "off", "2026-06-07": "off"
+  } },
+  { doctorId: "dr2", shifts: {
+    "2026-06-01": "afternoon", "2026-06-02": "afternoon", "2026-06-03": "morning",
+    "2026-06-04": "morning", "2026-06-05": "off", "2026-06-06": "night", "2026-06-07": "off"
+  } },
+  { doctorId: "dr3", shifts: {
+    "2026-06-01": "off", "2026-06-02": "off", "2026-06-03": "off",
+    "2026-06-04": "off", "2026-06-05": "off", "2026-06-06": "off", "2026-06-07": "off"
+  } },
+  { doctorId: "dr4", shifts: {
+    "2026-06-01": "morning", "2026-06-02": "night", "2026-06-03": "off",
+    "2026-06-04": "afternoon", "2026-06-05": "afternoon", "2026-06-06": "morning", "2026-06-07": "off"
+  } },
+  { doctorId: "dr5", shifts: {
+    "2026-06-01": "night", "2026-06-02": "off", "2026-06-03": "morning",
+    "2026-06-04": "morning", "2026-06-05": "afternoon", "2026-06-06": "off", "2026-06-07": "morning"
+  } },
 ]
 
 export const seedMedicines: Medicine[] = [

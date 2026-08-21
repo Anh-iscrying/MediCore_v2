@@ -6,18 +6,23 @@ import com.medicore.common.exception.CustomBusinessException;
 import com.medicore.dto.request.AppointmentRequest;
 import com.medicore.dto.response.AppointmentResponse;
 import com.medicore.entity.clinical.Appointment;
+import com.medicore.entity.clinical.DoctorSchedule;
 import com.medicore.entity.user.Doctor;
 import com.medicore.entity.user.Patient;
 import com.medicore.repository.AppointmentRepository;
 import com.medicore.repository.DoctorRepository;
+import com.medicore.repository.DoctorScheduleRepository;
 import com.medicore.repository.PatientRepository;
 import com.medicore.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,12 +34,18 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final DoctorScheduleRepository doctorScheduleRepository;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final LocalTime MORNING_START = LocalTime.of(8, 0);
+    private static final LocalTime MORNING_END = LocalTime.of(12, 0);
+    private static final LocalTime AFTERNOON_START = LocalTime.of(13, 30);
+    private static final LocalTime AFTERNOON_END = LocalTime.of(17, 30);
 
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentResponse> getAllAppointments() {
-        return appointmentRepository.findAll().stream()
+        return appointmentRepository.findAllWithRelations().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -71,25 +82,33 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional
     public AppointmentResponse createAppointment(AppointmentRequest request) {
         Patient patient = findPatientByIdOrCode(request.getPatientId());
+        validatePatientHasNoOtherActiveAppointment(patient.getPatientCode(), null);
+        validateRequiredSymptoms(request.getSymptomsInitial());
+
         Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
 
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
+        validateAppointmentAvailability(doctor.getId(), appDate, request.getTimeSlot(), null);
 
         Appointment appointment = Appointment.builder()
                 .patient(patient)
                 .doctor(doctor)
                 .appointmentDate(appDate)
                 .timeSlot(request.getTimeSlot())
-                .symptomsInitial(request.getSymptomsInitial())
+                .symptomsInitial(request.getSymptomsInitial().trim())
                 .status(status)
                 .build();
 
         appointment.setCreatedAt(LocalDateTime.now());
         appointment.setUpdatedAt(LocalDateTime.now());
 
-        appointment = appointmentRepository.save(appointment);
+        try {
+            appointment = appointmentRepository.save(appointment);
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
         return mapToResponse(appointment);
     }
 
@@ -105,6 +124,13 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         LocalDate appDate = LocalDate.parse(request.getAppointmentDate(), DATE_FORMATTER);
         AppointmentStatus status = mapToStatusEntity(request.getStatus());
+        boolean cancelling = status == AppointmentStatus.CANCELLED;
+
+        if (!cancelling) {
+            validatePatientHasNoOtherActiveAppointment(patient.getPatientCode(), appointment.getId());
+            validateRequiredSymptoms(request.getSymptomsInitial());
+            validateAppointmentAvailability(doctor.getId(), appDate, request.getTimeSlot(), appointment.getId());
+        }
 
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
@@ -114,7 +140,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(status);
         appointment.setUpdatedAt(LocalDateTime.now());
 
-        appointment = appointmentRepository.save(appointment);
+        try {
+            appointment = appointmentRepository.save(appointment);
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
         return mapToResponse(appointment);
     }
 
@@ -124,6 +154,158 @@ public class AppointmentServiceImpl implements AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new CustomBusinessException(ErrorCodes.NOT_FOUND));
         appointmentRepository.delete(appointment);
+    }
+
+    private void validatePatientHasNoOtherActiveAppointment(String patientCode, Integer currentAppointmentId) {
+        boolean exists = currentAppointmentId == null
+                ? appointmentRepository.existsByPatientPatientCodeAndStatusNot(patientCode, AppointmentStatus.CANCELLED)
+                : appointmentRepository.existsByPatientPatientCodeAndStatusNotAndIdNot(patientCode, AppointmentStatus.CANCELLED, currentAppointmentId);
+        if (exists) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Bệnh nhân chỉ được đặt một lịch khám đang hoạt động");
+        }
+    }
+
+    private void validateRequiredSymptoms(String symptomsInitial) {
+        if (symptomsInitial == null || symptomsInitial.trim().isEmpty()) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Vui lòng nhập triệu chứng ban đầu");
+        }
+    }
+
+    private void validateAppointmentAvailability(Integer doctorId, LocalDate appDate, String appointmentTimeSlot, Integer currentAppointmentId) {
+        LocalTime[] appointmentRange = parseTimeRange(appointmentTimeSlot);
+        validateBookableAppointmentSlot(appointmentRange);
+
+        List<DoctorSchedule> schedules = doctorScheduleRepository.findByDoctorIdAndWorkDate(doctorId, appDate).stream()
+                .filter(this::isWorkingSchedule)
+                .collect(Collectors.toList());
+
+        if (schedules.isEmpty()) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Bác sĩ không có lịch trực vào ngày đã chọn");
+        }
+
+        boolean timeSlotInSchedule = schedules.stream()
+                .anyMatch(schedule -> isAppointmentSlotInsideSchedule(appointmentRange, schedule.getTimeSlot()));
+
+        if (!timeSlotInSchedule) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ hẹn không nằm trong ca trực của bác sĩ");
+        }
+
+        boolean isBooked = appointmentRepository.findByDoctorIdAndAppointmentDateAndStatusNot(doctorId, appDate, AppointmentStatus.CANCELLED).stream()
+                .filter(appointment -> currentAppointmentId == null || !appointment.getId().equals(currentAppointmentId))
+                .anyMatch(appointment -> overlaps(appointmentRange, appointment.getTimeSlot()));
+
+        if (isBooked) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ này đã có bệnh nhân đặt lịch");
+        }
+    }
+
+    private void validateBookableAppointmentSlot(LocalTime[] appointmentRange) {
+        long minutes = Duration.between(appointmentRange[0], appointmentRange[1]).toMinutes();
+        if (minutes != 30) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Mỗi ca khám phải kéo dài 30 phút");
+        }
+        if (!isAlignedToHalfHour(appointmentRange[0]) || !isAlignedToHalfHour(appointmentRange[1])) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Ca khám phải bắt đầu/kết thúc theo mốc 00 hoặc 30 phút");
+        }
+        if (!isInsideWorkingWindow(appointmentRange, MORNING_START, MORNING_END)
+                && !isInsideWorkingWindow(appointmentRange, AFTERNOON_START, AFTERNOON_END)) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Ca khám chỉ được nằm trong 08:00-12:00 hoặc 13:30-17:30");
+        }
+    }
+
+    private boolean isAlignedToHalfHour(LocalTime time) {
+        return time.getMinute() == 0 || time.getMinute() == 30;
+    }
+
+    private boolean isInsideWorkingWindow(LocalTime[] range, LocalTime start, LocalTime end) {
+        return !range[0].isBefore(start) && !range[1].isAfter(end);
+    }
+
+    private boolean isWorkingSchedule(DoctorSchedule schedule) {
+        return schedule.getTimeSlot() != null && !schedule.getTimeSlot().isBlank() && isWorkingSchedule(schedule.getTimeSlot());
+    }
+
+    private boolean isWorkingSchedule(String scheduleTimeSlot) {
+        if (scheduleTimeSlot == null || scheduleTimeSlot.isBlank()) {
+            return false;
+        }
+        String normalized = scheduleTimeSlot.trim().toLowerCase();
+        return !normalized.equals("off") && !normalized.equals("nghỉ") && !normalized.equals("night") && !normalized.equals("ca tối");
+    }
+
+    private boolean isAppointmentSlotInsideSchedule(LocalTime[] appointmentRange, String scheduleTimeSlot) {
+        for (LocalTime[] scheduleRange : normalizeScheduleTimeSlots(scheduleTimeSlot)) {
+            if (!appointmentRange[0].isBefore(scheduleRange[0]) && !appointmentRange[1].isAfter(scheduleRange[1])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<LocalTime[]> normalizeScheduleTimeSlots(String scheduleTimeSlot) {
+        if (scheduleTimeSlot == null) {
+            return List.of();
+        }
+        String normalized = scheduleTimeSlot.trim().toLowerCase();
+        if (normalized.equals("morning") || normalized.equals("ca sáng")) {
+            return java.util.Collections.singletonList(new LocalTime[] { MORNING_START, MORNING_END });
+        }
+        if (normalized.equals("afternoon") || normalized.equals("ca chiều")) {
+            return java.util.Collections.singletonList(new LocalTime[] { AFTERNOON_START, AFTERNOON_END });
+        }
+        if (normalized.equals("full_day") || normalized.equals("cả ngày") || normalized.equals("ca cả ngày")) {
+            return java.util.Arrays.asList(
+                    new LocalTime[] { MORNING_START, MORNING_END },
+                    new LocalTime[] { AFTERNOON_START, AFTERNOON_END }
+            );
+        }
+        if (normalized.equals("night") || normalized.equals("ca tối")) {
+            return List.of();
+        }
+        if (!scheduleTimeSlot.contains("-")) {
+            LocalTime start = LocalTime.parse(normalizeTime(scheduleTimeSlot), TIME_FORMATTER);
+            return java.util.Collections.singletonList(new LocalTime[] { start, start.plusMinutes(30) });
+        }
+        return java.util.Collections.singletonList(parseTimeRange(scheduleTimeSlot));
+    }
+
+    private boolean overlaps(LocalTime[] candidateRange, String bookedSlot) {
+        try {
+            LocalTime[] bookedRange = parseTimeRange(bookedSlot);
+            return candidateRange[0].isBefore(bookedRange[1]) && bookedRange[0].isBefore(candidateRange[1]);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private LocalTime[] parseTimeRange(String timeRange) {
+        try {
+            String[] parts = timeRange.split("\\s*-\\s*");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Invalid time range: " + timeRange);
+            }
+            return new LocalTime[] {
+                    LocalTime.parse(normalizeTime(parts[0]), TIME_FORMATTER),
+                    LocalTime.parse(normalizeTime(parts[1]), TIME_FORMATTER)
+            };
+        } catch (RuntimeException e) {
+            throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Khung giờ khám không hợp lệ");
+        }
+    }
+
+    private String normalizeTime(String value) {
+        String normalized = value.trim();
+        if (normalized.matches("^\\d{1,2}h$")) {
+            normalized = normalized.replace("h", ":00");
+        } else if (normalized.matches("^\\d{1,2}h\\d{1,2}$")) {
+            normalized = normalized.replace("h", ":");
+        }
+
+        String[] parts = normalized.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid time: " + value);
+        }
+        return String.format("%02d:%02d", Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
     }
 
     private Patient findPatientByIdOrCode(String patientIdOrCode) {
@@ -144,34 +326,24 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
         switch (statusDto.toUpperCase()) {
             case "PENDING":
+            case "WAITING":
                 return AppointmentStatus.WAITING;
             case "CONFIRMED":
+                return AppointmentStatus.CONFIRMED;
+            case "IN_PROGRESS":
                 return AppointmentStatus.IN_PROGRESS;
             case "COMPLETED":
+            case "DONE":
                 return AppointmentStatus.DONE;
             case "CANCELLED":
                 return AppointmentStatus.CANCELLED;
             default:
-                return AppointmentStatus.WAITING;
+                throw new CustomBusinessException(ErrorCodes.BAD_REQUEST, "Trạng thái lịch hẹn không hợp lệ");
         }
     }
 
     private String mapToStatusDto(AppointmentStatus status) {
-        if (status == null) {
-            return "PENDING";
-        }
-        switch (status) {
-            case WAITING:
-                return "PENDING";
-            case IN_PROGRESS:
-                return "CONFIRMED";
-            case DONE:
-                return "COMPLETED";
-            case CANCELLED:
-                return "CANCELLED";
-            default:
-                return "PENDING";
-        }
+        return status == null ? AppointmentStatus.WAITING.name() : status.name();
     }
 
     private AppointmentResponse mapToResponse(Appointment appointment) {
@@ -181,15 +353,15 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .patientId(appointment.getPatient() != null ? appointment.getPatient().getPatientCode() : null)
                 .doctorId(appointment.getDoctor() != null ? appointment.getDoctor().getId() : null)
                 .doctorName(appointment.getDoctor() != null ? appointment.getDoctor().getDoctorName() : null)
-                .specialtyId(appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null 
+                .specialtyId(appointment.getDoctor() != null && appointment.getDoctor().getSpecialty() != null
                         ? appointment.getDoctor().getSpecialty().getId() : null)
-                .appointmentDate(appointment.getAppointmentDate() != null 
+                .appointmentDate(appointment.getAppointmentDate() != null
                         ? appointment.getAppointmentDate().format(DATE_FORMATTER) : null)
                 .timeSlot(appointment.getTimeSlot())
                 .symptomsInitial(appointment.getSymptomsInitial())
                 .status(mapToStatusDto(appointment.getStatus()))
-                .icdCode(null) // Lấy từ EMR ở phase sau
-                .mainDiagnosis(null) // Lấy từ EMR ở phase sau
+                .icdCode(null)
+                .mainDiagnosis(null)
                 .build();
     }
 }

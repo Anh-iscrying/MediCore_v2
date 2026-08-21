@@ -20,9 +20,15 @@ import com.medicore.repository.SpecialtyRepository;
 import com.medicore.service.IdGeneratorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -72,6 +78,15 @@ public class AuthController {
                 businessCode
         );
 
+        // 2. TẠO COOKIE
+        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
+            .httpOnly(true)                // Bảo mật: JS không đọc được, chống XSS
+            .secure(false)                 // Để false khi chạy localhost (http)
+            .path("/")                     // Cookie có hiệu lực toàn bộ website
+            .maxAge(24 * 60 * 60)          // Hết hạn sau 24 giờ (đúng AC-AUTH-04)
+            .sameSite("Lax")               // Hỗ trợ gửi cookie khi chuyển trang
+            .build();
+
         LoginResponse response = LoginResponse.builder()
                 .token(token)
                 .role(credentials.getRole().name())
@@ -79,12 +94,17 @@ public class AuthController {
                 .name(name)
                 .doctorId(credentials.getRole() == UserRole.DOCTOR ? businessId : null)
                 .doctorCode(credentials.getRole() == UserRole.DOCTOR ? businessCode : null)
+                .patientId(credentials.getRole() == UserRole.PATIENT ? businessId : null)
+                .patientCode(credentials.getRole() == UserRole.PATIENT ? businessCode : null)
                 .build();
 
-        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString()) // Gửi "tem" về trình duyệt
+            .body(ApiResponse.success("Đăng nhập thành công", response));
     }
 
     @PostMapping("/register")
+    @Transactional
     public ResponseEntity<ApiResponse<LoginResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
 
@@ -208,13 +228,80 @@ public class AuthController {
                 .name(displayName)
                 .doctorId(targetRole == UserRole.DOCTOR ? businessId : null)
                 .doctorCode(targetRole == UserRole.DOCTOR ? businessCode : null)
+                .patientId(targetRole == UserRole.PATIENT ? businessId : null)
+                .patientCode(targetRole == UserRole.PATIENT ? businessCode : null)
                 .build();
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
+        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success(
                         "Đăng ký tài khoản thành công",
                         response
-                )
-        );
+                ));
+    }
+
+    @GetMapping("/me")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<LoginResponse>> me() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new CustomBusinessException(ErrorCodes.UNAUTHORIZED);
+        }
+
+        AuthCredentials credentials = authCredentialsRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new CustomBusinessException(ErrorCodes.UNAUTHORIZED));
+
+        return ResponseEntity.ok(ApiResponse.success(buildLoginResponse(credentials, null)));
+    }
+
+    private LoginResponse buildLoginResponse(AuthCredentials credentials, String token) {
+        String name = "User";
+        Integer doctorId = null;
+        String doctorCode = null;
+        Integer patientId = null;
+        String patientCode = null;
+
+        if (credentials.getRole() == UserRole.DOCTOR && credentials.getDoctor() != null) {
+            name = credentials.getDoctor().getDoctorName();
+            doctorId = credentials.getDoctor().getId();
+            doctorCode = credentials.getDoctor().getDoctorCode();
+        } else if (credentials.getRole() == UserRole.PATIENT && credentials.getPatient() != null) {
+            name = credentials.getPatient().getFullName();
+            patientId = credentials.getPatient().getId();
+            patientCode = credentials.getPatient().getPatientCode();
+        }
+
+        return LoginResponse.builder()
+                .token(token)
+                .role(credentials.getRole().name())
+                .email(credentials.getEmail())
+                .name(name)
+                .doctorId(doctorId)
+                .doctorCode(doctorCode)
+                .patientId(patientId)
+                .patientCode(patientCode)
+                .build();
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        // Tạo một Cookie trống, có thời hạn bằng 0 để ghi đè lên Cookie cũ
+        ResponseCookie cookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0) // Hết hạn ngay lập tức
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success("Đăng xuất thành công", null));
     }
 }
